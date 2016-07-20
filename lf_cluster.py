@@ -254,23 +254,6 @@ def output_features(formatted_features):
         print(feature)
 
 
-def trim_clusters():
-    """
-    Trims read-clusters based on a read depth.
-    Accepts a dictionary generator.
-    Returns a dictionary generator.
-    """
-    pass
-
-
-def construct_gff():
-    """
-    Accepts a dictionary generator.
-    Prints a gff file to standard out.
-    """
-    pass
-
-
 def main():
     args = parse_args(sys.argv[1:])
     sam = pysam.Samfile(args.input_bam, 'rb')
