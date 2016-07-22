@@ -52,6 +52,21 @@ def tips(sam):
         yield tip(read)
 
 
+def cluster(tips):
+    tips = np.fromiter(tips, np.int)
+    input_tips = np.column_stack([tips, np.zeros(len(tips))])
+    dbscan = DBSCAN(eps=100, min_samples=5).fit(input_tips)
+    labels = dbscan.labels_.astype(np.int)
+    for cluster_label in np.unique(labels)[1:]:
+        cluster_tips = tips[np.where(labels == cluster_label)]
+        yield(np.min(cluster_tips),
+              np.max(cluster_tips),
+              len(cluster_tips),
+              np.mean(cluster_tips),
+              np.median(cluster_tips),
+              np.bincount(cluster_tips).argmax())
+
+
 def sub_cluster(parent_cluster, read_subset, **kwargs):
     """
     Returns a modified cluster with a subset of the original reads.
