@@ -276,16 +276,11 @@ def output_features(formatted_features):
 
 
 def main():
-    args = parse_args(sys.argv[1:])
-    sam = pysam.Samfile(args.input_bam, 'rb')
-    cluster_generator = extract_references(sam)
-    cluster_generator = split_families(cluster_generator)
-    cluster_generator = split_orientation(cluster_generator)
-    cluster_generator = filter_unique(cluster_generator, args)
-    cluster_generator = identify_features_by_dbscan(cluster_generator, args)
-    feature_generator = extract_features(cluster_generator)
-    formatted_features = format_features(feature_generator)
-    output_features(formatted_features)
+    sam = pysam.AlignmentFile(infile, "rb")
+    sams = split_references(sam)
+    for sam in sams:
+        for clust in cluster(tips(sam)):
+            print(str(clust))
 
 
 if __name__ == '__main__':
