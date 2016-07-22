@@ -40,6 +40,18 @@ def split_references(sam):
             yield sam.fetch(name)
 
 
+def tip(read):
+    if read.is_reverse:
+        return read.pos + read.qlen
+    else:
+        return read.pos
+
+
+def tips(sam):
+    for read in sam:
+        yield tip(read)
+
+
 def sub_cluster(parent_cluster, read_subset, **kwargs):
     """
     Returns a modified cluster with a subset of the original reads.
