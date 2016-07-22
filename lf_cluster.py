@@ -11,14 +11,6 @@ from sklearn.cluster import DBSCAN
 def parse_args(args):
     parser = argparse.ArgumentParser('Identify transposon flanking regions')
     parser.add_argument('input_bam')
-    parser.add_argument('-s', '--stringency', type=int, default=5,
-                        help=("Stringency to determine if a hit maps "
-                              "uniquely. This score is the "
-                              "minimal allowed difference between the "
-                              "scores of the first and second "
-                              "hit before a read is assumed to be "
-                              "mapped to it's correct, unique, "
-                              "location. (default=5)"))
     parser.add_argument('--eps', type=int, default=100,
                         help=("When using the DBSCAN method to identify "
                               "read clusters, eps is the minimum distance "
