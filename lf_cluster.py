@@ -44,10 +44,10 @@ def tips(sam):
         yield tip(read)
 
 
-def cluster(tips):
+def cluster(tips, args):
     tips = np.fromiter(tips, np.int)
     input_tips = np.column_stack([tips, np.zeros(len(tips))])
-    dbscan = DBSCAN(eps=100, min_samples=5).fit(input_tips)
+    dbscan = DBSCAN(eps=args.eps, min_samples=args.min_tips).fit(input_tips)
     labels = dbscan.labels_.astype(np.int)
     for cluster_label in np.unique(labels)[1:]:
         cluster_tips = tips[np.where(labels == cluster_label)]
