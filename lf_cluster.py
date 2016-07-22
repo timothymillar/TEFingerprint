@@ -32,18 +32,12 @@ def parse_args(args):
     return parser.parse_args(args)
 
 
-def extract_references(sam):
-    """
-    Takes a sam object and returns a cluster-dictionary per reference.
-    Accepts a pysam object.
-    Returns a dictionary generator.
-    """
-    for reference, length in zip(sam.references, sam.lengths):
-        cluster = {"reads": list(sam.fetch(reference)),
-                   "reference": reference,
-                   "start": 0,
-                   "stop": int(length)}
-        yield cluster
+def split_references(sam):
+    if sam.nreferences == 1:
+        yield sam
+    else:
+        for name in sam.references:
+            yield sam.fetch(name)
 
 
 def sub_cluster(parent_cluster, read_subset, **kwargs):
