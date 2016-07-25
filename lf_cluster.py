@@ -10,7 +10,8 @@ from sklearn.cluster import DBSCAN
 
 def parse_args(args):
     parser = argparse.ArgumentParser('Identify transposon flanking regions')
-    parser.add_argument('input_bam')
+    parser.add_argument('input_bam', nargs='?', type=argparse.FileType('r'),
+                        default=False)
     parser.add_argument('--eps', type=int, default=100,
                         help=("When using the DBSCAN method to identify "
                               "read clusters, eps is the minimum distance "
@@ -61,7 +62,10 @@ def cluster(tips, args):
 
 def main():
     args = parse_args(sys.argv[1:])
-    sam = pysam.AlignmentFile(args.input_bam, 'rb')
+    if args.input_bam:
+        sam = pysam.AlignmentFile(args.input_bam, 'rb')
+    else:
+        sam = pysam.AlignmentFile("-", "r")
     sams = split_references(sam)
     for sam in sams:
         for clust in cluster(tips(sam), args):
