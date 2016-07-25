@@ -37,7 +37,10 @@ def split_references(sam, args):
             for name in sam.references:
                 yield sam.fetch(name)
     else:
-        yield sam
+        if args.reference:
+            yield sam
+        else:
+            pass  # Should throw error
 
 
 def tip(read):
