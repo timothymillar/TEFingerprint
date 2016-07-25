@@ -12,6 +12,7 @@ def parse_args(args):
     parser = argparse.ArgumentParser('Identify transposon flanking regions')
     parser.add_argument('input_bam', nargs='?', type=argparse.FileType('r'),
                         default=False)
+    parser.add_argument('--reference', nargs='?', default=False)
     parser.add_argument('--eps', type=int, default=100,
                         help=("When using the DBSCAN method to identify "
                               "read clusters, eps is the minimum distance "
@@ -25,12 +26,18 @@ def parse_args(args):
     return parser.parse_args(args)
 
 
-def split_references(sam):
-    if sam.nreferences == 1:
-        yield sam
+def split_references(sam, args):
+    """
+    Splitting references requires index and will not work from stdin
+    """
+    if args.input_bam:
+        if sam.nreferences == 1:
+            yield sam
+        else:
+            for name in sam.references:
+                yield sam.fetch(name)
     else:
-        for name in sam.references:
-            yield sam.fetch(name)
+        yield sam
 
 
 def tip(read):
@@ -66,7 +73,7 @@ def main():
         sam = pysam.AlignmentFile(args.input_bam, 'rb')
     else:
         sam = pysam.AlignmentFile("-", "rb")
-    sams = split_references(sam)
+    sams = split_references(sam, args)
     for sam in sams:
         for clust in cluster(tips(sam), args):
             print(str(clust))
