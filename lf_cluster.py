@@ -65,7 +65,7 @@ def main():
     if args.input_bam:
         sam = pysam.AlignmentFile(args.input_bam, 'rb')
     else:
-        sam = pysam.AlignmentFile("-", "r")
+        sam = pysam.AlignmentFile("-", "rb")
     sams = split_references(sam)
     for sam in sams:
         for clust in cluster(tips(sam), args):
