@@ -4,7 +4,6 @@ import sys
 import numpy as np
 import pysam
 import argparse
-import collections
 from sklearn.cluster import DBSCAN
 
 
@@ -13,6 +12,8 @@ def parse_args(args):
     parser.add_argument('input_bam', nargs='?', type=argparse.FileType('r'),
                         default=False)
     parser.add_argument('--reference', nargs='?', default=False)
+    parser.add_argument('--strand', nargs='?', default=False)
+    parser.add_argument('--read_group', nargs='?', default=False)
     parser.add_argument('--eps', type=int, default=100,
                         help=("When using the DBSCAN method to identify "
                               "read clusters, eps is the minimum distance "
