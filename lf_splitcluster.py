@@ -27,7 +27,7 @@ def strand2flag(strand):
         return ('-F', '4')
 
 
-def split_cluster(bamfile, read_group, reference, strand):
+def split_cluster(bamfile, reference, read_group, strand, eps, min_tips):
     flag = strand2flag(strand)
     sam = pysam.view(flag[0], flag[1], bamfile, reference)
     if strand:
@@ -37,7 +37,11 @@ def split_cluster(bamfile, read_group, reference, strand):
     bam = bytearray(''.join(sam), 'utf-8')
     proc = Popen(['python',
                   'lf_cluster.py',
-                  '--reference', reference],
+                  '--reference', reference,
+                  '--read_group', read_group,
+                  '--strand', strand,
+                  '--eps', str(eps),
+                  '--min_tips', str(min_tips)],
                  stdout=PIPE,
                  stdin=PIPE,
                  stderr=STDOUT)
@@ -48,8 +52,8 @@ def split_cluster(bamfile, read_group, reference, strand):
 def main():
     args = parse_args(sys.argv[1:])
     print(split_cluster(args.input_bam,
-                        args.read_group,
                         args.reference,
+                        args.read_group,
                         args.strand))
 
 if __name__ == '__main__':
