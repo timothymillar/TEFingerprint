@@ -47,9 +47,9 @@ def split_references(sam, args):
 
 def tip(read):
     if read.is_reverse:
-        return read.pos + read.qlen
-    else:
         return read.pos
+    else:
+        return read.pos + read.qlen
 
 
 def tips(sam):
