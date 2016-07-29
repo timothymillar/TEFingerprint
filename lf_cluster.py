@@ -4,6 +4,7 @@ import sys
 import numpy as np
 import pysam
 import argparse
+from readcluster import ReadCluster
 from sklearn.cluster import DBSCAN
 
 
@@ -61,6 +62,17 @@ def udbscan(points, args):
     dbscan = DBSCAN(eps=args.eps, min_samples=args.min_tips).fit(points2d)
     labels = dbscan.labels_.astype(np.int)
     return labels
+
+
+def read_clusters(sam, args):
+    cluster_labels = udbscan(tips(sam), args)
+    for label in np.unique(cluster_labels)[1:]:
+        cluster_tips = tips[np.where(cluster_labels == label)]
+        read_cluster = ReadCluster(args.reference,
+                                   args.read_group,
+                                   args.strand,
+                                   cluster_tips)
+        yield read_cluster
 
 
 def cluster(tips, args):
