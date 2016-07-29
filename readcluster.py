@@ -3,9 +3,9 @@ import numpy as np
 
 class ReadCluster(object):
     """"""
-    def __init__(self, reference, group, strand, tips):
+    def __init__(self, reference, name, strand, tips):
         self.reference = reference
-        self.group = group  # need to escape regex
+        self.name = name  # need to escape regex
         self.strand = strand
         self.start = np.min(tips)
         self.end = np.max(tips)
@@ -16,14 +16,14 @@ class ReadCluster(object):
 
     def __id(self):
         return '_'.join((self.reference,
-                         self.group,
+                         self.name,
                          self.strand,
                          self.start))
 
     def __attributes(self):
         template = 'ID={0};Name={1};count={2};mean={3};median={4};mode={5}'
         return template.format(self.__id(),
-                               self.group,
+                               self.name,
                                self.count,
                                self.mean,
                                self.median,
