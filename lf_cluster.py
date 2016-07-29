@@ -65,29 +65,15 @@ def udbscan(points, args):
 
 
 def read_clusters(sam, args):
-    cluster_labels = udbscan(tips(sam), args)
+    sam_tips = np.fromiter(tips(sam), np.int)
+    cluster_labels = udbscan(sam_tips, args)
     for label in np.unique(cluster_labels)[1:]:
-        cluster_tips = tips[np.where(cluster_labels == label)]
+        cluster_tips = sam_tips[np.where(cluster_labels == label)]
         read_cluster = ReadCluster(args.reference,
                                    args.read_group,
                                    args.strand,
                                    cluster_tips)
         yield read_cluster
-
-
-def cluster(tips, args):
-    tips = np.fromiter(tips, np.int)
-    input_tips = np.column_stack([tips, np.zeros(len(tips))])
-    dbscan = DBSCAN(eps=args.eps, min_samples=args.min_tips).fit(input_tips)
-    labels = dbscan.labels_.astype(np.int)
-    for cluster_label in np.unique(labels)[1:]:
-        cluster_tips = tips[np.where(labels == cluster_label)]
-        yield(np.min(cluster_tips),
-              np.max(cluster_tips),
-              len(cluster_tips),
-              np.mean(cluster_tips),
-              np.median(cluster_tips),
-              np.bincount(cluster_tips).argmax())
 
 
 def main():
@@ -98,8 +84,8 @@ def main():
         sam = pysam.AlignmentFile("-", "rb")
     sams = split_references(sam, args)
     for sam in sams:
-        for clust in cluster(tips(sam), args):
-            print(str(clust))
+        for cluster in read_clusters(sam, args):
+            print(str(cluster))
 
 
 if __name__ == '__main__':
