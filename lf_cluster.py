@@ -56,6 +56,13 @@ def tips(sam):
         yield tip(read)
 
 
+def udbscan(points, args):
+    points2d = np.column_stack([points, np.zeros(len(points))])
+    dbscan = DBSCAN(eps=args.eps, min_samples=args.min_tips).fit(points2d)
+    labels = dbscan.labels_.astype(np.int)
+    return labels
+
+
 def cluster(tips, args):
     tips = np.fromiter(tips, np.int)
     input_tips = np.column_stack([tips, np.zeros(len(tips))])
