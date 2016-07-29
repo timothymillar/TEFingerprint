@@ -18,9 +18,9 @@ def parse_args(args):
 def strand2flag(strand):
     if strand:
         if strand in ('f', 'foward', '+'):
-            return ('-f', '16')
-        elif strand in ('r', 'reverse', '-'):
             return ('-F', '20')
+        elif strand in ('r', 'reverse', '-'):
+            return ('-f', '16')
         else:
             pass  # throw error
     else:
