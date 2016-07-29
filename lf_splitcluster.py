@@ -54,7 +54,9 @@ def main():
     print(split_cluster(args.input_bam,
                         args.reference,
                         args.read_group,
-                        args.strand))
+                        args.strand,
+                        args.eps,
+                        args.min_tips))
 
 if __name__ == '__main__':
     main()
