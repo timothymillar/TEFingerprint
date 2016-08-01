@@ -12,7 +12,7 @@ def parse_args(args):
     parser = argparse.ArgumentParser('Identify transposon flanking regions')
     parser.add_argument('--reference', type=str)
     parser.add_argument('--strand', nargs='?', default=False)
-    parser.add_argument('--read_group', nargs='?', default=False)
+    parser.add_argument('--family', nargs='?', default=False)
     parser.add_argument('--eps', type=int, default=100,
                         help=("When using the DBSCAN method to identify "
                               "read clusters, eps is the minimum distance "
@@ -45,13 +45,13 @@ def udbscan(points, eps, min_reads):
     return labels
 
 
-def call_clusters(sam, reference, read_group, strand, eps, min_reads):
+def call_clusters(sam, reference, family, strand, eps, min_reads):
     sam_tips = np.fromiter(tips(sam), np.int)
     cluster_labels = udbscan(sam_tips, eps, min_reads)
     for label in np.unique(cluster_labels)[1:]:
         cluster_tips = sam_tips[np.where(cluster_labels == label)]
         read_cluster = ReadCluster(reference,
-                                   read_group,
+                                   family,
                                    strand,
                                    cluster_tips)
         yield read_cluster
@@ -62,7 +62,7 @@ def main():
     sam = pysam.AlignmentFile("-", "rb")
     for cluster in call_clusters(sam,
                                  args.reference,
-                                 args.read_group,
+                                 args.family,
                                  args.strand,
                                  args.eps,
                                  args.min_reads):

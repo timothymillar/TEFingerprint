@@ -10,7 +10,7 @@ def parse_args(args):
     parser = argparse.ArgumentParser('Identify transposon flanking regions')
     parser.add_argument('input_bam')
     parser.add_argument('--references', type=str, nargs='*', default=[''])
-    parser.add_argument('--read_groups', type=str, nargs='*', default=[''])
+    parser.add_argument('--families', type=str, nargs='*', default=[''])
     parser.add_argument('--strands', type=str, nargs='+',
                         choices=set("+-."), default=['+', '-'])
     parser.add_argument('--eps', type=int, default=100)
@@ -26,14 +26,14 @@ def sam_references(input_bam):
     return references
 
 
-def build_jobs(input_bam, references, read_groups, strands, eps, min_reads):
+def build_jobs(input_bam, references, families, strands, eps, min_reads):
     if references == ['']:
         references = sam_references(input_bam)
     else:
         pass
     return product([input_bam],
                    references,
-                   read_groups,
+                   families,
                    strands,
                    [eps],
                    [min_reads])
@@ -43,7 +43,7 @@ def main():
     args = parse_args(sys.argv[1:])
     jobs = build_jobs(args.input_bam,
                       args.references,
-                      args.read_groups,
+                      args.families,
                       args.strands,
                       args.eps,
                       args.min_reads)
