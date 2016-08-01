@@ -38,21 +38,21 @@ def tips(sam):
         yield tip(read)
 
 
-def udbscan(points, args):
+def udbscan(points, eps, min_reads):
     points2d = np.column_stack([points, np.zeros(len(points))])
-    dbscan = DBSCAN(eps=args.eps, min_samples=args.min_tips).fit(points2d)
+    dbscan = DBSCAN(eps=eps, min_samples=min_reads).fit(points2d)
     labels = dbscan.labels_.astype(np.int)
     return labels
 
 
-def read_clusters(sam, args):
+def call_clusters(sam, reference, read_group, strand, eps, min_reads):
     sam_tips = np.fromiter(tips(sam), np.int)
-    cluster_labels = udbscan(sam_tips, args)
+    cluster_labels = udbscan(sam_tips, eps, min_reads)
     for label in np.unique(cluster_labels)[1:]:
         cluster_tips = sam_tips[np.where(cluster_labels == label)]
-        read_cluster = ReadCluster(args.reference,
-                                   args.read_group,
-                                   args.strand,
+        read_cluster = ReadCluster(reference,
+                                   read_group,
+                                   strand,
                                    cluster_tips)
         yield read_cluster
 
@@ -60,7 +60,12 @@ def read_clusters(sam, args):
 def main():
     args = parse_args(sys.argv[1:])
     sam = pysam.AlignmentFile("-", "rb")
-    for cluster in read_clusters(sam, args):
+    for cluster in call_clusters(sam,
+                                 args.reference,
+                                 args.read_group,
+                                 args.strand,
+                                 args.eps,
+                                 args.min_tips):
         print(str(cluster))
 
 
