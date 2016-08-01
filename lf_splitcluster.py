@@ -7,24 +7,23 @@ from subprocess import Popen, PIPE, STDOUT
 def parse_args(args):
     parser = argparse.ArgumentParser('Identify transposon flanking regions')
     parser.add_argument('input_bam')
-    parser.add_argument('--reference')
-    parser.add_argument('--read_group', nargs='?', default=False)
-    parser.add_argument('--strand', nargs='?', default=False)
+    parser.add_argument('--reference', type=str)
+    parser.add_argument('--read_group', type=str, nargs='?', default='')
+    parser.add_argument('--strand', type=str, choices=set("+-."))
     parser.add_argument('--eps', type=int, default=100)
     parser.add_argument('--min_tips', type=int, default=5)
     return parser.parse_args(args)
 
 
 def strand2flag(strand):
-    if strand:
-        if strand in ('+'):
-            return ('-F', '20')
-        elif strand in ('-'):
-            return ('-f', '16')
-        else:
-            pass  # throw error
-    else:
+    if strand == '+':
+        return ('-F', '20')
+    elif strand == '-':
+        return ('-f', '16')
+    elif strand == '.':
         return ('-F', '4')
+    else:
+        pass  # throw error
 
 
 def split_cluster(bamfile, reference, read_group, strand, eps, min_tips):
