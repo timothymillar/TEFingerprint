@@ -9,13 +9,28 @@ from itertools import product
 def parse_args(args):
     parser = argparse.ArgumentParser('Identify transposon flanking regions')
     parser.add_argument('input_bam')
-    parser.add_argument('--references', type=str, nargs='*', default=[''])
-    parser.add_argument('--families', type=str, nargs='*', default=[''])
-    parser.add_argument('--strands', type=str, nargs='+',
-                        choices=set("+-."), default=['+', '-'])
-    parser.add_argument('--eps', type=int, default=100)
-    parser.add_argument('--min_reads', type=int, default=5)
-    parser.add_argument('--cores', type=int, default=1)
+    parser.add_argument('-r', '--references',
+                        type=str,
+                        nargs='*',
+                        default=[''])
+    parser.add_argument('-f', '--families',
+                        type=str,
+                        nargs='*',
+                        default=[''])
+    parser.add_argument('-s', '--strands',
+                        type=str,
+                        nargs='+',
+                        choices=set("+-."),
+                        default=['+', '-'])
+    parser.add_argument('-e', '--eps',
+                        type=int,
+                        default=100)
+    parser.add_argument('-m', '--min_reads',
+                        type=int,
+                        default=5)
+    parser.add_argument('-c', '--cores',
+                        type=int,
+                        default=1)
     return parser.parse_args(args)
 
 

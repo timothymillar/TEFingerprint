@@ -10,15 +10,24 @@ from sklearn.cluster import DBSCAN
 
 def parse_args(args):
     parser = argparse.ArgumentParser('Identify transposon flanking regions')
-    parser.add_argument('--reference', type=str)
-    parser.add_argument('--strand', nargs='?', default=False)
-    parser.add_argument('--family', nargs='?', default=False)
-    parser.add_argument('--eps', type=int, default=100,
+    parser.add_argument('--reference',
+                        type=str)
+    parser.add_argument('--strand',
+                        nargs='?',
+                        default=False)
+    parser.add_argument('--family',
+                        nargs='?',
+                        default=False)
+    parser.add_argument('--eps',
+                        type=int,
+                        default=100,
                         help=("When using the DBSCAN method to identify "
                               "read clusters, eps is the minimum distance "
                               "allowable between two points for inclusion "
                               "in the the same neighbourhood"))
-    parser.add_argument('--min_reads', type=int, default=5,
+    parser.add_argument('--min_reads',
+                        type=int,
+                        default=5,
                         help=("When using the DBSCAN method to identify "
                               "read clusters, min_reads is the minimum number "
                               "of read tips found in a single neighbourhood "

@@ -7,11 +7,21 @@ from subprocess import Popen, PIPE, STDOUT
 def parse_args(args):
     parser = argparse.ArgumentParser('Identify transposon flanking regions')
     parser.add_argument('input_bam')
-    parser.add_argument('--reference', type=str)
-    parser.add_argument('--family', type=str, nargs='?', default='')
-    parser.add_argument('--strand', type=str, choices=set("+-."))
-    parser.add_argument('--eps', type=int, default=100)
-    parser.add_argument('--min_reads', type=int, default=5)
+    parser.add_argument('-r', '--reference',
+                        type=str)
+    parser.add_argument('-f', '--family',
+                        type=str,
+                        nargs='?',
+                        default='')
+    parser.add_argument('-s', '--strand',
+                        type=str,
+                        choices=set("+-."))
+    parser.add_argument('-e', '--eps',
+                        type=int,
+                        default=100)
+    parser.add_argument('-m', '--min_reads',
+                        type=int,
+                        default=5)
     return parser.parse_args(args)
 
 
