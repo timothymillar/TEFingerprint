@@ -18,9 +18,9 @@ def parse_args(args):
                               "read clusters, eps is the minimum distance "
                               "allowable between two points for inclusion "
                               "in the the same neighbourhood"))
-    parser.add_argument('--min_tips', type=int, default=5,
+    parser.add_argument('--min_reads', type=int, default=5,
                         help=("When using the DBSCAN method to identify "
-                              "read clusters, min_tips is the minimum number "
+                              "read clusters, min_reads is the minimum number "
                               "of read tips found in a single neighbourhood "
                               "in order to count as a cluster"))
     return parser.parse_args(args)
@@ -65,7 +65,7 @@ def main():
                                  args.read_group,
                                  args.strand,
                                  args.eps,
-                                 args.min_tips):
+                                 args.min_reads):
         print(str(cluster))
 
 

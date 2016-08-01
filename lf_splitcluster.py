@@ -11,7 +11,7 @@ def parse_args(args):
     parser.add_argument('--read_group', type=str, nargs='?', default='')
     parser.add_argument('--strand', type=str, choices=set("+-."))
     parser.add_argument('--eps', type=int, default=100)
-    parser.add_argument('--min_tips', type=int, default=5)
+    parser.add_argument('--min_reads', type=int, default=5)
     return parser.parse_args(args)
 
 
@@ -26,7 +26,7 @@ def strand2flag(strand):
         pass  # throw error
 
 
-def split_cluster(bamfile, reference, read_group, strand, eps, min_tips):
+def split_cluster(bamfile, reference, read_group, strand, eps, min_reads):
     flag = strand2flag(strand)
     sam = pysam.view(flag[0], flag[1], bamfile, reference)
     if strand:
@@ -40,7 +40,7 @@ def split_cluster(bamfile, reference, read_group, strand, eps, min_tips):
                   '--read_group', read_group,
                   '--strand', strand,
                   '--eps', str(eps),
-                  '--min_tips', str(min_tips)],
+                  '--min_reads', str(min_reads)],
                  stdout=PIPE,
                  stdin=PIPE,
                  stderr=STDOUT)
@@ -55,7 +55,7 @@ def main():
                         args.read_group,
                         args.strand,
                         args.eps,
-                        args.min_tips))
+                        args.min_reads))
 
 if __name__ == '__main__':
     main()

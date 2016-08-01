@@ -14,7 +14,7 @@ def parse_args(args):
     parser.add_argument('--strands', type=str, nargs='+',
                         choices=set("+-."), default=['+', '-'])
     parser.add_argument('--eps', type=int, default=100)
-    parser.add_argument('--min_tips', type=int, default=5)
+    parser.add_argument('--min_reads', type=int, default=5)
     parser.add_argument('--cores', type=int, default=1)
     return parser.parse_args(args)
 
@@ -26,7 +26,7 @@ def sam_references(input_bam):
     return references
 
 
-def build_jobs(input_bam, references, read_groups, strands, eps, min_tips):
+def build_jobs(input_bam, references, read_groups, strands, eps, min_reads):
     if references == ['']:
         references = sam_references(input_bam)
     else:
@@ -36,7 +36,7 @@ def build_jobs(input_bam, references, read_groups, strands, eps, min_tips):
                    read_groups,
                    strands,
                    [eps],
-                   [min_tips])
+                   [min_reads])
 
 
 def main():
@@ -46,7 +46,7 @@ def main():
                       args.read_groups,
                       args.strands,
                       args.eps,
-                      args.min_tips)
+                      args.min_reads)
     with Pool(args.cores) as p:
         results = p.starmap(split_cluster, jobs)
     for result in results:
