@@ -10,9 +10,7 @@ from sklearn.cluster import DBSCAN
 
 def parse_args(args):
     parser = argparse.ArgumentParser('Identify transposon flanking regions')
-    parser.add_argument('input_bam', nargs='?', type=argparse.FileType('r'),
-                        default=False)
-    parser.add_argument('--reference', nargs='?', default=False)
+    parser.add_argument('--reference', type=str)
     parser.add_argument('--strand', nargs='?', default=False)
     parser.add_argument('--read_group', nargs='?', default=False)
     parser.add_argument('--eps', type=int, default=100,
@@ -26,23 +24,6 @@ def parse_args(args):
                               "of read tips found in a single neighbourhood "
                               "in order to count as a cluster"))
     return parser.parse_args(args)
-
-
-def split_references(sam, args):
-    """
-    Splitting references requires index and will not work from stdin
-    """
-    if args.input_bam:
-        if sam.nreferences == 1:
-            yield sam
-        else:
-            for name in sam.references:
-                yield sam.fetch(name)
-    else:
-        if args.reference:
-            yield sam
-        else:
-            pass  # Should throw error
 
 
 def tip(read):
@@ -78,14 +59,9 @@ def read_clusters(sam, args):
 
 def main():
     args = parse_args(sys.argv[1:])
-    if args.input_bam:
-        sam = pysam.AlignmentFile(args.input_bam, 'rb')
-    else:
-        sam = pysam.AlignmentFile("-", "rb")
-    sams = split_references(sam, args)
-    for sam in sams:
-        for cluster in read_clusters(sam, args):
-            print(str(cluster))
+    sam = pysam.AlignmentFile("-", "rb")
+    for cluster in read_clusters(sam, args):
+        print(str(cluster))
 
 
 if __name__ == '__main__':
