@@ -1,3 +1,4 @@
+import io
 import os
 import sys
 import argparse
@@ -39,10 +40,9 @@ def strand2flag(strand):
 
 def split_cluster(bamfile, reference, family, strand, eps, min_reads):
     flag = strand2flag(strand)
-    sam = pysam.view(flag[0], flag[1], bamfile, reference)
-    if strand:
-        sam = [line for line in sam if line.startswith(family)]
-    head = pysam.view('-H', flag[0], flag[1], bamfile, reference)
+    sam_buffer = io.StringIO(pysam.view(flag[0], flag[1], bamfile, reference))
+    sam = [line for line in sam_buffer if line.startswith(family)]
+    head = [pysam.view('-H', flag[0], flag[1], bamfile, reference)]
     sam = head + sam
     bam = bytearray(''.join(sam), 'utf-8')
     cluster_script = os.path.dirname(os.path.realpath(__file__)) + '/lf_cluster.py'
