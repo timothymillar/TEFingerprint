@@ -1,3 +1,4 @@
+import os
 import sys
 import argparse
 import pysam
@@ -44,8 +45,9 @@ def split_cluster(bamfile, reference, family, strand, eps, min_reads):
     head = pysam.view('-H', flag[0], flag[1], bamfile, reference)
     sam = head + sam
     bam = bytearray(''.join(sam), 'utf-8')
+    cluster_script = os.path.dirname(os.path.realpath(__file__)) + '/lf_cluster.py'
     proc = Popen(['python',
-                  'lf_cluster.py',
+                  cluster_script,
                   '--reference', reference,
                   '--family', family,
                   '--strand', strand,
