@@ -37,9 +37,9 @@ def parse_args(args):
 
 def tip(read):
     if read.is_reverse:
-        return read.pos
+        return read.pos + 1
     else:
-        return read.pos + read.qlen
+        return read.pos + read.qlen + 1
 
 
 def tips(sam):
