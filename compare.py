@@ -1,6 +1,15 @@
 import numpy as np
 from statsmodels.nonparametric.kde import KDEUnivariate
 
+locus = np.dtype([('start', np.int64),
+                  ('stop', np.int64)])
+
+sam_read = np.dtype([('tip', np.int64),
+                     ('tail', np.int64),
+                     ('length', np.int64),
+                     ('reverse', np.bool)])
+
+
 def simple_subcluster(points, minpts, eps):
     """
 
