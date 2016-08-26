@@ -64,18 +64,18 @@ def merge_clusters(clusters):
     :param clusters:
     :return:
     """
-    starts, stops = zip(*[(l,u) for l, u in clusters])
-    starts, stops = np.array(starts), np.array(stops)
-    start = starts[0]
-    stop = stops[0]
-    for i in range(1,len(starts)):
-        if starts[i] <= stop:
-            stop = stops[i]
-        else:
-            yield start, stop
-            start = starts[i]
-            stop = stops[i]
-    yield start, stop
+    def merge(clusters):
+        start = clusters['start'][0]
+        stop = clusters['stop'][0]
+        for i in range(1, len(clusters)):
+            if clusters['start'][i] <= stop:
+                stop = clusters['stop'][i]
+            else:
+                yield start, stop
+                start = clusters['start'][i]
+                stop = clusters['stop'][i]
+        yield start, stop
+    return np.fromiter(merge(clusters), dtype=locus)
 
 
 def simple_cluster(points, minpts, eps):
