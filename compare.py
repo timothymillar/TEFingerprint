@@ -10,6 +10,34 @@ sam_read = np.dtype([('tip', np.int64),
                      ('reverse', np.bool)])
 
 
+def parse_sam_strings(sam_strings, strand):
+    """
+    
+    :param sam_strings:
+    :param strand:
+    :return:
+    """
+    def parse_sam_string(sam_string, strand):
+        attr = sam_string.split("\t")
+        start = int(attr[3])
+        length = len(attr[9])
+        end = start+length
+        if strand == '+':
+            reverse = True
+            tip = end
+            tail = start
+            return tip, tail, length, reverse
+        elif strand == '-':
+            reverse = False
+            tip = start
+            tail = end
+            return tip, tail, length, reverse
+
+    reads = (parse_sam_string(string, strand) for string in sam_strings)
+    reads = np.fromiter(reads, dtype=sam_read)
+    return reads
+
+
 def simple_subcluster(points, minpts, eps):
     """
 
