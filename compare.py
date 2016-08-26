@@ -12,7 +12,7 @@ sam_read = np.dtype([('tip', np.int64),
 
 def parse_sam_strings(sam_strings, strand):
     """
-    
+
     :param sam_strings:
     :param strand:
     :return:
@@ -38,7 +38,7 @@ def parse_sam_strings(sam_strings, strand):
     return reads
 
 
-def simple_subcluster(points, minpts, eps):
+def simple_subcluster(reads, minpts, eps):
     """
 
     :param points:
@@ -47,13 +47,15 @@ def simple_subcluster(points, minpts, eps):
     :return:
     """
     offset = minpts - 1
-    upper = points[offset:]
-    lower = points[:-offset]
+    upper = reads['tip'][offset:]
+    lower = reads['tip'][:-offset]
     diff = upper - lower
     dense = diff <= eps
     lower = lower[dense]
     upper = upper[dense]
-    return ((lower[i], upper[i]) for i in range(len(lower)))
+    loci = ((lower[i], upper[i]) for i in range(len(lower)))
+    loci = np.fromiter(loci, dtype=locus)
+    return loci
 
 
 def merge_clusters(clusters):
