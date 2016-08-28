@@ -41,7 +41,7 @@ def parse_sam_strings(sam_strings, strand):
 def simple_subcluster(reads, minpts, eps):
     """
 
-    :param points:
+    :param reads:
     :param minpts:
     :param eps:
     :return:
@@ -78,7 +78,7 @@ def merge_clusters(clusters):
     return np.fromiter(merge(clusters), dtype=locus)
 
 
-def simple_cluster(points, minpts, eps):
+def simple_cluster(reads, minpts, eps):
     """
 
     :param points:
@@ -86,27 +86,28 @@ def simple_cluster(points, minpts, eps):
     :param eps:
     :return:
     """
-    subclusters = simple_subcluster(points, minpts, eps)
+    subclusters = simple_subcluster(reads, minpts, eps)
     return merge_clusters(subclusters)
 
 
-def resample_points(points, n=None, reps=1):
+def resample_reads(reads, n=None, reps=1):
     """
 
-    :param points:
+    :param reads:
     :param n:
     :param reps:
     :return:
     """
-    length = len(points)
+    length = len(reads)
     if n is None:
         n = length
-    def resample(sample, n, max_index):
-        indexes = np.random.choice(max_index, n)
+
+    def resample(sample, n):
+        indexes = np.random.choice(len(sample), n)
         new_sample = sample[indexes]
-        new_sample.sort()
+        new_sample = np.sort(new_sample, order='tip')
         return new_sample
-    return (resample(points, n, length) for _ in range(reps))
+    return (resample(reads, n) for _ in range(reps))
 
 
 def bootstrapped_simple_cluster(points, minpts, eps, reps, p=95):
