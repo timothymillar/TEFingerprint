@@ -133,7 +133,6 @@ def bootstrapped_simple_cluster(reads, minpts, eps, reps, p=95):
     return supported_clusters
 
 
-
 def cluster_points(cluster, points):
     """
 
