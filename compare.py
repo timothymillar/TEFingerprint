@@ -110,23 +110,23 @@ def resample_reads(reads, n=None, reps=1):
     return (resample(reads, n) for _ in range(reps))
 
 
-def bootstrapped_simple_cluster(points, minpts, eps, reps, p=95):
+def bootstrapped_simple_cluster(reads, minpts, eps, reps, p=95):
     """
 
-    :param points:
+    :param reads:
     :param minpts:
     :param eps:
     :param reps:
     :param support:
     :return:
     """
-    sample_sets = resample_points(points, reps=reps)
+    sample_sets = resample_reads(reads, reps=reps)
     replicates = (simple_cluster(sample, minpts, eps) for sample in sample_sets)
-    depth = np.zeros(max(points))
+    depth = np.zeros(max(reads['tip']))
     for clusters in replicates:
         for start, stop in clusters:
-            depth[start:(stop+1)] +=1
-    depth = (depth/reps)*100
+            depth[start:(stop+1)] += 1
+    depth = (depth/reps) * 100
     supported_points = np.where(depth >= p)[0]
     supported_points.sort()
     supported_clusters = simple_cluster(supported_points, minpts, eps)
