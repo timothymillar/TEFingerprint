@@ -10,6 +10,22 @@ sam_read = np.dtype([('tip', np.int64),
                      ('reverse', np.bool)])
 
 
+def strand2flag(strand):
+    """
+
+    :param strand:
+    :return:
+    """
+    if strand == '+':
+        return ('-F', '20')
+    elif strand == '-':
+        return ('-f', '16')
+    elif strand == '.':
+        return ('-F', '4')
+    else:
+        pass  # throw error
+
+
 def parse_sam_strings(sam_strings, strand):
     """
 

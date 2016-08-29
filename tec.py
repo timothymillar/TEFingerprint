@@ -3,6 +3,8 @@ import pysam
 import argparse
 from multiprocessing import Pool
 from itertools import product
+from fingerprint import fingerprint
+from compare import compare
 
 
 def parse_program_arg(arg):
@@ -10,12 +12,13 @@ def parse_program_arg(arg):
     parser.add_argument('program',
                         type=str,
                         choices=("fingerprint", "compare"))
+    return parser.parse_args(arg)
 
 
 def parse_fingerprint_args(args):
     parser = argparse.ArgumentParser('Identify transposon flanking regions')
     parser.add_argument('input_bam',
-                        nargs='1')
+                        nargs=1)
     parser.add_argument('-r', '--references',
                         type=str,
                         nargs='*',
@@ -31,12 +34,12 @@ def parse_fingerprint_args(args):
                         default=['+', '-'])
     parser.add_argument('-e', '--eps',
                         type=int,
-                        default=100,
-                        nargs='1')
+                        default=[100],
+                        nargs=1)
     parser.add_argument('-m', '--min_reads',
                         type=int,
-                        default=5,
-                        nargs='1')
+                        default=[5],
+                        nargs=1)
     parser.add_argument('-c', '--cores',
                         type=int,
                         default=1)
@@ -62,12 +65,12 @@ def parse_compare_args(args):
                         default=['+', '-'])
     parser.add_argument('-e', '--eps',
                         type=int,
-                        default=100,
-                        nargs='1')
+                        default=[100],
+                        nargs=1)
     parser.add_argument('-m', '--min_reads',
                         type=int,
-                        default=5,
-                        nargs='1')
+                        default=[5],
+                        nargs=1)
     parser.add_argument('-c', '--cores',
                         type=int,
                         default=1)
@@ -112,7 +115,7 @@ def build_compare_jobs(input_bams, references, families, strands, eps, min_reads
 
 
 def main():
-    program = parse_program_arg(sys.argv[1]).program
+    program = parse_program_arg([sys.argv[1]]).program
     if program == "fingerprint":
         args = parse_fingerprint_args(sys.argv[2:])
         jobs = build_fingerprint_jobs(args.input_bam,
@@ -136,10 +139,5 @@ def main():
     for result in results:
         print(result)
 
-
-
-
-
-
-
-
+if __name__ == '__main__':
+    main()
