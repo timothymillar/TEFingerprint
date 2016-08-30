@@ -16,7 +16,7 @@ def parse_program_arg(arg):
 
 
 def parse_fingerprint_args(args):
-    parser = argparse.ArgumentParser('Identify transposon flanking regions')
+    parser = argparse.ArgumentParser('Identify potential transposon flanking regions')
     parser.add_argument('input_bam',
                         nargs=1)
     parser.add_argument('-r', '--references',
@@ -47,7 +47,7 @@ def parse_fingerprint_args(args):
 
 
 def parse_compare_args(args):
-    parser = argparse.ArgumentParser('Identify transposon flanking regions')
+    parser = argparse.ArgumentParser('Compare potential transposon flanking regions')
     parser.add_argument('input_bams',
                         nargs='+')
     parser.add_argument('-r', '--references',
@@ -106,7 +106,7 @@ def build_compare_jobs(input_bams, references, families, strands, eps, min_reads
         references = list(references)
     else:
         pass
-    return product(input_bams,
+    return product([input_bams],
                    references,
                    families,
                    strands,
@@ -126,9 +126,9 @@ def main():
                                       args.min_reads)
         with Pool(args.cores) as p:
             results = p.starmap(fingerprint, jobs)
-    if program == "compare":
-        args = parse_fingerprint_args(sys.argv[2:])
-        jobs = build_compare_jobs(args.input_bam,
+    elif program == "compare":
+        args = parse_compare_args(sys.argv[2:])
+        jobs = build_compare_jobs(args.input_bams,
                                   args.references,
                                   args.families,
                                   args.strands,
