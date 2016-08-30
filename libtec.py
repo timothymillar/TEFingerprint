@@ -1,5 +1,4 @@
 import numpy as np
-from statsmodels.nonparametric.kde import KDEUnivariate
 
 locus = np.dtype([('start', np.int64),
                   ('stop', np.int64)])
@@ -51,6 +50,7 @@ def parse_sam_strings(sam_strings, strand):
 
     reads = (parse_sam_string(string, strand) for string in sam_strings)
     reads = np.fromiter(reads, dtype=sam_read)
+    reads.sort(order=('tip', 'tail'))
     return reads
 
 
@@ -62,6 +62,7 @@ def simple_subcluster(reads, minpts, eps):
     :param eps:
     :return:
     """
+    reads.sort(order=('tip', 'tail'))
     offset = minpts - 1
     upper = reads['tip'][offset:]
     lower = reads['tip'][:-offset]
@@ -91,6 +92,7 @@ def merge_clusters(clusters):
                 start = clusters['start'][i]
                 stop = clusters['stop'][i]
         yield start, stop
+    clusters.sort(order='start')
     return np.fromiter(merge(clusters), dtype=locus)
 
 
@@ -121,7 +123,7 @@ def resample_reads(reads, n=None, reps=1):
     def resample(sample, n):
         indexes = np.random.choice(len(sample), n)
         new_sample = sample[indexes]
-        new_sample = np.sort(new_sample, order='tip')
+        new_sample.sort(order='tip')
         return new_sample
     return (resample(reads, n) for _ in range(reps))
 
@@ -149,30 +151,30 @@ def bootstrapped_simple_cluster(reads, minpts, eps, reps, p=95):
     return supported_clusters
 
 
-def cluster_points(cluster, points):
+def reads_in_locus(reads, locus):
     """
 
     :param cluster:
     :param points:
     :return:
     """
-    start, stop = cluster
-    subset = points[start:(stop+1)]
+    start, stop = locus
+    subset = reads[(reads['tip'] >= start) & (reads['tip'] <= stop)]
     return subset
 
 
-def cluster_kde(points, cluster, binwidth, margin):
+def cluster_depth(reads, cluster):
     """
 
-    :param points:
-    :param binwidth:
-    :param margin:
+    :param reads:
+    :param cluster:
     :return:
     """
     start, stop = cluster
-    subset = cluster_points(cluster, points)
-    kde = KDEUnivariate(subset)
-    kde.fit(kernel="gau", bw=np.int(binwidth))
-    smooth = kde.evaluate(np.arange(start - margin, stop + margin, 1))
-    return smooth
+    depth = np.zeros(stop - (start-1), dtype=np.int)
+    tips = reads['tip'] - (start)
+    for tip in tips:
+        depth[tip] += 1
+    return depth
+
 
