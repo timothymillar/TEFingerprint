@@ -23,8 +23,17 @@ def compare(input_bams, reference, family, strand, eps, min_reads):
     union_clusters.sort(order='start')
     union_clusters = libtec.merge_clusters(union_clusters)
     for cluster in union_clusters:
-        print(cluster)
         setof_cluster_reads = np.array([libtec.reads_in_locus(reads, cluster) for reads in setof_reads])
-        print(f_oneway(*setof_cluster_reads))
+        anova_f, anova_p = f_oneway(*setof_cluster_reads)
         counts = np.fromiter(map(len, setof_cluster_reads), dtype=int)
-        print((counts/np.max(counts)).std())
+        count_stdev = (counts/np.max(counts)).std()
+        gff = libtec.GffFeature(reference,
+                                start=cluster['start'],
+                                end=cluster['stop'],
+                                strand=strand,
+                                ID="{0}_{1}_{2}_{3}".format(family, reference, strand, cluster['start']),
+                                Name=family,
+                                anova_f=anova_f,
+                                anova_p=anova_p,
+                                count_stdev=count_stdev)
+        print(str(gff))
