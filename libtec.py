@@ -22,9 +22,12 @@ class GffFeature(object):
         self.phase = phase
         self.attributes = kwargs
 
+    def attribute_names(self):
+        return set(self.attributes.keys())
+
     def __parse_attributes(self, attributes):
         if attributes is not None:
-            return ';'.join(['{0}={1}'.format(key, value) for key, value in attributes])
+            return ';'.join(tuple('{0}={1}'.format(key, value) for key, value in attributes.items()))
         else:
             return'.'
 

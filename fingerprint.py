@@ -17,4 +17,11 @@ def fingerprint(input_bam, reference, family, strand, eps, min_reads):
     sam_strings = pysam.view(flag[0], flag[1], input_bam, reference, family)
     reads = libtec.parse_sam_strings(sam_strings, strand)
     clusters = libtec.simple_subcluster(reads, min_reads, eps)
-    [print(cluster) for cluster in clusters]
+    for cluster in clusters:
+        gff = libtec.GffFeature(reference,
+                                start=cluster['start'],
+                                end=cluster['stop'],
+                                strand=strand,
+                                ID="{0}_{1}_{2}_{3}".format(family, reference, strand, cluster['start']),
+                                Name=family)
+        print(str(gff))
