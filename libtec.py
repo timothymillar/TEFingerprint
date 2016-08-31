@@ -116,18 +116,18 @@ def merge_clusters(clusters):
     :param clusters:
     :return:
     """
-    def merge(clusters):
-        start = clusters['start'][0]
-        stop = clusters['stop'][0]
-        for i in range(1, len(clusters)):
-            if clusters['start'][i] <= stop:
-                stop = clusters['stop'][i]
+    def merge(sub_clusters):
+        sub_clusters.sort(order='start')
+        start = sub_clusters['start'][0]
+        stop = sub_clusters['stop'][0]
+        for i in range(1, len(sub_clusters)):
+            if sub_clusters['start'][i] <= stop:
+                stop = sub_clusters['stop'][i]
             else:
                 yield start, stop
-                start = clusters['start'][i]
-                stop = clusters['stop'][i]
+                start = sub_clusters['start'][i]
+                stop = sub_clusters['stop'][i]
         yield start, stop
-    clusters.sort(order='start')
     return np.fromiter(merge(clusters), dtype=locus)
 
 
