@@ -117,7 +117,7 @@ def merge_clusters(clusters):
     :return:
     """
     def merge(sub_clusters):
-        sub_clusters.sort(order='start')
+        sub_clusters.sort(order=('start', 'stop'))
         start = sub_clusters['start'][0]
         stop = sub_clusters['stop'][0]
         for i in range(1, len(sub_clusters)):
@@ -186,7 +186,7 @@ def bootstrapped_simple_cluster(reads, minpts, eps, reps, p=95):
     return supported_clusters
 
 
-def reads_in_locus(reads, locus):
+def reads_in_locus(reads, locus, margin=0):
     """
 
     :param cluster:
@@ -194,7 +194,7 @@ def reads_in_locus(reads, locus):
     :return:
     """
     start, stop = locus
-    subset = reads[(reads['tip'] >= start) & (reads['tip'] <= stop)]
+    subset = reads[(reads['tip'] >= start - margin) & (reads['tip'] <= stop + margin)]
     return subset
 
 
