@@ -1,3 +1,5 @@
+#! /usr/bin/env python
+
 import numpy as np
 
 locus = np.dtype([('start', np.int64),

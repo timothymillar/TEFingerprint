@@ -1,3 +1,5 @@
+#! /usr/bin/env python
+
 import pysam
 import libtec
 import numpy as np
