@@ -1,5 +1,6 @@
 #! /usr/bin/env python
 
+import pysam
 import numpy as np
 
 locus = np.dtype([('start', np.int64),
@@ -62,6 +63,19 @@ def strand2flag(strand):
         pass  # throw error
 
 
+def read_sam_strings(input_bam, reference, family, strand):
+    """
+
+    :param reference:
+    :param family:
+    :param strand:
+    :return:
+    """
+    flag = strand2flag(strand)
+    sam_strings = (string for string in pysam.view(flag[0], flag[1], input_bam, reference, family).splitlines())
+    return sam_strings
+
+
 def parse_sam_strings(sam_strings, strand):
     """
 
@@ -89,6 +103,19 @@ def parse_sam_strings(sam_strings, strand):
     reads = np.fromiter(reads, dtype=sam_read)
     reads.sort(order=('tip', 'tail'))
     return reads
+
+
+def read_sam_reads(input_bam, reference, family, strand):
+    """
+
+    :param reference:
+    :param family:
+    :param strand:
+    :return:
+    """
+    sam_strings = read_sam_strings(input_bam, reference, family, strand)
+    sam_reads = parse_sam_strings(sam_strings, strand)
+    return sam_reads
 
 
 def simple_subcluster(reads, minpts, eps):

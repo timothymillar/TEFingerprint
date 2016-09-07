@@ -26,9 +26,7 @@ def compare(input_bams, reference, family, strand, eps, min_reads):
     :param min_reads:
     :return:
     """
-    flag = libtec.strand2flag(strand)
-    setof_samstrings = (pysam.view(flag[0], flag[1], bam, reference, family) for bam in input_bams)
-    setof_reads = tuple(libtec.parse_sam_strings(strings, strand) for strings in setof_samstrings)
+    setof_reads = tuple(libtec.read_sam_reads(bam, reference, family, strand) for bam in input_bams)
     setof_clusters = (libtec.simple_subcluster(reads, min_reads, eps) for reads in setof_reads)
     union_clusters = reduce(np.append, setof_clusters)
     union_clusters.sort(order=('start', 'stop'))
