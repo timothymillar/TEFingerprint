@@ -46,3 +46,7 @@ def compare(input_bams, reference, family, strand, eps, min_reads):
                                 kruskal_p=kruskal_p,
                                 count_stdev=count_stdev)
         print(str(gff))
+
+
+if __name__ == '__main__':
+    pass

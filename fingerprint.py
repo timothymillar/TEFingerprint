@@ -25,3 +25,7 @@ def fingerprint(input_bam, reference, family, strand, eps, min_reads):
                                 ID="{0}_{1}_{2}_{3}".format(family, reference, strand, cluster['start']),
                                 Name=family)
         print(str(gff))
+
+
+if __name__ == '__main__':
+    pass

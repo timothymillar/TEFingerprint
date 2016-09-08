@@ -242,3 +242,5 @@ def cluster_depth(reads, cluster):
     return depth
 
 
+if __name__ == '__main__':
+    pass
