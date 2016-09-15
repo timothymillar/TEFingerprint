@@ -1,7 +1,6 @@
 #! /usr/bin/env python
 
-import pysam
-import libtec
+from tectoolkit import libtec
 
 
 def fingerprint(input_bam, reference, family, strand, eps, min_reads):

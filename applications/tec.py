@@ -5,8 +5,8 @@ import pysam
 import argparse
 from multiprocessing import Pool
 from itertools import product
-from fingerprint import fingerprint
-from compare import compare
+from tectoolkit.fingerprint import fingerprint
+from tectoolkit.compare import compare
 
 
 def parse_program_arg(arg):

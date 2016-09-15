@@ -1,5 +1,17 @@
 # TODO
 
+## Split libtec into components
+
+* tectoolkit.gff
+    * Gff3 class for output
+* tectoolkit.readgroup
+    * ReadGroup class
+    * Loci class
+    * read/parse sam/bam formats
+* tectoolkit.cluster
+    * clustering algorithms etc
+
+
 ## Read Collection Class
 A class for a colection of reads that could replace/wrap the sam read dtype and the locus dtype.
 

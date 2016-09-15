@@ -1,7 +1,6 @@
 #! /usr/bin/env python
 
-import pysam
-import libtec
+from tectoolkit import libtec
 import numpy as np
 from functools import reduce
 from scipy.stats import kruskal
