@@ -15,7 +15,7 @@ setup(name='tectoolkit',
       url='https://github.com/PlantandFoodResearch/TECtoolkit',
       description='Toolkit for identifying transposable element movement in regenerant clones',
       long_description=read_file('README.MD'),
-      scripts=['applications/tec.py'],
+      scripts=['applications/tec'],
       packages=['tectoolkit'],
       classifiers=['Development Status :: 2 - Pre-Alpha']
       )

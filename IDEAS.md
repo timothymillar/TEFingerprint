@@ -13,7 +13,7 @@
 
 
 ## Read Collection Class
-A class for a colection of reads that could replace/wrap the sam read dtype and the locus dtype.
+A class for a collection of reads that could replace/wrap the sam read dtype and the locus dtype.
 
 The class would be based on a dtype with slots for start stop length and reversed. It would reperesent a collection of reads which could include a cluster  defined by its density
 
