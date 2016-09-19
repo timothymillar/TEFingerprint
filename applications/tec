@@ -1,16 +1,17 @@
 #! /usr/bin/env python
 
 import sys
-import pysam
 import argparse
-from multiprocessing import Pool
-from itertools import product
-from tectoolkit.libtec import read_bam_references
-from tectoolkit.fingerprint import fingerprint
-from tectoolkit.compare import compare
+from tectoolkit.fingerprint import Fingerprint
+from tectoolkit.compare import Compare
 
 
 def parse_program_arg(arg):
+    """
+
+    :param arg:
+    :return:
+    """
     parser = argparse.ArgumentParser('Identify program to run')
     parser.add_argument('program',
                         type=str,
@@ -24,127 +25,11 @@ def parse_program_arg(arg):
         return arguments
 
 
-def parse_fingerprint_args(args):
-    parser = argparse.ArgumentParser('Identify potential TE flanking regions')
-    parser.add_argument('input_bam',
-                        nargs=1,
-                        help='A single bam file to be fingerprinted')
-    parser.add_argument('-r', '--references',
-                        type=str,
-                        nargs='*',
-                        default=[''],
-                        help='The reference sequence(s) (e.g. chromosome) to be fingerprinted. ' + \
-                             'If left blank all references sequences in the input file will be used.')
-    parser.add_argument('-f', '--families',
-                        type=str,
-                        nargs='*',
-                        default=[''],
-                        help='TE grouping(s) to be used. Must be exact string match(s) to start of read name')
-    parser.add_argument('-s', '--strands',
-                        type=str,
-                        nargs='+',
-                        choices=set("+-."),
-                        default=['+', '-'],
-                        help='Strand(s) to be analysed. Use + for forward, - for reverse and . for both')
-    parser.add_argument('-e', '--eps',
-                        type=int,
-                        default=[100],
-                        nargs=1,
-                        help='Maximum allowable distance among read tips to be considered a cluster')
-    parser.add_argument('-m', '--min_reads',
-                        type=int,
-                        default=[5],
-                        nargs=1,
-                        help='Minimum allowable number of read tips to be considered a cluster')
-    parser.add_argument('-t', '--threads',
-                        type=int,
-                        default=1,
-                        help='Maximum number of cpu threads to be used')
-    try:
-        arguments = parser.parse_args(args)
-    except:
-        parser.print_help()
-        sys.exit(0)
-    else:
-        return arguments
-
-
-def parse_compare_args(args):
-    parser = argparse.ArgumentParser('Compare potential TE flanking regions')
-    parser.add_argument('input_bams',
-                        nargs='+',
-                        help='A list of two or more bam files to be compared')
-    parser.add_argument('-r', '--references',
-                        type=str,
-                        nargs='*',
-                        default=[''],
-                        help='The reference sequence(s) (e.g. chromosome) to be fingerprinted. ' + \
-                             'If left blank all references sequences in the input file will be used.')
-    parser.add_argument('-f', '--families',
-                        type=str,
-                        nargs='*',
-                        default=[''],
-                        help='TE grouping(s) to be used. Must be exact string match(s) to start of read name')
-    parser.add_argument('-s', '--strands',
-                        type=str,
-                        nargs='+',
-                        choices=set("+-."),
-                        default=['+', '-'],
-                        help='Strand(s) to be analysed. Use + for forward, - for reverse and . for both')
-    parser.add_argument('-e', '--eps',
-                        type=int,
-                        default=[100],
-                        nargs=1,
-                        help='Maximum allowable distance among read tips to be considered a cluster')
-    parser.add_argument('-m', '--min_reads',
-                        type=int,
-                        default=[5],
-                        nargs=1,
-                        help='Minimum allowable number of reads (tips) to be considered a cluster')
-    parser.add_argument('-t', '--threads',
-                        type=int,
-                        default=1,
-                        help='Maximum number of cpu threads to be used')
-    try:
-        arguments = parser.parse_args(args)
-    except:
-        parser.print_help()
-        sys.exit(0)
-    else:
-        return arguments
-
-
-def build_fingerprint_jobs(input_bam, references, families, strands, eps, min_reads):
-    if references == ['']:
-        references = read_bam_references(input_bam)
-    else:
-        pass
-    return product(input_bam,
-                   references,
-                   families,
-                   strands,
-                   eps,
-                   min_reads)
-
-
-def build_compare_jobs(input_bams, references, families, strands, eps, min_reads):
-    if references == ['']:
-        bam_refs = [set(read_bam_references(bam)) for bam in input_bams]
-        references = bam_refs[0]
-        for refs in bam_refs[1:]:
-            references = references.intersection(refs)
-        references = list(references)
-    else:
-        pass
-    return product([input_bams],
-                   references,
-                   families,
-                   strands,
-                   eps,
-                   min_reads)
-
-
 def main():
+    """
+
+    :return:
+    """
     try:
         program_arg = parse_program_arg([sys.argv[1]])
     except:
@@ -152,27 +37,10 @@ def main():
     else:
         program = program_arg.program
         if program == "fingerprint":
-            args = parse_fingerprint_args(sys.argv[2:])
-            jobs = build_fingerprint_jobs(args.input_bam,
-                                          args.references,
-                                          args.families,
-                                          args.strands,
-                                          args.eps,
-                                          args.min_reads)
-            with Pool(args.threads) as p:
-                results = p.starmap(fingerprint, jobs)
+            job = Fingerprint(sys.argv[2:])
         elif program == "compare":
-            args = parse_compare_args(sys.argv[2:])
-            jobs = build_compare_jobs(args.input_bams,
-                                      args.references,
-                                      args.families,
-                                      args.strands,
-                                      args.eps,
-                                      args.min_reads)
-            with Pool(args.threads) as p:
-                results = p.starmap(compare, jobs)
-        for result in results:
-            print(result)
+            job = Compare(sys.argv[2:])
+        job.run()
 
 if __name__ == '__main__':
     main()
