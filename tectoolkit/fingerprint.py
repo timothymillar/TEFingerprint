@@ -116,8 +116,8 @@ class Fingerprint:
                                 self.args.strands,
                                 self.args.eps,
                                 self.args.min_reads)
-        with Pool(self.args.threads) as p:
-            results = p.starmap(self._fingerprint, jobs)
+        with Pool(self.args.threads) as pool:
+            results = pool.starmap(self._fingerprint, jobs)
         for result in results:
             if result:
                 print(result)
