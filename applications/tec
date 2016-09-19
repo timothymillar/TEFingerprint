@@ -5,6 +5,7 @@ import pysam
 import argparse
 from multiprocessing import Pool
 from itertools import product
+from tectoolkit.libtec import read_bam_references
 from tectoolkit.fingerprint import fingerprint
 from tectoolkit.compare import compare
 
@@ -113,16 +114,9 @@ def parse_compare_args(args):
         return arguments
 
 
-def bam_references(input_bam):
-    bam = pysam.AlignmentFile(input_bam, 'rb')
-    references = bam.references
-    bam.close()
-    return references
-
-
 def build_fingerprint_jobs(input_bam, references, families, strands, eps, min_reads):
     if references == ['']:
-        references = bam_references(input_bam)
+        references = read_bam_references(input_bam)
     else:
         pass
     return product(input_bam,
@@ -135,7 +129,7 @@ def build_fingerprint_jobs(input_bam, references, families, strands, eps, min_re
 
 def build_compare_jobs(input_bams, references, families, strands, eps, min_reads):
     if references == ['']:
-        bam_refs = [set(bam_references(bam)) for bam in input_bams]
+        bam_refs = [set(read_bam_references(bam)) for bam in input_bams]
         references = bam_refs[0]
         for refs in bam_refs[1:]:
             references = references.intersection(refs)
