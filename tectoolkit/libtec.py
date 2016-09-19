@@ -76,6 +76,13 @@ def read_sam_strings(input_bam, reference, family, strand):
     return sam_strings
 
 
+def read_bam_references(input_bam):
+    bam = pysam.AlignmentFile(input_bam, 'rb')
+    references = bam.references
+    bam.close()
+    return references
+
+
 def parse_sam_strings(sam_strings, strand):
     """
 
