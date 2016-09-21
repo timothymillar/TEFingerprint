@@ -20,6 +20,9 @@ class ReadGroup(object):
     def __getitem__(self, item):
         return self.reads[item]
 
+    def __len__(self):
+        return len(self.reads)
+
     def sort(self, order='tip'):
         """
 
@@ -39,15 +42,18 @@ class ReadGroup(object):
         else:
             return variation.pop()
 
-    def sub_group_by_locus(self, start, stop, end='tip'):
+    def sub_group_by_locus(self, start, stop, margin=0, end='tip'):
         """
 
         :param start:
         :param stop:
+        :param margin:
         :param end:
         :return:
         """
         assert end in {'tip', 'tail'}
+        start -= margin
+        stop += margin
         reads = self.reads[np.logical_and(self.reads[end] >= start, self.reads[end] <= stop)]
         return ReadGroup(reads)
 
@@ -161,6 +167,9 @@ class ReferenceLoci(object):
     def __getitem__(self, item):
         return self.loci[item]
 
+    def __len__(self):
+        return len(self.loci)
+
     def sort(self, order=('start', 'stop')):
         """
 
@@ -190,6 +199,18 @@ class ReferenceLoci(object):
 
         self.sort()
         self.loci = np.fromiter(merge(self.loci), dtype=ReferenceLoci.locus)
+
+    @classmethod
+    def append(cls, x, y):
+        """
+
+        :param x:
+        :param y:
+        :return:
+        """
+        loci = ReferenceLoci(np.append(x.loci, y.loci))
+        loci.sort()
+        return loci
 
     @classmethod
     def from_simple_subcluster(cls, points, minpts, eps):

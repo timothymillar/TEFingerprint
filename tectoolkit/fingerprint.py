@@ -96,9 +96,8 @@ class Fingerprint:
         :param min_reads:
         :return:
         """
-        strings = io.read_bam_strings(input_bam, reference=reference, family=family, strand=strand)
-        reads = ReadGroup.from_sam_strings(strings, strand=strand)
-        reads.sort()
+        sam = io.read_bam_strings(input_bam, reference=reference, family=family, strand=strand)
+        reads = ReadGroup.from_sam_strings(sam, strand=strand)
         clusters = ReferenceLoci.from_simple_cluster(reads['tip'], min_reads, eps)
         for start, end in clusters:
             gff = GffFeature(reference,

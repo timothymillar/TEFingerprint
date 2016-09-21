@@ -6,8 +6,9 @@ import numpy as np
 from functools import reduce
 from scipy.stats import kruskal
 from itertools import product
-from tectoolkit import libtec
 from multiprocessing import Pool
+from tectoolkit import io
+from tectoolkit.classes import ReadGroup, ReferenceLoci, GffFeature
 
 
 class Compare:
@@ -76,7 +77,7 @@ class Compare:
         :return:
         """
         if references == ['']:
-            bam_refs = [set(libtec.read_bam_references(bam)) for bam in input_bams]
+            bam_refs = [set(io.read_bam_references(bam)) for bam in input_bams]
             references = bam_refs[0]
             for refs in bam_refs[1:]:
                 references = references.intersection(refs)
@@ -95,7 +96,8 @@ class Compare:
             kruskal_h, kruskal_p = kruskal(*args)
         except ValueError:
             kruskal_h, kruskal_p = 0, 1
-        return kruskal_h, kruskal_p
+        finally:
+            return kruskal_h, kruskal_p
 
     def _compare(self, input_bams, reference, family, strand, eps, min_reads):
         """
@@ -108,25 +110,25 @@ class Compare:
         :param min_reads:
         :return:
         """
-        setof_reads = tuple(libtec.read_sam_reads(bam, reference, family, strand) for bam in input_bams)
-        setof_clusters = (libtec.simple_subcluster(reads, min_reads, eps) for reads in setof_reads)
-        union_clusters = reduce(np.append, setof_clusters)
-        union_clusters.sort(order=('start', 'stop'))
-        union_clusters = libtec.merge_clusters(union_clusters)
-        for cluster in union_clusters:
-            setof_cluster_reads = np.array([libtec.reads_in_locus(reads, cluster, margin=eps) for reads in setof_reads])
-            kruskal_h, kruskal_p = self._robust_kruskal(*setof_cluster_reads)
-            counts = np.fromiter(map(len, setof_cluster_reads), dtype=int)
+        sams = (io.read_bam_strings(bam, reference=reference, family=family, strand=strand) for bam in input_bams)
+        read_groups = tuple(ReadGroup.from_sam_strings(sam, strand=strand) for sam in sams)
+        loci_groups = (ReferenceLoci.from_simple_cluster(group['tip'], min_reads, eps) for group in read_groups)
+        loci = reduce(ReferenceLoci.append, loci_groups)
+        loci.merge_overlapping()
+        for start, end in loci:
+            locus_read_groups = tuple(group.sub_group_by_locus(start, end, margin=eps) for group in read_groups)
+            kruskal_h, kruskal_p = self._robust_kruskal(*[group['tip'] for group in locus_read_groups])
+            counts = np.fromiter(map(len, locus_read_groups), dtype=int)
             count_stdev = (counts/np.max(counts)).std()
-            gff = libtec.GffFeature(reference,
-                                    start=cluster['start'],
-                                    end=cluster['stop'],
-                                    strand=strand,
-                                    ID="{0}_{1}_{2}_{3}".format(family, reference, strand, cluster['start']),
-                                    Name=family,
-                                    kruskal_h=kruskal_h,
-                                    kruskal_p=kruskal_p,
-                                    count_stdev=count_stdev)
+            gff = GffFeature(reference,
+                             start=start,
+                             end=end,
+                             strand=strand,
+                             ID="{0}_{1}_{2}_{3}".format(family, reference, strand, start),
+                             Name=family,
+                             kruskal_h=kruskal_h,
+                             kruskal_p=kruskal_p,
+                             count_stdev=count_stdev)
             print(str(gff))
 
     def run(self):
