@@ -3,11 +3,6 @@
 import numpy as np
 
 
-SAM_FLAGS = {'+': ('-F', '20'),
-             '-': ('-f', '16'),
-             '.': ('-F', '4')}
-
-
 class ReadGroup(object):
     """"""
     read = np.dtype([('tip', np.int64),
@@ -273,3 +268,6 @@ class GffFeature(object):
                                self.strand,
                                self.phase,
                                self.__parse_attributes(self.attributes))
+
+if __name__ == '__main__':
+    pass

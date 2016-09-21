@@ -3,8 +3,10 @@
 import sys
 import argparse
 from itertools import product
-from tectoolkit import libtec
 from multiprocessing import Pool
+from tectoolkit import io
+from tectoolkit.classes import ReadGroup, ReferenceLoci, GffFeature
+
 
 
 class Fingerprint:
@@ -73,7 +75,7 @@ class Fingerprint:
         :return:
         """
         if references == ['']:
-            references = libtec.read_bam_references(input_bam)
+            references = io.read_bam_references(input_bam)
         else:
             pass
         return product(input_bam,
@@ -94,15 +96,17 @@ class Fingerprint:
         :param min_reads:
         :return:
         """
-        reads = libtec.read_sam_reads(input_bam, reference, family, strand)
-        clusters = libtec.simple_cluster(reads, min_reads, eps)
-        for cluster in clusters:
-            gff = libtec.GffFeature(reference,
-                                    start=cluster['start'],
-                                    end=cluster['stop'],
-                                    strand=strand,
-                                    ID="{0}_{1}_{2}_{3}".format(family, reference, strand, cluster['start']),
-                                    Name=family)
+        strings = io.read_bam_strings(input_bam, reference=reference, family=family, strand=strand)
+        reads = ReadGroup.from_sam_strings(strings, strand=strand)
+        reads.sort()
+        clusters = ReferenceLoci.from_simple_cluster(reads['tip'], min_reads, eps)
+        for start, end in clusters:
+            gff = GffFeature(reference,
+                             start=start,
+                             end=end,
+                             strand=strand,
+                             ID="{0}_{1}_{2}_{3}".format(family, reference, strand, start),
+                             Name=family)
             print(str(gff))
 
     def run(self):
