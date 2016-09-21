@@ -8,7 +8,6 @@ from tectoolkit import io
 from tectoolkit.classes import ReadGroup, ReferenceLoci, GffFeature
 
 
-
 class Fingerprint:
     """"""
     def __init__(self, arguments):
@@ -126,7 +125,6 @@ class Fingerprint:
                 print(result)
             else:
                 pass
-
 
 if __name__ == '__main__':
     pass

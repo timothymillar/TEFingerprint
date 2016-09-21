@@ -272,9 +272,9 @@ class GffFeature(object):
     def attribute_names(self):
         return set(self.attributes.keys())
 
-    def __parse_attributes(self, attributes):
+    def _parse_attributes(self, attributes):
         if attributes is not None:
-            return ';'.join(tuple('{0}={1}'.format(key, value) for key, value in attributes.items()))
+            return ';'.join(tuple('{0}={1}'.format(key, value) for key, value in self.attributes.items()))
         else:
             return'.'
 
@@ -288,7 +288,7 @@ class GffFeature(object):
                                self.score,
                                self.strand,
                                self.phase,
-                               self.__parse_attributes(self.attributes))
+                               self._parse_attributes(self.attributes))
 
 if __name__ == '__main__':
     pass
