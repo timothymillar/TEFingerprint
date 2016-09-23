@@ -142,13 +142,13 @@ class Compare:
                                 self.args.strands,
                                 self.args.eps,
                                 self.args.min_reads)
-        with Pool(self.args.threads) as pool:
-            results = pool.starmap(self._compare, jobs)
-        for result in results:
-            if result:
-                print(result)
-            else:
-                pass
+        if self.args.threads == 1:
+            for job in jobs:
+                self._compare(*job)
+        else:
+            with Pool(self.args.threads) as pool:
+                pool.starmap(self._compare, jobs)
+
 
 if __name__ == '__main__':
     pass
