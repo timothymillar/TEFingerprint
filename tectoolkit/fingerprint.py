@@ -5,7 +5,8 @@ import argparse
 from itertools import product
 from multiprocessing import Pool
 from tectoolkit import io
-from tectoolkit.classes import ReadGroup, ReferenceLoci, GffFeature
+from tectoolkit.classes import ReadGroup, GffFeature
+from tectoolkit.cluster import HierarchicalUnivariateDensityCluster as HUDC
 
 
 class Fingerprint:
@@ -97,7 +98,9 @@ class Fingerprint:
         """
         sam = io.read_bam_strings(input_bam, reference=reference, family=family, strand=strand)
         reads = ReadGroup.from_sam_strings(sam, strand=strand)
-        clusters = ReferenceLoci.from_simple_cluster(reads['tip'], min_reads, eps)
+        hudc = HUDC(min_reads, eps, 2)
+        hudc.fit(reads['tip'])
+        clusters = hudc.loci
         for start, end in clusters:
             gff = GffFeature(reference,
                              start=start,
