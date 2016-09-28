@@ -7,6 +7,7 @@ from multiprocessing import Pool
 from tectoolkit import io
 from tectoolkit.classes import ReadGroup, GffFeature
 from tectoolkit.cluster import HierarchicalUnivariateDensityCluster as HUDC
+from tectoolkit.cluster import FlatUnivariateDensityCluster as FUDC
 
 
 class Fingerprint:
@@ -44,7 +45,7 @@ class Fingerprint:
         parser.add_argument('-e', '--eps',
                             type=int,
                             default=[100],
-                            nargs=1,
+                            nargs='+',
                             help='Maximum allowable distance among read tips to be considered a cluster')
         parser.add_argument('-m', '--min_reads',
                             type=int,
@@ -82,7 +83,7 @@ class Fingerprint:
                        references,
                        families,
                        strands,
-                       eps,
+                       [eps],
                        min_reads)
 
     def _fingerprint(self, input_bam, reference, family, strand, eps, min_reads):
@@ -98,9 +99,18 @@ class Fingerprint:
         """
         sam = io.read_bam_strings(input_bam, reference=reference, family=family, strand=strand)
         reads = ReadGroup.from_sam_strings(sam, strand=strand)
-        hudc = HUDC(min_reads, eps, 2)
-        hudc.fit(reads['tip'])
-        clusters = hudc.loci
+        if len(eps) == 2:
+            # use hierarchical clustering method
+            max_eps , min_eps = max(eps), min(eps)
+            hudc = HUDC(min_reads, max_eps, min_eps)
+            hudc.fit(reads['tip'])
+            clusters = hudc.loci
+        elif len(eps) == 1:
+            # use flat clustering method
+            eps = max(eps)
+            fudc = FUDC(min_reads, eps)
+            fudc.fit(reads['tip'])
+            clusters = fudc.loci
         for start, end in clusters:
             gff = GffFeature(reference,
                              start=start,

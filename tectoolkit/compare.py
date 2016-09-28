@@ -8,7 +8,10 @@ from scipy.stats import kruskal
 from itertools import product
 from multiprocessing import Pool
 from tectoolkit import io
-from tectoolkit.classes import ReadGroup, ReferenceLoci, GffFeature
+from tectoolkit.classes import ReadGroup, GffFeature
+from tectoolkit.cluster import UnivariateLoci
+from tectoolkit.cluster import FlatUnivariateDensityCluster as FUDC
+from tectoolkit.cluster import HierarchicalUnivariateDensityCluster as HUDC
 
 
 class Compare:
@@ -46,7 +49,7 @@ class Compare:
         parser.add_argument('-e', '--eps',
                             type=int,
                             default=[100],
-                            nargs=1,
+                            nargs='+',
                             help='Maximum allowable distance among read tips to be considered a cluster')
         parser.add_argument('-m', '--min_reads',
                             type=int,
@@ -88,7 +91,7 @@ class Compare:
                        references,
                        families,
                        strands,
-                       eps,
+                       [eps],
                        min_reads)
 
     def _robust_kruskal(self, *args):
@@ -98,6 +101,16 @@ class Compare:
             kruskal_h, kruskal_p = 0, 1
         finally:
             return kruskal_h, kruskal_p
+
+    def _fcluster(self, reads, min_reads, eps):
+        fudc = FUDC(min_reads, eps)
+        fudc.fit(reads['tip'])
+        return fudc.loci
+
+    def _hcluster(self, reads, min_reads, max_eps, min_eps):
+        hudc = HUDC(min_reads, max_eps, min_eps)
+        hudc.fit(reads['tip'])
+        return hudc.loci
 
     def _compare(self, input_bams, reference, family, strand, eps, min_reads):
         """
@@ -111,24 +124,28 @@ class Compare:
         :return:
         """
         sams = (io.read_bam_strings(bam, reference=reference, family=family, strand=strand) for bam in input_bams)
-        read_groups = tuple(ReadGroup.from_sam_strings(sam, strand=strand) for sam in sams)
-        loci_groups = (ReferenceLoci.from_simple_cluster(group['tip'], min_reads, eps) for group in read_groups)
-        loci = reduce(ReferenceLoci.append, loci_groups)
-        loci.merge_overlapping()
+        read_groups = (ReadGroup.from_sam_strings(sam, strand=strand) for sam in sams)
+        if len(eps) == 1:
+            eps = max(eps)
+            loci_groups = (self._fcluster(reads, min_reads, eps) for reads in read_groups)
+        if len(eps) == 2:
+            max_eps, min_eps = max(eps), min(eps)
+            loci_groups = (self._hcluster(reads, min_reads, max_eps, min_eps) for reads in read_groups)
+        else:
+            pass  # throw error
+        loci = UnivariateLoci(reduce(np.append, loci_groups))
+        loci.melt()
         for start, end in loci:
-            locus_read_groups = tuple(group.sub_group_by_locus(start, end, margin=eps) for group in read_groups)
-            kruskal_h, kruskal_p = self._robust_kruskal(*[group['tip'] for group in locus_read_groups])
-            counts = np.fromiter(map(len, locus_read_groups), dtype=int)
-            count_stdev = (counts/np.max(counts)).std()
+            #locus_read_groups = tuple(group.sub_group_by_locus(start, end, margin=eps) for group in read_groups)
+            #kruskal_h, kruskal_p = self._robust_kruskal(*[group['tip'] for group in locus_read_groups])
+            #counts = np.fromiter(map(len, locus_read_groups), dtype=int)
+            #count_stdev = (counts/np.max(counts)).std()
             gff = GffFeature(reference,
                              start=start,
                              end=end,
                              strand=strand,
                              ID="{0}_{1}_{2}_{3}".format(family, reference, strand, start),
-                             Name=family,
-                             kruskal_h=kruskal_h,
-                             kruskal_p=kruskal_p,
-                             count_stdev=count_stdev)
+                             Name=family)
             print(str(gff))
 
     def run(self):

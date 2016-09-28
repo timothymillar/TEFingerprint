@@ -106,7 +106,7 @@ class UnivariateLoci(_UnivariateLoci):
         return loci
 
     @classmethod
-    def merge(cls, x, y):
+    def append(cls, x, y):
         """
 
         :param x:
@@ -273,18 +273,18 @@ class HierarchicalUnivariateDensityCluster(FlatUnivariateDensityCluster):
         elif node['children']:
             return [self._retrieve_selected_loci(node) for node in node['children']]
 
-    def _flatten(self, lst):
+    def _flatten(self, item):
         """
 
         :param lst:
         :return:
         """
-        for item in lst:
-            if not isinstance(item, list):
-                yield item
-            else:
-                for x in self._flatten(item):
-                    yield x
+        if isinstance(item, list):
+            for element in item:
+                for item in self._flatten(element):
+                    yield item
+        else:
+            yield item
 
     def _single_hierarchical_cluster(self, points, min_pts, max_eps, min_eps):
         """
