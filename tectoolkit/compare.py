@@ -128,7 +128,7 @@ class Compare:
         if len(eps) == 1:
             eps = max(eps)
             loci_groups = (self._fcluster(reads, min_reads, eps) for reads in read_groups)
-        if len(eps) == 2:
+        elif len(eps) == 2:
             max_eps, min_eps = max(eps), min(eps)
             loci_groups = (self._hcluster(reads, min_reads, max_eps, min_eps) for reads in read_groups)
         else:
