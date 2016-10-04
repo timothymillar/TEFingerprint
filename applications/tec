@@ -1,0 +1,46 @@
+#! /usr/bin/env python
+
+import sys
+import argparse
+from tectoolkit.fingerprint import Fingerprint
+from tectoolkit.compare import Compare
+
+
+def parse_program_arg(arg):
+    """
+
+    :param arg:
+    :return:
+    """
+    parser = argparse.ArgumentParser('Identify program to run')
+    parser.add_argument('program',
+                        type=str,
+                        choices=("fingerprint", "compare"))
+    try:
+        arguments = parser.parse_args(arg)
+    except:
+        parser.print_help()
+        sys.exit(0)
+    else:
+        return arguments
+
+
+def main():
+    """
+
+    :return:
+    """
+    try:
+        program_arg = parse_program_arg([sys.argv[1]])
+    except:
+        parse_program_arg([])
+    else:
+        program = program_arg.program
+        if program == "fingerprint":
+            job = Fingerprint(sys.argv[2:])
+        elif program == "compare":
+            job = Compare(sys.argv[2:])
+        job.run()
+
+if __name__ == '__main__':
+    main()

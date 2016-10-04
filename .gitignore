@@ -1,0 +1,4 @@
+__pycache__/
+.idea/
+tectoolkit.egg-info/
+dist/
