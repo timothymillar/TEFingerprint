@@ -11,7 +11,7 @@ from tectoolkit.cluster import HierarchicalUnivariateDensityCluster as HUDC
 from tectoolkit.cluster import FlatUnivariateDensityCluster as FUDC
 
 
-class Fingerprint:
+class FingerprintProgram:
     """"""
     def __init__(self, arguments):
         self.args = self.parse_args(arguments)
@@ -87,7 +87,7 @@ class Fingerprint:
                        [eps],
                        min_reads)
 
-    def _fingerprint(self, input_bam, reference, family, strand, eps, min_reads):
+    def _print_fingerprint(self, input_bam, reference, family, strand, eps, min_reads):
         """
 
         :param input_bam:
@@ -98,28 +98,11 @@ class Fingerprint:
         :param min_reads:
         :return:
         """
-        sam = io.read_bam_strings(input_bam, reference=reference, family=family, strand=strand)
-        reads = ReadGroup.from_sam_strings(sam, strand=strand)
-        if len(eps) == 2:
-            # use hierarchical clustering method
-            max_eps , min_eps = max(eps), min(eps)
-            hudc = HUDC(min_reads, max_eps, min_eps)
-            hudc.fit(reads['tip'])
-            clusters = hudc.loci
-        elif len(eps) == 1:
-            # use flat clustering method
-            eps = max(eps)
-            fudc = FUDC(min_reads, eps)
-            fudc.fit(reads['tip'])
-            clusters = fudc.loci
-        for start, end in clusters:
-            gff = GffFeature(reference,
-                             start=start,
-                             end=end,
-                             strand=strand,
-                             ID="{0}_{1}_{2}_{3}".format(family, reference, strand, start),
-                             Name=family)
-            print(str(gff))
+        fingerprint = Fingerprint(reference, family, strand, eps, min_reads)
+        fingerprint.reads_from_bam(input_bam)
+        fingerprint.fit()
+        for feature in fingerprint.loci_to_gff():
+            print(feature)
 
     def run(self):
         """
@@ -134,11 +117,52 @@ class Fingerprint:
                                 self.args.min_reads)
         if self.args.threads == 1:
             for job in jobs:
-                self._fingerprint(*job)
+                self._print_fingerprint(*job)
         else:
             with Pool(self.args.threads) as pool:
-                pool.starmap(self._fingerprint, jobs)
+                pool.starmap(self._print_fingerprint, jobs)
 
+
+class Fingerprint(object):
+
+    def __init__(self, reference, family, strand, eps, min_reads):
+        self.reference = reference
+        self.family = family
+        self.strand = strand
+        self.eps = eps
+        self.min_reads = min_reads
+        self.sample_name = ''
+        self.reads = None
+        self.loci = None
+
+    def reads_from_bam(self, bam):
+        sam = io.read_bam_strings(bam, reference=self.reference, family=self.family, strand=self.strand)
+        self.reads = ReadGroup.from_sam_strings(sam, strand=self.strand)
+
+    def fit(self):
+        if len(self.eps) == 2:
+            # use hierarchical clustering method
+            max_eps, min_eps = max(self.eps), min(self.eps)
+            hudc = HUDC(self.min_reads, max_eps, min_eps)
+            hudc.fit(self.reads['tip'])
+            self.loci = hudc.loci
+        elif len(self.eps) == 1:
+            # use flat clustering method
+            eps = max(self.eps)
+            fudc = FUDC(self.min_reads, eps)
+            fudc.fit(self.reads['tip'])
+            self.loci = fudc.loci
+        else:
+            pass
+
+    def loci_to_gff(self):
+        for start, end in self.loci:
+            yield GffFeature(self.reference,
+                             start=start,
+                             end=end,
+                             strand=self.strand,
+                             ID="{0}_{1}_{2}_{3}".format(self.family, self.reference, self.strand, start),
+                             Name=self.family)
 
 if __name__ == '__main__':
     pass
