@@ -8,7 +8,8 @@ from scipy.stats import kruskal
 from itertools import product
 from multiprocessing import Pool
 from tectoolkit import io
-from tectoolkit.classes import ReadGroup, ReadLoci, GffFeature
+from tectoolkit.classes import ReadGroup, ReadLoci
+from tectoolkit.gff import GffFeature
 from tectoolkit.cluster import FlatUnivariateDensityCluster as FUDC
 from tectoolkit.cluster import HierarchicalUnivariateDensityCluster as HUDC
 

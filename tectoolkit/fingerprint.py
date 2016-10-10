@@ -5,7 +5,8 @@ import argparse
 from itertools import product
 from multiprocessing import Pool
 from tectoolkit import io
-from tectoolkit.classes import ReadGroup, GffFeature
+from tectoolkit.classes import ReadGroup
+from tectoolkit.gff import GffFeature
 from tectoolkit.cluster import HierarchicalUnivariateDensityCluster as HUDC
 from tectoolkit.cluster import FlatUnivariateDensityCluster as FUDC
 
