@@ -1,10 +1,10 @@
 #! /usr/bin/env python
 
+import os
 import sys
 import argparse
 import numpy as np
 from functools import reduce
-from scipy.stats import kruskal
 from itertools import product
 from multiprocessing import Pool
 from tectoolkit import io
@@ -12,6 +12,7 @@ from tectoolkit.classes import ReadGroup, ReadLoci
 from tectoolkit.gff import GffFeature
 from tectoolkit.cluster import FlatUnivariateDensityCluster as FUDC
 from tectoolkit.cluster import HierarchicalUnivariateDensityCluster as HUDC
+from tectoolkit.fingerprint import FingerprintProgram
 
 
 class Compare:
@@ -94,13 +95,36 @@ class Compare:
                        [eps],
                        min_reads)
 
-    def _robust_kruskal(self, *args):
-        try:
-            kruskal_h, kruskal_p = kruskal(*args)
-        except ValueError:
-            kruskal_h, kruskal_p = 0, 1
-        finally:
-            return kruskal_h, kruskal_p
+    def run(self):
+        """
+
+        :return:
+        """
+        jobs = self._build_jobs(self.args.input_bams,
+                                self.args.references,
+                                self.args.families,
+                                self.args.strands,
+                                self.args.eps,
+                                self.args.min_reads)
+        if self.args.threads == 1:
+            for job in jobs:
+                RunCompareJob(*job)
+        else:
+            with Pool(self.args.threads) as pool:
+                pool.starmap(RunCompareJob, jobs)
+
+
+class RunCompareJob(object):
+
+    def __init__(self, input_bams, reference, family, strand, eps, min_reads):
+        self.input_bams = input_bams
+        self.reference = reference
+        self.family = family
+        self.strand = strand
+        self.eps = eps
+        self.min_reads = min_reads
+        self.data = {sample: {'name': None, 'reads': None, 'loci': None} for sample in range(self.input_bams)}
+        self._compare(self.input_bams, self.reference, self.family, self.strand, self.eps, self.min_reads)
 
     def _fcluster(self, reads, min_reads, eps):
         fudc = FUDC(min_reads, eps)
@@ -111,6 +135,21 @@ class Compare:
         hudc = HUDC(min_reads, max_eps, min_eps)
         hudc.fit(reads['tip'])
         return hudc.loci
+
+    def _read_sample_data(self, input_bams, reference, family, strand):
+        for sample, bam in enumerate(input_bams):
+            self.data[sample]['name'] = os.path.basename(bam)
+            self.data[sample]['reads'] = ReadGroup.from_sam_strings(io.read_bam_strings(bam,
+                                                                                        reference=reference,
+                                                                                        family=family,
+                                                                                        strand=strand),
+                                                                    strand=strand)
+
+    def _fingerprint_sample_data(self, input_bams, reference, family, strand, eps, min_reads):
+        for sample, bam in enumerate(input_bams):
+            FingerprintProgram.fingerprint(bam, reference, family, strand, eps, min_reads)
+
+
 
     def _compare(self, input_bams, reference, family, strand, eps, min_reads):
         """
@@ -136,10 +175,6 @@ class Compare:
         loci = ReadLoci(reduce(np.append, loci_groups))
         loci.melt()
         for start, end in loci:
-            #locus_read_groups = tuple(group.sub_group_by_locus(start, end, margin=eps) for group in read_groups)
-            #kruskal_h, kruskal_p = self._robust_kruskal(*[group['tip'] for group in locus_read_groups])
-            #counts = np.fromiter(map(len, locus_read_groups), dtype=int)
-            #count_stdev = (counts/np.max(counts)).std()
             gff = GffFeature(reference,
                              start=start,
                              end=end,
@@ -147,25 +182,6 @@ class Compare:
                              ID="{0}_{1}_{2}_{3}".format(family, reference, strand, start),
                              Name=family)
             print(str(gff))
-
-    def run(self):
-        """
-
-        :return:
-        """
-        jobs = self._build_jobs(self.args.input_bams,
-                                self.args.references,
-                                self.args.families,
-                                self.args.strands,
-                                self.args.eps,
-                                self.args.min_reads)
-        if self.args.threads == 1:
-            for job in jobs:
-                self._compare(*job)
-        else:
-            with Pool(self.args.threads) as pool:
-                pool.starmap(self._compare, jobs)
-
 
 if __name__ == '__main__':
     pass

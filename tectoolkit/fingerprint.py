@@ -1,6 +1,7 @@
 #! /usr/bin/env python
 
 import sys
+import os
 import argparse
 from itertools import product
 from multiprocessing import Pool
@@ -132,10 +133,12 @@ class Fingerprint(object):
         self.eps = eps
         self.min_reads = min_reads
         self.sample_name = ''
+        self.source = None
         self.reads = None
         self.loci = None
 
     def reads_from_bam(self, bam):
+        self.source = os.path.basename(bam)
         sam = io.read_bam_strings(bam, reference=self.reference, family=self.family, strand=self.strand)
         self.reads = ReadGroup.from_sam_strings(sam, strand=self.strand)
 
