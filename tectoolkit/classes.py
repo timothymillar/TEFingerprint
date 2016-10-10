@@ -2,6 +2,7 @@
 
 import numpy as np
 from tectoolkit.cluster import _UnivariateLoci
+from tectoolkit.gff import GffFeature
 
 
 class ReadGroup(object):
@@ -12,7 +13,7 @@ class ReadGroup(object):
                      ('name', np.str_, 254)])
 
     def __init__(self, reads):
-        self.reads = reads
+        self.reads = np.array(reads, dtype=ReadGroup.read, copy=True)
 
     def __iter__(self):
         for read in self.reads:
@@ -43,7 +44,7 @@ class ReadGroup(object):
         else:
             return variation.pop()
 
-    def sub_group_by_locus(self, start, stop, margin=0, end='tip'):
+    def subset_by_locus(self, start, stop, margin=0, end='tip'):
         """
 
         :param start:
@@ -157,7 +158,7 @@ class ReadLoci(_UnivariateLoci):
     """"""
     def __init__(self, loci):
         """"""
-        self.loci = loci
+        self.loci = np.array(loci, dtype=ReadLoci._ulocus, copy=True)
 
     def __iter__(self):
         """"""
@@ -188,6 +189,24 @@ class ReadLoci(_UnivariateLoci):
 
         self.sort()
         self.loci = self._melt_uloci(self.loci)
+
+    def subset_by_locus(self, start, stop, margin=0, end='start'):
+        """
+
+        :param start:
+        :param stop:
+        :param margin:
+        :param end:
+        :return:
+        """
+        assert end in {'start', 'stop'}
+        start -= margin
+        stop += margin
+        loci = self.loci[np.logical_and(self.loci[end] >= start, self.loci[end] <= stop)]
+        return ReadLoci(loci)
+
+    def as_gff(self, *args, **kwargs):
+        return [GffFeature(*args, start=locus[0], end=locus[1], **kwargs) for locus in self.loci]
 
     @classmethod
     def from_iterable(cls, iterable):
