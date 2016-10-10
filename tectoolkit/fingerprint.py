@@ -88,7 +88,7 @@ class FingerprintProgram(object):
                        [eps],
                        min_reads)
 
-    def _print_fingerprint(self, input_bam, reference, family, strand, eps, min_reads):
+    def _fingerprint(self, input_bam, reference, family, strand, eps, min_reads):
         """
 
         :param input_bam:
@@ -99,9 +99,7 @@ class FingerprintProgram(object):
         :param min_reads:
         :return:
         """
-        fingerprint = Fingerprint(reference, family, strand, eps, min_reads)
-        fingerprint.reads_from_bam(input_bam)
-        fingerprint.fit()
+        fingerprint = Fingerprint(input_bam, reference, family, strand, eps, min_reads)
         for feature in fingerprint.loci_to_gff():
             print(feature)
 
@@ -118,43 +116,42 @@ class FingerprintProgram(object):
                                 self.args.min_reads)
         if self.args.threads == 1:
             for job in jobs:
-                self._print_fingerprint(*job)
+                self._fingerprint(*job)
         else:
             with Pool(self.args.threads) as pool:
-                pool.starmap(self._print_fingerprint, jobs)
+                pool.starmap(self._fingerprint, jobs)
 
 
 class Fingerprint(object):
 
-    def __init__(self, reference, family, strand, eps, min_reads):
+    def __init__(self, bam, reference, family, strand, eps, min_reads):
         self.reference = reference
         self.family = family
         self.strand = strand
         self.eps = eps
         self.min_reads = min_reads
         self.sample_name = ''
-        self.source = None
-        self.reads = None
-        self.loci = None
-
-    def reads_from_bam(self, bam):
         self.source = os.path.basename(bam)
-        sam = io.read_bam_strings(bam, reference=self.reference, family=self.family, strand=self.strand)
-        self.reads = ReadGroup.from_sam_strings(sam, strand=self.strand)
+        self.reads = self._reads_from_bam(bam)
+        self.loci = self._fit()
 
-    def fit(self):
+    def _reads_from_bam(self, bam):
+        sam = io.read_bam_strings(bam, reference=self.reference, family=self.family, strand=self.strand)
+        return ReadGroup.from_sam_strings(sam, strand=self.strand)
+
+    def _fit(self):
         if len(self.eps) == 2:
             # use hierarchical clustering method
             max_eps, min_eps = max(self.eps), min(self.eps)
             hudc = HUDC(self.min_reads, max_eps, min_eps)
             hudc.fit(self.reads['tip'])
-            self.loci = hudc.loci
+            return hudc.loci
         elif len(self.eps) == 1:
             # use flat clustering method
             eps = max(self.eps)
             fudc = FUDC(self.min_reads, eps)
             fudc.fit(self.reads['tip'])
-            self.loci = fudc.loci
+            return fudc.loci
         else:
             pass
 
