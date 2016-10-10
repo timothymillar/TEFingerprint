@@ -94,6 +94,8 @@ class CompareProgram(object):
     def _run_comparison(self, input_bams, reference, family, strand, eps, min_reads):
         fingerprints = (Fingerprint(bam, reference, family, strand, eps, min_reads) for bam in input_bams)
         comparison = FingerprintComparison(tuple(fingerprints))
+        for feature in comparison.to_gff():
+            print(feature)
 
     def run(self):
         """
