@@ -8,8 +8,7 @@ from scipy.stats import kruskal
 from itertools import product
 from multiprocessing import Pool
 from tectoolkit import io
-from tectoolkit.classes import ReadGroup, GffFeature
-from tectoolkit.cluster import UnivariateLoci
+from tectoolkit.classes import ReadGroup, ReadLoci, GffFeature
 from tectoolkit.cluster import FlatUnivariateDensityCluster as FUDC
 from tectoolkit.cluster import HierarchicalUnivariateDensityCluster as HUDC
 
@@ -133,7 +132,7 @@ class Compare:
             loci_groups = (self._hcluster(reads, min_reads, max_eps, min_eps) for reads in read_groups)
         else:
             pass  # throw error
-        loci = UnivariateLoci(reduce(np.append, loci_groups))
+        loci = ReadLoci(reduce(np.append, loci_groups))
         loci.melt()
         for start, end in loci:
             #locus_read_groups = tuple(group.sub_group_by_locus(start, end, margin=eps) for group in read_groups)
