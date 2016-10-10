@@ -3,7 +3,7 @@
 import sys
 import argparse
 from tectoolkit.fingerprint import FingerprintProgram
-from tectoolkit.compare import Compare
+from tectoolkit.compare import CompareProgram
 
 
 def parse_program_arg(arg):
@@ -39,7 +39,7 @@ def main():
         if program == "fingerprint":
             job = FingerprintProgram(sys.argv[2:])
         elif program == "compare":
-            job = Compare(sys.argv[2:])
+            job = CompareProgram(sys.argv[2:])
         job.run()
 
 if __name__ == '__main__':

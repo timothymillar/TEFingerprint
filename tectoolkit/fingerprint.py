@@ -12,7 +12,7 @@ from tectoolkit.cluster import HierarchicalUnivariateDensityCluster as HUDC
 from tectoolkit.cluster import FlatUnivariateDensityCluster as FUDC
 
 
-class FingerprintProgram:
+class FingerprintProgram(object):
     """"""
     def __init__(self, arguments):
         self.args = self.parse_args(arguments)

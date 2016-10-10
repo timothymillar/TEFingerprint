@@ -1,21 +1,17 @@
 #! /usr/bin/env python
 
-import os
 import sys
 import argparse
-import numpy as np
 from functools import reduce
 from itertools import product
 from multiprocessing import Pool
 from tectoolkit import io
-from tectoolkit.classes import ReadGroup, ReadLoci
+from tectoolkit.classes import ReadLoci
 from tectoolkit.gff import GffFeature
-from tectoolkit.cluster import FlatUnivariateDensityCluster as FUDC
-from tectoolkit.cluster import HierarchicalUnivariateDensityCluster as HUDC
-from tectoolkit.fingerprint import FingerprintProgram
+from tectoolkit.fingerprint import Fingerprint
 
 
-class Compare:
+class CompareProgram(object):
     """"""
     def __init__(self, arguments):
         self.args = self.parse_args(arguments)
@@ -108,80 +104,45 @@ class Compare:
                                 self.args.min_reads)
         if self.args.threads == 1:
             for job in jobs:
-                RunCompareJob(*job)
+                FingerprintComparison(*job)
         else:
             with Pool(self.args.threads) as pool:
-                pool.starmap(RunCompareJob, jobs)
+                pool.starmap(FingerprintComparison, jobs)
 
 
-class RunCompareJob(object):
+class FingerprintComparison(object):
 
-    def __init__(self, input_bams, reference, family, strand, eps, min_reads):
-        self.input_bams = input_bams
-        self.reference = reference
-        self.family = family
-        self.strand = strand
-        self.eps = eps
-        self.min_reads = min_reads
-        self.data = {sample: {'name': None, 'reads': None, 'loci': None} for sample in range(self.input_bams)}
-        self._compare(self.input_bams, self.reference, self.family, self.strand, self.eps, self.min_reads)
+    def __init__(self, fingerprints):
+        self.fingerprints = fingerprints
+        self.comparative_bins = None
+        for f in fingerprints:
+            assert type(f) == Fingerprint
+        assert reduce(self._fingerprints_comparable, fingerprints)
+        self.reference = self.fingerprints[0].reference
+        self.family = self.fingerprints[0].family
+        self.strand = self.fingerprints[0].strand
+        self.eps = self.fingerprints[0].eps
+        self.min_reads = self.fingerprints[0].min_reads
 
-    def _fcluster(self, reads, min_reads, eps):
-        fudc = FUDC(min_reads, eps)
-        fudc.fit(reads['tip'])
-        return fudc.loci
+    def _fingerprints_comparable(self, x, y):
+        parameters_x = (x.reference, x.family, x.strand, x.eps, x.min_reads)
+        parameters_y = (y.reference, y.family, y.strand, y.eps, y.min_reads)
+        return parameters_x == parameters_y
 
-    def _hcluster(self, reads, min_reads, max_eps, min_eps):
-        hudc = HUDC(min_reads, max_eps, min_eps)
-        hudc.fit(reads['tip'])
-        return hudc.loci
+    def fit(self):
+        self.comparative_bins = reduce(ReadLoci.append, [f.loci for f in self.fingerprints])
+        self.comparative_bins.melt()
 
-    def _read_sample_data(self, input_bams, reference, family, strand):
-        for sample, bam in enumerate(input_bams):
-            self.data[sample]['name'] = os.path.basename(bam)
-            self.data[sample]['reads'] = ReadGroup.from_sam_strings(io.read_bam_strings(bam,
-                                                                                        reference=reference,
-                                                                                        family=family,
-                                                                                        strand=strand),
-                                                                    strand=strand)
-
-    def _fingerprint_sample_data(self, input_bams, reference, family, strand, eps, min_reads):
-        for sample, bam in enumerate(input_bams):
-            FingerprintProgram.fingerprint(bam, reference, family, strand, eps, min_reads)
-
-
-
-    def _compare(self, input_bams, reference, family, strand, eps, min_reads):
-        """
-
-        :param input_bams:
-        :param reference:
-        :param family:
-        :param strand:
-        :param eps:
-        :param min_reads:
-        :return:
-        """
-        sams = (io.read_bam_strings(bam, reference=reference, family=family, strand=strand) for bam in input_bams)
-        read_groups = (ReadGroup.from_sam_strings(sam, strand=strand) for sam in sams)
-        if len(eps) == 1:
-            eps = max(eps)
-            loci_groups = (self._fcluster(reads, min_reads, eps) for reads in read_groups)
-        elif len(eps) == 2:
-            max_eps, min_eps = max(eps), min(eps)
-            loci_groups = (self._hcluster(reads, min_reads, max_eps, min_eps) for reads in read_groups)
-        else:
-            pass  # throw error
-        loci = ReadLoci(reduce(np.append, loci_groups))
-        loci.melt()
-        for start, end in loci:
-            gff = GffFeature(reference,
+    def as_gff(self):
+        for start, end in self.comparative_bins:
+            yield GffFeature(self.reference,
                              start=start,
                              end=end,
-                             strand=strand,
-                             ID="{0}_{1}_{2}_{3}".format(family, reference, strand, start),
-                             Name=family)
-            print(str(gff))
+                             strand=self.strand,
+                             ID="{0}_{1}_{2}_{3}".format(self.family, self.reference, self.strand, start),
+                             Name=self.family)
+
+
 
 if __name__ == '__main__':
     pass
