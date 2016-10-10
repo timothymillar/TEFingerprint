@@ -91,6 +91,10 @@ class CompareProgram(object):
                        [eps],
                        min_reads)
 
+    def _run_comparison(self, input_bams, reference, family, strand, eps, min_reads):
+        fingerprints = (Fingerprint(bam, reference, family, strand, eps, min_reads) for bam in input_bams)
+        comparison = FingerprintComparison(tuple(fingerprints))
+
     def run(self):
         """
 
@@ -104,17 +108,16 @@ class CompareProgram(object):
                                 self.args.min_reads)
         if self.args.threads == 1:
             for job in jobs:
-                FingerprintComparison(*job)
+                self._run_comparison(*job)
         else:
             with Pool(self.args.threads) as pool:
-                pool.starmap(FingerprintComparison, jobs)
+                pool.starmap(self._run_comparison, jobs)
 
 
 class FingerprintComparison(object):
 
     def __init__(self, fingerprints):
         self.fingerprints = fingerprints
-        self.comparative_bins = None
         for f in fingerprints:
             assert type(f) == Fingerprint
         assert reduce(self._fingerprints_comparable, fingerprints)
@@ -123,17 +126,19 @@ class FingerprintComparison(object):
         self.strand = self.fingerprints[0].strand
         self.eps = self.fingerprints[0].eps
         self.min_reads = self.fingerprints[0].min_reads
+        self.comparative_bins = self._calculate_bins()
 
     def _fingerprints_comparable(self, x, y):
         parameters_x = (x.reference, x.family, x.strand, x.eps, x.min_reads)
         parameters_y = (y.reference, y.family, y.strand, y.eps, y.min_reads)
         return parameters_x == parameters_y
 
-    def fit(self):
-        self.comparative_bins = reduce(ReadLoci.append, [f.loci for f in self.fingerprints])
-        self.comparative_bins.melt()
+    def _calculate_bins(self):
+        bins = reduce(ReadLoci.append, [f.loci for f in self.fingerprints])
+        bins.melt()
+        return bins
 
-    def as_gff(self):
+    def to_gff(self):
         for start, end in self.comparative_bins:
             yield GffFeature(self.reference,
                              start=start,
@@ -141,8 +146,6 @@ class FingerprintComparison(object):
                              strand=self.strand,
                              ID="{0}_{1}_{2}_{3}".format(self.family, self.reference, self.strand, start),
                              Name=self.family)
-
-
 
 if __name__ == '__main__':
     pass
