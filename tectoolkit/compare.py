@@ -2,19 +2,16 @@
 
 import sys
 import argparse
-import numpy as np
 from functools import reduce
-from scipy.stats import kruskal
 from itertools import product
 from multiprocessing import Pool
 from tectoolkit import io
-from tectoolkit.classes import ReadGroup, GffFeature
-from tectoolkit.cluster import UnivariateLoci
-from tectoolkit.cluster import FlatUnivariateDensityCluster as FUDC
-from tectoolkit.cluster import HierarchicalUnivariateDensityCluster as HUDC
+from tectoolkit.classes import ReadLoci
+from tectoolkit.gff import GffFeature
+from tectoolkit.fingerprint import Fingerprint
 
 
-class Compare:
+class CompareProgram(object):
     """"""
     def __init__(self, arguments):
         self.args = self.parse_args(arguments)
@@ -94,59 +91,11 @@ class Compare:
                        [eps],
                        min_reads)
 
-    def _robust_kruskal(self, *args):
-        try:
-            kruskal_h, kruskal_p = kruskal(*args)
-        except ValueError:
-            kruskal_h, kruskal_p = 0, 1
-        finally:
-            return kruskal_h, kruskal_p
-
-    def _fcluster(self, reads, min_reads, eps):
-        fudc = FUDC(min_reads, eps)
-        fudc.fit(reads['tip'])
-        return fudc.loci
-
-    def _hcluster(self, reads, min_reads, max_eps, min_eps):
-        hudc = HUDC(min_reads, max_eps, min_eps)
-        hudc.fit(reads['tip'])
-        return hudc.loci
-
-    def _compare(self, input_bams, reference, family, strand, eps, min_reads):
-        """
-
-        :param input_bams:
-        :param reference:
-        :param family:
-        :param strand:
-        :param eps:
-        :param min_reads:
-        :return:
-        """
-        sams = (io.read_bam_strings(bam, reference=reference, family=family, strand=strand) for bam in input_bams)
-        read_groups = (ReadGroup.from_sam_strings(sam, strand=strand) for sam in sams)
-        if len(eps) == 1:
-            eps = max(eps)
-            loci_groups = (self._fcluster(reads, min_reads, eps) for reads in read_groups)
-        elif len(eps) == 2:
-            max_eps, min_eps = max(eps), min(eps)
-            loci_groups = (self._hcluster(reads, min_reads, max_eps, min_eps) for reads in read_groups)
-        else:
-            pass  # throw error
-        loci = UnivariateLoci(reduce(np.append, loci_groups))
-        loci.melt()
-        for start, end in loci:
-            #locus_read_groups = tuple(group.sub_group_by_locus(start, end, margin=eps) for group in read_groups)
-            #kruskal_h, kruskal_p = self._robust_kruskal(*[group['tip'] for group in locus_read_groups])
-            #counts = np.fromiter(map(len, locus_read_groups), dtype=int)
-            #count_stdev = (counts/np.max(counts)).std()
-            gff = GffFeature(reference,
-                             start=start,
-                             end=end,
-                             strand=strand,
-                             ID="{0}_{1}_{2}_{3}".format(family, reference, strand, start),
-                             Name=family)
-            print(str(gff))
+    def _run_comparison(self, input_bams, reference, family, strand, eps, min_reads):
+        fingerprints = (Fingerprint(bam, reference, family, strand, eps, min_reads) for bam in input_bams)
+        comparison = FingerprintComparison(tuple(fingerprints))
+        for feature in comparison.to_gff():
+            print(feature)
 
     def run(self):
         """
@@ -161,11 +110,44 @@ class Compare:
                                 self.args.min_reads)
         if self.args.threads == 1:
             for job in jobs:
-                self._compare(*job)
+                self._run_comparison(*job)
         else:
             with Pool(self.args.threads) as pool:
-                pool.starmap(self._compare, jobs)
+                pool.starmap(self._run_comparison, jobs)
 
+
+class FingerprintComparison(object):
+
+    def __init__(self, fingerprints):
+        self.fingerprints = fingerprints
+        for f in fingerprints:
+            assert type(f) == Fingerprint
+        assert reduce(self._fingerprints_comparable, fingerprints)
+        self.reference = self.fingerprints[0].reference
+        self.family = self.fingerprints[0].family
+        self.strand = self.fingerprints[0].strand
+        self.eps = self.fingerprints[0].eps
+        self.min_reads = self.fingerprints[0].min_reads
+        self.comparative_bins = self._calculate_bins()
+
+    def _fingerprints_comparable(self, x, y):
+        parameters_x = (x.reference, x.family, x.strand, x.eps, x.min_reads)
+        parameters_y = (y.reference, y.family, y.strand, y.eps, y.min_reads)
+        return parameters_x == parameters_y
+
+    def _calculate_bins(self):
+        bins = reduce(ReadLoci.append, [f.loci for f in self.fingerprints])
+        bins.melt()
+        return bins
+
+    def to_gff(self):
+        for start, end in self.comparative_bins:
+            yield GffFeature(self.reference,
+                             start=start,
+                             end=end,
+                             strand=self.strand,
+                             ID="{0}_{1}_{2}_{3}".format(self.family, self.reference, self.strand, start),
+                             Name=self.family)
 
 if __name__ == '__main__':
     pass

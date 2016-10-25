@@ -61,66 +61,6 @@ class _UnivariateLoci(object):
         self.loci.sort(order=order)
 
 
-class UnivariateLoci(_UnivariateLoci):
-    """"""
-    def __init__(self, loci):
-        """"""
-        self.loci = loci
-
-    def __iter__(self):
-        """"""
-        for locus in self.loci:
-            yield locus
-
-    def __getitem__(self, item):
-        """"""
-        return self.loci[item]
-
-    def __len__(self):
-        """"""
-        return len(self.loci)
-
-    def sort(self, order=('start', 'stop')):
-        """
-
-        :param order:
-        :return:
-        """
-        self.loci.sort(order=order)
-
-    def melt(self):
-        """
-
-        :return:
-        """
-
-        self.sort()
-        self.loci = self._melt_uloci(self.loci)
-
-    @classmethod
-    def from_iterable(cls, iterable):
-        """
-
-        :param iterable:
-        :return:
-        """
-        loci = UnivariateLoci(np.fromiter(iterable, dtype=UnivariateLoci._ulocus))
-        loci.sort()
-        return loci
-
-    @classmethod
-    def append(cls, x, y):
-        """
-
-        :param x:
-        :param y:
-        :return:
-        """
-        loci = UnivariateLoci(np.append(x.loci, y.loci))
-        loci.sort()
-        return loci
-
-
 class FlatUnivariateDensityCluster(_UnivariateLoci):
     """"""
     def __init__(self, min_points, eps):
