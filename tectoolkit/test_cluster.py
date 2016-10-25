@@ -24,3 +24,22 @@ class TestUL:
                            (15, 25)], dtype=_UnivariateLoci._ulocus)
         output = _UnivariateLoci._melt_uloci(input)
         npt.assert_array_equal(output, answer)
+
+    def test_sort_uloci(self):
+        """"""
+        query = _UnivariateLoci()
+        query.loci = np.array([(2, 4),
+                               (3, 4),
+                               (3, 3),
+                               (4, 4),
+                               (3, 99),
+                               (1, 1)], dtype=_UnivariateLoci._ulocus)
+        answer = _UnivariateLoci()
+        answer.loci = np.array([(1, 1),
+                                (2, 4),
+                                (3, 3),
+                                (3, 4),
+                                (3, 99),
+                                (4, 4)], dtype=_UnivariateLoci._ulocus)
+        query._sort_uloci()
+        npt.assert_array_equal(query.loci, answer.loci)
