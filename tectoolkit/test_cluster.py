@@ -5,12 +5,11 @@ import numpy.testing as npt
 from tectoolkit.cluster import _UnivariateLoci, FlatUnivariateDensityCluster, HierarchicalUnivariateDensityCluster
 
 
-
 class TestUL:
     """"""
     def test_melt_uloci(self):
         """"""
-        input = np.array([(3, 6),
+        query = np.array([(3, 6),
                           (6, 8),
                           (7, 9),
                           (10, 12),
@@ -22,8 +21,8 @@ class TestUL:
                            (10, 12),
                            (13, 13),
                            (15, 25)], dtype=_UnivariateLoci._ulocus)
-        output = _UnivariateLoci._melt_uloci(input)
-        npt.assert_array_equal(output, answer)
+        query = _UnivariateLoci._melt_uloci(query)
+        npt.assert_array_equal(query, answer)
 
     def test_sort_uloci(self):
         """"""
