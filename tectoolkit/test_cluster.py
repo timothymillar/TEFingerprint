@@ -50,3 +50,13 @@ class TestUL:
         answer = np.array([5, 6, 8, 6], dtype=int)
         query = _UnivariateLoci._locus_points(locus, query)
         npt.assert_array_equal(query, answer)
+
+
+class TestFUDC:
+    """"""
+    def test_flat_subcluster(self):
+        answer = np.array([(1, 2), (2, 5), (5, 6), (5, 7)], dtype=FlatUnivariateDensityCluster._ulocus)
+        query = FlatUnivariateDensityCluster(4, 3)
+        query.points = np.array([5, 2, 1, 5, 15, 1, 1, 6, 13, 5, 7, 14], dtype=int)
+        npt.assert_array_equal(query._flat_subcluster(query.points, query.min_pts, query.eps),
+                               answer)
