@@ -6,9 +6,17 @@ from tectoolkit.cluster import _UnivariateLoci, FlatUnivariateDensityCluster, Hi
 
 
 class TestUL:
-    """"""
+    """
+    Tests for hidden class _UnivariateLoci.
+    """
     def test_melt_uloci(self):
-        """"""
+        """
+        Test for hidden method _melt_uloci.
+        Test includes following edge cases:
+         * Long locus completely overlaps short locus: (15, 25) & (16, 17) --> (15, 25)
+         * Adjacent loci do not get merged: (7, 9) & (10, 12) -->  (*, 9) & (10, *)
+         * Locus may span a single base: (13, 13) --> (13, 13)
+        """
         query = np.array([(3, 6),
                           (6, 8),
                           (7, 9),
@@ -25,7 +33,10 @@ class TestUL:
         npt.assert_array_equal(query, answer)
 
     def test_sort_uloci(self):
-        """"""
+        """
+        Test for hidden method _sort_uloci.
+        By default, loci should be sorted by lower bound then upper bound.
+        """
         query = _UnivariateLoci()
         query.loci = np.array([(2, 4),
                                (3, 4),
@@ -44,7 +55,10 @@ class TestUL:
         npt.assert_array_equal(query.loci, answer.loci)
 
     def test_locus_points(self):
-        """"""
+        """
+        Test for hidden method _locus_points.
+        Points inside the inclusive boundary of the locus should be returned.
+        """
         query = np.array([5, 9, 4, 1, 6, 8, 6, 2], dtype=int)
         locus = (5, 8)
         answer = np.array([5, 6, 8, 6], dtype=int)
