@@ -87,7 +87,24 @@ class TestFUDC:
         Most edge cases should be caught in tests for component methods.
         """
         answer = np.array([(1, 2), (6, 14)], dtype=FlatUnivariateDensityCluster._ulocus)
-        query = query = FlatUnivariateDensityCluster(5, 4)
-        query.points = np.array([9, 2, 2, 1, 7, 19, 1, 1, 6, 13, 10, 7, 14, 11, 11, ], dtype=int)
+        query = FlatUnivariateDensityCluster(5, 4)
+        query.points = np.array([9, 2, 2, 1, 7, 19, 1, 1, 6, 13, 10, 7, 14, 11, 11], dtype=int)
         npt.assert_array_equal(query._flat_cluster(query.points, query.min_pts, query.eps),
                                answer)
+
+    def test_integration_fit(self):
+        """
+        Integration test to run class via the method fit.
+        Points passed to the fit method should be copied into new array.
+        New copy of points should be sorted.
+        Most edge cases should be caught in tests for component methods.
+        """
+        query = FlatUnivariateDensityCluster(5, 4)
+        input_points = np.array([9, 2, 2, 1, 7, 19, 1, 1, 6, 13, 10, 7, 14, 11, 11], dtype=int)
+        answer_points = np.array([1, 1, 1, 2, 2, 6, 7, 7, 9, 10, 11, 11, 13, 14, 19], dtype=int)
+        answer_loci = np.array([(1, 2), (6, 14)], dtype=FlatUnivariateDensityCluster._ulocus)
+        query.fit(input_points)
+        assert query.points is not input_points
+        npt.assert_array_equal(query.points, answer_points)
+        npt.assert_array_equal(query.loci, answer_loci)
+
