@@ -108,3 +108,47 @@ class TestFUDC:
         npt.assert_array_equal(query.points, answer_points)
         npt.assert_array_equal(query.loci, answer_loci)
 
+class TestHUDC:
+    """
+    Tests for class HierarchicalUnivariateDensityCluster.
+    """
+    def test_grow_tree_single(self):
+        """
+        Test for hidden method _grow_tree using data with simple densities cluster.
+        Produce a tree with one (root) node.
+        """
+        query = HierarchicalUnivariateDensityCluster(3, 5, 3)
+        query.points = np.array([1, 1, 2, 2, 2, 3, 3, 5, 7, 7, 8, 8, 9, 9, 9, 11])
+        answer = {'area': 48,
+                  'base_eps': 5,
+                  'base_locus': (1, 11),
+                  'child_area': 0,
+                  'children': None,
+                  'selected': False}
+        assert query._grow_tree(query.points, query.min_pts, query.max_eps, query.min_eps) == answer
+
+    def test_grow_tree_nested(self):
+        """
+        Test for hidden method _grow_tree using data with nested densities clusters.
+        Produce a tree with three nodes (root node and two child nodes).
+        """
+        query = HierarchicalUnivariateDensityCluster(3, 5, 2)
+        query.points = np.array([1, 1, 2, 2, 2, 3, 3, 5, 7, 7, 8, 8, 9, 9, 9, 11])
+        answer = {'area': 64,
+                  'base_eps': 5,
+                  'base_locus': (1, 11),
+                  'child_area': 0,
+                  'children': [{'area': 7,
+                                'base_eps': 1,
+                                'base_locus': (1, 3),
+                                'child_area': 0,
+                                'children': None,
+                                'selected': False},
+                               {'area': 7,
+                                'base_eps': 1,
+                                'base_locus': (7, 9),
+                                'child_area': 0,
+                                'children': None,
+                                'selected': False}],
+                  'selected': False}
+        assert query._grow_tree(query.points, query.min_pts, query.max_eps, query.min_eps) == answer
