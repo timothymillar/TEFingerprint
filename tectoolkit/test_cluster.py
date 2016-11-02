@@ -67,9 +67,14 @@ class TestUL:
 
 
 class TestFUDC:
-    """"""
+    """
+    Tests for class FlatUnivariateDensityCluster.
+    """
     def test_flat_subcluster(self):
-        """"""
+        """
+        Test for hidden method _flat_subcluster.
+
+        """
         answer = np.array([(1, 2), (2, 5), (5, 6), (5, 7)], dtype=FlatUnivariateDensityCluster._ulocus)
         query = FlatUnivariateDensityCluster(4, 3)
         query.points = np.array([5, 2, 1, 5, 15, 1, 1, 6, 13, 5, 7, 14], dtype=int)
@@ -77,7 +82,10 @@ class TestFUDC:
                                answer)
 
     def test_flat_cluster(self):
-        """"""
+        """
+        Test for hidden method _flat_cluster.
+        Most edge cases should be caught in tests for component methods.
+        """
         answer = np.array([(1, 2), (6, 14)], dtype=FlatUnivariateDensityCluster._ulocus)
         query = query = FlatUnivariateDensityCluster(5, 4)
         query.points = np.array([9, 2, 2, 1, 7, 19, 1, 1, 6, 13, 10, 7, 14, 11, 11, ], dtype=int)
