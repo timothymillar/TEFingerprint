@@ -220,3 +220,68 @@ class TestHUDC:
                   'selected': False}
         hudc._child_area(query)
         assert query == answer
+
+    def test_select_nodes(self):
+        """
+        Test for hidden method _select_nodes.
+        Method modifies tree/node 'selected' value in place.
+        """
+        hudc = HierarchicalUnivariateDensityCluster(3, 10, 2)
+        query = {'area': 19,
+                 'base_eps': 10,
+                 'base_locus': (1, 11),
+                 'child_area': 20,
+                 'children': [{'area': 5,
+                               'base_eps': 5,
+                               'base_locus': (1, 3),
+                               'child_area': 0,
+                               'children': None,
+                               'selected': False},
+                              {'area': 9,
+                               'base_eps': 5,
+                               'base_locus': (6, 11),
+                               'child_area': 6,
+                               'children': [{'area': 3,
+                                             'base_eps': 2,
+                                             'base_locus': (6, 7),
+                                             'child_area': 0,
+                                             'children': [],
+                                             'selected': False},
+                                            {'area': 3,
+                                             'base_eps': 2,
+                                             'base_locus': (9, 9),
+                                             'child_area': 0,
+                                             'children': None,
+                                             'selected': False}],
+                               'selected': False}],
+                 'selected': False}
+        answer = {'area': 19,
+                  'base_eps': 10,
+                  'base_locus': (1, 11),
+                  'child_area': 20,
+                  'children': [{'area': 5,
+                                'base_eps': 5,
+                                'base_locus': (1, 3),
+                                'child_area': 0,
+                                'children': None,
+                                'selected': True},
+                               {'area': 9,
+                                'base_eps': 5,
+                                'base_locus': (6, 11),
+                                'child_area': 6,
+                                'children': [{'area': 3,
+                                              'base_eps': 2,
+                                              'base_locus': (6, 7),
+                                              'child_area': 0,
+                                              'children': [],
+                                              'selected': False},
+                                             {'area': 3,
+                                              'base_eps': 2,
+                                              'base_locus': (9, 9),
+                                              'child_area': 0,
+                                              'children': None,
+                                              'selected': False}],
+                                'selected': True}],
+                  'selected': False}
+        hudc._select_nodes(query)
+        assert query == answer
