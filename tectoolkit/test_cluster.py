@@ -108,6 +108,7 @@ class TestFUDC:
         npt.assert_array_equal(query.points, answer_points)
         npt.assert_array_equal(query.loci, answer_loci)
 
+
 class TestHUDC:
     """
     Tests for class HierarchicalUnivariateDensityCluster.
@@ -116,9 +117,10 @@ class TestHUDC:
         """
         Test for hidden method _grow_tree using data with simple densities cluster.
         Produce a tree with one (root) node.
+        Minimum eps of 3 means point 5 is still within eps of 3 and 7
         """
-        query = HierarchicalUnivariateDensityCluster(3, 5, 3)
-        query.points = np.array([1, 1, 2, 2, 2, 3, 3, 5, 7, 7, 8, 8, 9, 9, 9, 11])
+        query = HierarchicalUnivariateDensityCluster(3, 5, 3)  # Minimum eps of 3
+        query.points = np.array([1, 1, 2, 2, 2, 3, 3, 5, 7, 7, 8, 8, 9, 9, 9, 11])  # Point 5 within 3 of 3 and 7
         answer = {'area': 48,
                   'base_eps': 5,
                   'base_locus': (1, 11),
@@ -131,8 +133,9 @@ class TestHUDC:
         """
         Test for hidden method _grow_tree using data with nested densities clusters.
         Produce a tree with three nodes (root node and two child nodes).
+        Minimum eps of 2 allows cluster to be split when points are not adjacent.
         """
-        query = HierarchicalUnivariateDensityCluster(3, 5, 2)
+        query = HierarchicalUnivariateDensityCluster(3, 5, 2)  # Minimum eps of 2
         query.points = np.array([1, 1, 2, 2, 2, 3, 3, 5, 7, 7, 8, 8, 9, 9, 9, 11])
         answer = {'area': 64,
                   'base_eps': 5,
@@ -152,3 +155,68 @@ class TestHUDC:
                                 'selected': False}],
                   'selected': False}
         assert query._grow_tree(query.points, query.min_pts, query.max_eps, query.min_eps) == answer
+
+    def test_child_area(self):
+        """
+        Test for hidden method _child_area.
+        Method modifies tree/node 'child_area' value in place.
+        """
+        hudc = HierarchicalUnivariateDensityCluster(3, 5, 2)
+        query = {'area': 42,
+                 'base_eps': 5,
+                 'base_locus': (1, 11),
+                 'child_area': 0,
+                 'children': [{'area': 7,
+                               'base_eps': 2,
+                               'base_locus': (1, 3),
+                               'child_area': 0,
+                               'children': None,
+                               'selected': False},
+                              {'area': 7,
+                               'base_eps': 2,
+                               'base_locus': (6, 11),
+                               'child_area': 0,
+                               'children': [{'area': 3,
+                                             'base_eps': 1,
+                                             'base_locus': (6, 7),
+                                             'child_area': 0,
+                                             'children': [],
+                                             'selected': False},
+                                            {'area': 3,
+                                             'base_eps': 1,
+                                             'base_locus': (9, 9),
+                                             'child_area': 0,
+                                             'children': None,
+                                             'selected': False}],
+                               'selected': False}],
+                 'selected': False}
+        answer = {'area': 42,
+                  'base_eps': 5,
+                  'base_locus': (1, 11),
+                  'child_area': 20,
+                  'children': [{'area': 7,
+                                'base_eps': 2,
+                                'base_locus': (1, 3),
+                                'child_area': 0,
+                                'children': None,
+                                'selected': False},
+                               {'area': 7,
+                                'base_eps': 2,
+                                'base_locus': (6, 11),
+                                'child_area': 6,
+                                'children': [{'area': 3,
+                                              'base_eps': 1,
+                                              'base_locus': (6, 7),
+                                              'child_area': 0,
+                                              'children': [],
+                                              'selected': False},
+                                             {'area': 3,
+                                              'base_eps': 1,
+                                              'base_locus': (9, 9),
+                                              'child_area': 0,
+                                              'children': None,
+                                              'selected': False}],
+                                'selected': False}],
+                  'selected': False}
+        hudc._child_area(query)
+        assert query == answer
