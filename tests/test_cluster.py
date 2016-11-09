@@ -285,3 +285,45 @@ class TestHUDC:
                   'selected': False}
         hudc._select_nodes(query)
         assert query == answer
+
+    def test_retrieve_selected_loci_nested(self):
+        """
+        Test for hidden method _retrieve_selected_loci using a nested data set.
+        """
+        hudc = HierarchicalUnivariateDensityCluster(3, 10, 2)
+        query = {'area': 19,
+                 'base_eps': 10,
+                 'base_locus': (1, 11),
+                 'child_area': 20,
+                 'children': [{'area': 5,
+                               'base_eps': 5,
+                               'base_locus': (1, 3),
+                               'child_area': 0,
+                               'children': None,
+                               'selected': True},
+                              {'area': 9,
+                               'base_eps': 5,
+                               'base_locus': (6, 11),
+                               'child_area': 6,
+                               'children': [{'area': 3,
+                                             'base_eps': 2,
+                                             'base_locus': (6, 9),
+                                             'child_area': 0,
+                                             'children': [{'area': 5,
+                                                           'base_eps': 5,
+                                                           'base_locus': (9, 9),
+                                                           'child_area': 0,
+                                                           'children': None,
+                                                           'selected': False}],
+                                             'selected': True},
+                                            {'area': 3,
+                                             'base_eps': 2,
+                                             'base_locus': (11, 11),
+                                             'child_area': 0,
+                                             'children': None,
+                                             'selected': True}],
+                               'selected': False}],
+                 'selected': False}
+        answer = [(1, 3), [(6, 9), (11, 11)]]
+        assert hudc._retrieve_selected_loci(query) == answer
+
