@@ -327,3 +327,16 @@ class TestHUDC:
         answer = [(1, 3), [(6, 9), (11, 11)]]
         assert hudc._retrieve_selected_loci(query) == answer
 
+    def test_retrieve_selected_loci_simple(self):
+        """
+        Test for hidden method _retrieve_selected_loci using a non-nested data set.
+        """
+        hudc = HierarchicalUnivariateDensityCluster(3, 10, 2)
+        query = {'area': 19,
+                 'base_eps': 10,
+                 'base_locus': (1, 11),
+                 'child_area': 20,
+                 'children': None,
+                 'selected': True}
+        answer = (1, 11)
+        assert hudc._retrieve_selected_loci(query) == answer
