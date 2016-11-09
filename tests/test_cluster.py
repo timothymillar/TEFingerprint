@@ -340,3 +340,23 @@ class TestHUDC:
                  'selected': True}
         answer = (1, 11)
         assert hudc._retrieve_selected_loci(query) == answer
+
+    def test_flatten_nested_list(self):
+        """
+        Test for hidden method _flatten using a nested data set.
+        Method _flatten returns a generator which should be coerced to a list.
+        """
+        hudc = HierarchicalUnivariateDensityCluster(3, 10, 2)
+        query = [(1, 3), [(6, 9), (11, 11)]]
+        answer = [(1, 3), (6, 9), (11, 11)]
+        assert list(hudc._flatten(query)) == answer
+
+    def test_flatten_tuple(self):
+        """
+        Test for hidden method _flatten using a tuple.
+        Method _flatten returns a generator which should be coerced to a list.
+        """
+        hudc = HierarchicalUnivariateDensityCluster(3, 10, 2)
+        query = (1, 11)
+        answer = [(1, 11)]
+        assert list(hudc._flatten(query)) == answer
