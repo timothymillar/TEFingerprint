@@ -92,9 +92,9 @@ class TestFUDC:
         npt.assert_array_equal(query._flat_cluster(query.points, query.min_pts, query.eps),
                                answer)
 
-    def test_integration_fit(self):
+    def test_fit(self):
         """
-        Integration test to run class via the method fit.
+        Test to run class via the method fit.
         Points passed to the fit method should be copied into new array.
         New copy of points should be sorted.
         Most edge cases should be caught in tests for component methods.
@@ -366,7 +366,7 @@ class TestHUDC:
         Test for hidden method _single_hierarchical_cluster.
         """
         hudc = HierarchicalUnivariateDensityCluster(3, 10, 2)
-        query = np.array([1, 1, 2, 2, 2, 2, 2, 3, 3, 4, 4, 4, 4, 13, 21, 21, 21, 22, 22,22, 23, 31])
+        query = np.array([1, 1, 2, 2, 2, 2, 2, 3, 3, 4, 4, 4, 4, 13, 21, 21, 21, 22, 22,22, 23, 31], dtype=int)
         answer = np.array([(1, 4), (13, 23)], dtype=_UnivariateLoci._ulocus)
         npt.assert_array_equal(hudc._single_hierarchical_cluster(query, 3, 10, 2), answer)
 
@@ -375,6 +375,22 @@ class TestHUDC:
         Test for hidden method _hierarchical_cluster.
         """
         hudc = HierarchicalUnivariateDensityCluster(3, 10, 2)
-        query = np.array([1, 2, 21, 22, 22, 22, 24, 38, 54, 54, 55, 56, 65, 65, 66, 67, 68, 90])
+        query = np.array([1, 2, 21, 22, 22, 22, 24, 38, 54, 54, 55, 56, 65, 65, 66, 67, 68, 90], dtype=int)
         answer = np.array([(21, 24), (54, 56), (65, 68)], dtype=_UnivariateLoci._ulocus)
         npt.assert_array_equal(hudc._single_hierarchical_cluster(query, 3, 10, 2), answer)
+
+    def test_fit(self):
+        """
+        Test to run class via the method fit.
+        Points passed to the fit method should be copied into new array.
+        New copy of points should be sorted.
+        Most edge cases should be caught in tests for component methods.
+        """
+        query = HierarchicalUnivariateDensityCluster(3, 10, 2)
+        input_points = np.array([22, 54, 24, 22, 2, 21, 54, 22, 90, 38, 65, 67, 68, 56, 55, 65, 66, 1], dtype=int)
+        answer_points = np.array([1, 2, 21, 22, 22, 22, 24, 38, 54, 54, 55, 56, 65, 65, 66, 67, 68, 90], dtype=int)
+        answer_loci = np.array([(21, 24), (54, 56), (65, 68)], dtype=FlatUnivariateDensityCluster._ulocus)
+        query.fit(input_points)
+        assert query.points is not input_points
+        npt.assert_array_equal(query.points, answer_points)
+        npt.assert_array_equal(query.loci, answer_loci)
