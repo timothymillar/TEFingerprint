@@ -122,6 +122,11 @@ class FingerprintComparison(object):
         self.fingerprints = fingerprints
         for f in fingerprints:
             assert type(f) == Fingerprint
+        assert len({(f.reference,
+                     f.family,
+                     f.strand,
+                     f.eps,
+                     f.min_reads) for f in fingerprints}) == 1
         assert reduce(self._fingerprints_comparable, fingerprints)
         self.reference = self.fingerprints[0].reference
         self.family = self.fingerprints[0].family
@@ -129,11 +134,6 @@ class FingerprintComparison(object):
         self.eps = self.fingerprints[0].eps
         self.min_reads = self.fingerprints[0].min_reads
         self.comparative_bins = self._calculate_bins()
-
-    def _fingerprints_comparable(self, x, y):
-        parameters_x = (x.reference, x.family, x.strand, x.eps, x.min_reads)
-        parameters_y = (y.reference, y.family, y.strand, y.eps, y.min_reads)
-        return parameters_x == parameters_y
 
     def _calculate_bins(self):
         bins = reduce(ReadLoci.append, [f.loci for f in self.fingerprints])
