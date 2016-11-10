@@ -127,7 +127,6 @@ class FingerprintComparison(object):
                      f.strand,
                      f.eps,
                      f.min_reads) for f in fingerprints}) == 1
-        assert reduce(self._fingerprints_comparable, fingerprints)
         self.reference = self.fingerprints[0].reference
         self.family = self.fingerprints[0].family
         self.strand = self.fingerprints[0].strand
