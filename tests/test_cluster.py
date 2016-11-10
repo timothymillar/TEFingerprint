@@ -360,3 +360,12 @@ class TestHUDC:
         query = (1, 11)
         answer = [(1, 11)]
         assert list(hudc._flatten(query)) == answer
+
+    def test_single_hierarchical_cluster(self):
+        """
+        Test for hidden method _single_hierarchical_cluster.
+        """
+        hudc = HierarchicalUnivariateDensityCluster(3, 10, 2)
+        query = np.array([1, 1, 2, 2, 2, 2, 2, 3, 3, 4, 4, 4, 4, 13, 21, 21, 21, 22, 22,22, 23, 31])
+        answer = np.array([(1, 4), (13, 23)], dtype=_UnivariateLoci._ulocus)
+        npt.assert_array_equal(hudc._single_hierarchical_cluster(query, 3, 10, 2), answer)
