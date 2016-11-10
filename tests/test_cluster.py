@@ -369,3 +369,12 @@ class TestHUDC:
         query = np.array([1, 1, 2, 2, 2, 2, 2, 3, 3, 4, 4, 4, 4, 13, 21, 21, 21, 22, 22,22, 23, 31])
         answer = np.array([(1, 4), (13, 23)], dtype=_UnivariateLoci._ulocus)
         npt.assert_array_equal(hudc._single_hierarchical_cluster(query, 3, 10, 2), answer)
+
+    def test_hierarchical_cluster(self):
+        """
+        Test for hidden method _hierarchical_cluster.
+        """
+        hudc = HierarchicalUnivariateDensityCluster(3, 10, 2)
+        query = np.array([1, 2, 21, 22, 22, 22, 24, 38, 54, 54, 55, 56, 65, 65, 66, 67, 68, 90])
+        answer = np.array([(21, 24), (54, 56), (65, 68)], dtype=_UnivariateLoci._ulocus)
+        npt.assert_array_equal(hudc._single_hierarchical_cluster(query, 3, 10, 2), answer)
