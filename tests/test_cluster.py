@@ -84,7 +84,7 @@ class TestFUDC:
         """
         query = np.array([9, 2, 2, 1, 7, 19, 1, 1, 6, 13, 10, 7, 14, 11, 11], dtype=int)
         answer = np.array([(1, 2), (6, 14)], dtype=FUDC._ulocus)
-        npt.assert_array_equal(FUDC._flat_cluster(query, 5, 4), answer)
+        npt.assert_array_equal(FUDC.flat_cluster(query, 5, 4), answer)
 
     def test_fit(self):
         """
