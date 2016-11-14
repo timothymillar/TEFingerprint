@@ -8,8 +8,8 @@ from multiprocessing import Pool
 from tectoolkit import io
 from tectoolkit.classes import ReadGroup, ReadLoci
 from tectoolkit.gff import GffFeature
-from tectoolkit.cluster import HierarchicalUnivariateDensityCluster as HUDC
-from tectoolkit.cluster import FlatUnivariateDensityCluster as FUDC
+from tectoolkit.cluster import HUDC
+from tectoolkit.cluster import FUDC
 
 
 class FingerprintProgram(object):

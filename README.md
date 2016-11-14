@@ -41,6 +41,10 @@ pip install dist/tectoolkit-*.tar.gz
 ```
 (note the `*` wildcard should be replaced with the current version number to install)
 
+## Testing
+
+Unit testing using [pytest](http://doc.pytest.org/en/latest/).
+Use `py.test` to run tests from the projects root directory.
 
 ## Usage
  
