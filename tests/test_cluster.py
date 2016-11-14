@@ -29,8 +29,7 @@ class TestUL:
                            (10, 12),
                            (13, 13),
                            (15, 25)], dtype=_UnivariateLoci._ulocus)
-        query = _UnivariateLoci._melt_uloci(query)
-        npt.assert_array_equal(query, answer)
+        npt.assert_array_equal(_UnivariateLoci._melt_uloci(query), answer)
 
     def test_sort_uloci(self):
         """
@@ -62,8 +61,7 @@ class TestUL:
         query = np.array([5, 9, 4, 1, 6, 8, 6, 2], dtype=int)
         locus = (5, 8)
         answer = np.array([5, 6, 8, 6], dtype=int)
-        query = _UnivariateLoci._locus_points(locus, query)
-        npt.assert_array_equal(query, answer)
+        npt.assert_array_equal(_UnivariateLoci._locus_points(locus, query), answer)
 
 
 class TestFUDC:
@@ -75,22 +73,18 @@ class TestFUDC:
         Test for hidden method _flat_subcluster.
 
         """
+        query = np.array([5, 2, 1, 5, 15, 1, 1, 6, 13, 5, 7, 14], dtype=int)
         answer = np.array([(1, 2), (2, 5), (5, 6), (5, 7)], dtype=FUDC._ulocus)
-        query = FUDC(4, 3)
-        query.points = np.array([5, 2, 1, 5, 15, 1, 1, 6, 13, 5, 7, 14], dtype=int)
-        npt.assert_array_equal(query._flat_subcluster(query.points, query.min_pts, query.eps),
-                               answer)
+        npt.assert_array_equal(HUDC._flat_subcluster(query, 4, 3), answer)
 
     def test_flat_cluster(self):
         """
         Test for hidden method _flat_cluster.
         Most edge cases should be caught in tests for component methods.
         """
+        query = np.array([9, 2, 2, 1, 7, 19, 1, 1, 6, 13, 10, 7, 14, 11, 11], dtype=int)
         answer = np.array([(1, 2), (6, 14)], dtype=FUDC._ulocus)
-        query = FUDC(5, 4)
-        query.points = np.array([9, 2, 2, 1, 7, 19, 1, 1, 6, 13, 10, 7, 14, 11, 11], dtype=int)
-        npt.assert_array_equal(query._flat_cluster(query.points, query.min_pts, query.eps),
-                               answer)
+        npt.assert_array_equal(FUDC._flat_cluster(query, 5, 4), answer)
 
     def test_fit(self):
         """
