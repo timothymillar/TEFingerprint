@@ -2,6 +2,7 @@
 
 import sys
 import argparse
+import numpy as np
 from functools import reduce
 from itertools import product
 from multiprocessing import Pool
@@ -9,6 +10,7 @@ from tectoolkit import io
 from tectoolkit.classes import ReadLoci
 from tectoolkit.gff import GffFeature
 from tectoolkit.fingerprint import Fingerprint
+from tectoolkit.cluster import FUDC
 
 
 class CompareProgram(object):
@@ -117,7 +119,7 @@ class CompareProgram(object):
 
 
 class FingerprintComparison(object):
-
+    """"""
     def __init__(self, fingerprints):
         self.fingerprints = fingerprints
         for f in fingerprints:
@@ -135,18 +137,62 @@ class FingerprintComparison(object):
         self.bin_loci = self._identify_bins()
 
     def _identify_bins(self):
+        """
+        Identifies bins (loci) in which to compare fingerprints from different samples (bam files).
+        Bins are calculated by merging the overlapping fingerprints from all samples.
+        :return:
+        """
         loci = reduce(ReadLoci.append, [f.loci for f in self.fingerprints])
         loci.melt()
         return loci
 
+    def _compare_bin(self, start, end):
+        """
+        Calculates basic statistics for a given bin (loci) to be compared across samples.
+        Identifies the location of read-tip dense areas for each sample within the bin bounds.
+        :return:
+        """
+        local_reads = tuple(f.reads.subset_by_locus(start, end) for f in self.fingerprints)
+        sources = tuple(f.source for f in self.fingerprints)
+        local_read_counts = tuple(len(r) for r in local_reads)
+        local_fingerprints = tuple(FUDC.flat_cluster(r['tip'], self.min_reads, max(self.eps)) for r in local_reads)
+        data = {'min_reads': min(local_read_counts),
+                'max_reads': max(local_read_counts),
+                'absent': sum(np.invert(np.array([len(f) for f in local_fingerprints], dtype=bool)))}
+        z = zip(sources, local_read_counts, local_fingerprints)
+        data['samples'] = [{'source': i[0], 'count': i[1], 'fingerprint': i[2]} for i in z]
+        return data
+
     def to_gff(self):
         for start, end in self.bin_loci:
-            yield GffFeature(self.reference,
-                             start=start,
-                             end=end,
-                             strand=self.strand,
-                             ID="{0}_{1}_{2}_{3}".format(self.family, self.reference, self.strand, start),
-                             Name=self.family)
+            data = self._compare_bin(start, end)
+            feature = GffFeature(self.reference,
+                                 start=start,
+                                 end=end,
+                                 strand=self.strand,
+                                 ID="bin_{0}_{1}_{2}_{3}".format(self.family, self.reference, self.strand, start),
+                                 Name=self.family,
+                                 absent=data['absent'],
+                                 max_reads=data['max_reads'],
+                                 min_reads=data['min_reads'])
+            for sample in data['samples']:
+                if len(sample['fingerprint']) > 0:
+                    for print_start, print_end in sample['fingerprint']:
+                        child_feature = GffFeature(self.reference,
+                                                   start=print_start,
+                                                   end=print_end,
+                                                   strand=self.strand,
+                                                   ID="{0}_{1}_{2}_{3}_{4}".format(sample['source'],
+                                                                                   self.family,
+                                                                                   self.reference,
+                                                                                   self.strand,
+                                                                                   start),
+                                                   Name=self.family,
+                                                   sample=sample['source'])
+                        feature.add_children(child_feature)
+                else:
+                    pass
+            yield feature
 
 if __name__ == '__main__':
     pass
