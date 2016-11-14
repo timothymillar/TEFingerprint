@@ -223,15 +223,15 @@ class HUDC(FUDC):
             return [HUDC._retrieve_selected_loci(node) for node in node['children']]
 
     @staticmethod
-    def _flatten(item):
+    def _flatten_list(item):
         """
 
-        :param lst:
+        :param item:
         :return:
         """
         if isinstance(item, list):
             for element in item:
-                for item in HUDC._flatten(element):
+                for item in HUDC._flatten_list(element):
                     yield item
         else:
             yield item
@@ -249,7 +249,7 @@ class HUDC(FUDC):
         tree = HUDC._grow_tree(points, min_pts, max_eps, min_eps)
         HUDC._child_area(tree)
         HUDC._select_nodes(tree)
-        loci = HUDC._flatten(HUDC._retrieve_selected_loci(tree))
+        loci = HUDC._flatten_list(HUDC._retrieve_selected_loci(tree))
         return np.fromiter(loci, dtype=HUDC._ulocus)
 
     @staticmethod

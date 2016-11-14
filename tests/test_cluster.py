@@ -349,7 +349,7 @@ class TestHUDC:
         hudc = HUDC(3, 10, 2)
         query = [(1, 3), [(6, 9), (11, 11)]]
         answer = [(1, 3), (6, 9), (11, 11)]
-        assert list(hudc._flatten(query)) == answer
+        assert list(hudc._flatten_list(query)) == answer
 
     def test_flatten_tuple(self):
         """
@@ -359,7 +359,7 @@ class TestHUDC:
         hudc = HUDC(3, 10, 2)
         query = (1, 11)
         answer = [(1, 11)]
-        assert list(hudc._flatten(query)) == answer
+        assert list(hudc._flatten_list(query)) == answer
 
     def test_single_hierarchical_cluster(self):
         """
