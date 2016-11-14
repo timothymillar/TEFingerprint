@@ -132,15 +132,15 @@ class FingerprintComparison(object):
         self.strand = self.fingerprints[0].strand
         self.eps = self.fingerprints[0].eps
         self.min_reads = self.fingerprints[0].min_reads
-        self.comparative_bins = self._calculate_bins()
+        self.bin_loci = self._identify_bins()
 
-    def _calculate_bins(self):
-        bins = reduce(ReadLoci.append, [f.loci for f in self.fingerprints])
-        bins.melt()
-        return bins
+    def _identify_bins(self):
+        loci = reduce(ReadLoci.append, [f.loci for f in self.fingerprints])
+        loci.melt()
+        return loci
 
     def to_gff(self):
-        for start, end in self.comparative_bins:
+        for start, end in self.bin_loci:
             yield GffFeature(self.reference,
                              start=start,
                              end=end,
