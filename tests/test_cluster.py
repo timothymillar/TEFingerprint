@@ -2,7 +2,7 @@
 
 import numpy as np
 import numpy.testing as npt
-from tectoolkit.cluster import _UnivariateLoci, FlatUnivariateDensityCluster, HierarchicalUnivariateDensityCluster
+from tectoolkit.cluster import _UnivariateLoci, FUDC, HUDC
 
 
 class TestUL:
@@ -75,8 +75,8 @@ class TestFUDC:
         Test for hidden method _flat_subcluster.
 
         """
-        answer = np.array([(1, 2), (2, 5), (5, 6), (5, 7)], dtype=FlatUnivariateDensityCluster._ulocus)
-        query = FlatUnivariateDensityCluster(4, 3)
+        answer = np.array([(1, 2), (2, 5), (5, 6), (5, 7)], dtype=FUDC._ulocus)
+        query = FUDC(4, 3)
         query.points = np.array([5, 2, 1, 5, 15, 1, 1, 6, 13, 5, 7, 14], dtype=int)
         npt.assert_array_equal(query._flat_subcluster(query.points, query.min_pts, query.eps),
                                answer)
@@ -86,8 +86,8 @@ class TestFUDC:
         Test for hidden method _flat_cluster.
         Most edge cases should be caught in tests for component methods.
         """
-        answer = np.array([(1, 2), (6, 14)], dtype=FlatUnivariateDensityCluster._ulocus)
-        query = FlatUnivariateDensityCluster(5, 4)
+        answer = np.array([(1, 2), (6, 14)], dtype=FUDC._ulocus)
+        query = FUDC(5, 4)
         query.points = np.array([9, 2, 2, 1, 7, 19, 1, 1, 6, 13, 10, 7, 14, 11, 11], dtype=int)
         npt.assert_array_equal(query._flat_cluster(query.points, query.min_pts, query.eps),
                                answer)
@@ -99,10 +99,10 @@ class TestFUDC:
         New copy of points should be sorted.
         Most edge cases should be caught in tests for component methods.
         """
-        query = FlatUnivariateDensityCluster(5, 4)
+        query = FUDC(5, 4)
         input_points = np.array([9, 2, 2, 1, 7, 19, 1, 1, 6, 13, 10, 7, 14, 11, 11], dtype=int)
         answer_points = np.array([1, 1, 1, 2, 2, 6, 7, 7, 9, 10, 11, 11, 13, 14, 19], dtype=int)
-        answer_loci = np.array([(1, 2), (6, 14)], dtype=FlatUnivariateDensityCluster._ulocus)
+        answer_loci = np.array([(1, 2), (6, 14)], dtype=FUDC._ulocus)
         query.fit(input_points)
         assert query.points is not input_points
         npt.assert_array_equal(query.points, answer_points)
@@ -119,7 +119,7 @@ class TestHUDC:
         Produce a tree with one (root) node.
         Minimum eps of 3 means point 5 is still within eps of 3 and 7
         """
-        query = HierarchicalUnivariateDensityCluster(3, 5, 3)  # Minimum eps of 3
+        query = HUDC(3, 5, 3)  # Minimum eps of 3
         query.points = np.array([1, 1, 2, 2, 2, 3, 3, 5, 7, 7, 8, 8, 9, 9, 9, 11])  # Point 5 within 3 of 3 and 7
         answer = {'area': 48,
                   'base_eps': 5,
@@ -135,7 +135,7 @@ class TestHUDC:
         Produce a tree with three nodes (root node and two child nodes).
         Minimum eps of 2 allows cluster to be split when points are not adjacent.
         """
-        query = HierarchicalUnivariateDensityCluster(3, 5, 2)  # Minimum eps of 2
+        query = HUDC(3, 5, 2)  # Minimum eps of 2
         query.points = np.array([1, 1, 2, 2, 2, 3, 3, 5, 7, 7, 8, 8, 9, 9, 9, 11])
         answer = {'area': 64,
                   'base_eps': 5,
@@ -161,7 +161,7 @@ class TestHUDC:
         Test for hidden method _child_area.
         Method modifies tree/node 'child_area' value in place.
         """
-        hudc = HierarchicalUnivariateDensityCluster(3, 5, 2)
+        hudc = HUDC(3, 5, 2)
         query = {'area': 42,
                  'base_eps': 5,
                  'base_locus': (1, 11),
@@ -226,7 +226,7 @@ class TestHUDC:
         Test for hidden method _select_nodes.
         Method modifies tree/node 'selected' value in place.
         """
-        hudc = HierarchicalUnivariateDensityCluster(3, 10, 2)
+        hudc = HUDC(3, 10, 2)
         query = {'area': 19,
                  'base_eps': 10,
                  'base_locus': (1, 11),
@@ -290,7 +290,7 @@ class TestHUDC:
         """
         Test for hidden method _retrieve_selected_loci using a nested data set.
         """
-        hudc = HierarchicalUnivariateDensityCluster(3, 10, 2)
+        hudc = HUDC(3, 10, 2)
         query = {'area': 19,
                  'base_eps': 10,
                  'base_locus': (1, 11),
@@ -331,7 +331,7 @@ class TestHUDC:
         """
         Test for hidden method _retrieve_selected_loci using a non-nested data set.
         """
-        hudc = HierarchicalUnivariateDensityCluster(3, 10, 2)
+        hudc = HUDC(3, 10, 2)
         query = {'area': 19,
                  'base_eps': 10,
                  'base_locus': (1, 11),
@@ -346,7 +346,7 @@ class TestHUDC:
         Test for hidden method _flatten using a nested data set.
         Method _flatten returns a generator which should be coerced to a list.
         """
-        hudc = HierarchicalUnivariateDensityCluster(3, 10, 2)
+        hudc = HUDC(3, 10, 2)
         query = [(1, 3), [(6, 9), (11, 11)]]
         answer = [(1, 3), (6, 9), (11, 11)]
         assert list(hudc._flatten(query)) == answer
@@ -356,7 +356,7 @@ class TestHUDC:
         Test for hidden method _flatten using a tuple.
         Method _flatten returns a generator which should be coerced to a list.
         """
-        hudc = HierarchicalUnivariateDensityCluster(3, 10, 2)
+        hudc = HUDC(3, 10, 2)
         query = (1, 11)
         answer = [(1, 11)]
         assert list(hudc._flatten(query)) == answer
@@ -365,7 +365,7 @@ class TestHUDC:
         """
         Test for hidden method _single_hierarchical_cluster.
         """
-        hudc = HierarchicalUnivariateDensityCluster(3, 10, 2)
+        hudc = HUDC(3, 10, 2)
         query = np.array([1, 1, 2, 2, 2, 2, 2, 3, 3, 4, 4, 4, 4, 13, 21, 21, 21, 22, 22, 22, 23, 31], dtype=int)
         answer = np.array([(1, 4), (13, 23)], dtype=_UnivariateLoci._ulocus)
         npt.assert_array_equal(hudc._single_hierarchical_cluster(query, 3, 10, 2), answer)
@@ -374,7 +374,7 @@ class TestHUDC:
         """
         Test for hidden method _hierarchical_cluster.
         """
-        hudc = HierarchicalUnivariateDensityCluster(3, 10, 2)
+        hudc = HUDC(3, 10, 2)
         query = np.array([1, 2, 21, 22, 22, 22, 24, 38, 54, 54, 55, 56, 65, 65, 66, 67, 68, 90], dtype=int)
         answer = np.array([(21, 24), (54, 56), (65, 68)], dtype=_UnivariateLoci._ulocus)
         npt.assert_array_equal(hudc._single_hierarchical_cluster(query, 3, 10, 2), answer)
@@ -386,10 +386,10 @@ class TestHUDC:
         New copy of points should be sorted.
         Most edge cases should be caught in tests for component methods.
         """
-        query = HierarchicalUnivariateDensityCluster(3, 10, 2)
+        query = HUDC(3, 10, 2)
         input_points = np.array([22, 54, 24, 22, 2, 21, 54, 22, 90, 38, 65, 67, 68, 56, 55, 65, 66, 1], dtype=int)
         answer_points = np.array([1, 2, 21, 22, 22, 22, 24, 38, 54, 54, 55, 56, 65, 65, 66, 67, 68, 90], dtype=int)
-        answer_loci = np.array([(21, 24), (54, 56), (65, 68)], dtype=FlatUnivariateDensityCluster._ulocus)
+        answer_loci = np.array([(21, 24), (54, 56), (65, 68)], dtype=FUDC._ulocus)
         query.fit(input_points)
         assert query.points is not input_points
         npt.assert_array_equal(query.points, answer_points)
