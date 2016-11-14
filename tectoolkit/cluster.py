@@ -25,8 +25,8 @@ class _UnivariateLoci(object):
             start = loci['start'][0]
             stop = loci['stop'][0]
             for i in range(1, len(loci)):
-                if (loci['start'][i] <= stop):
-                    if (loci['stop'][i] > stop):
+                if loci['start'][i] <= stop:
+                    if loci['stop'][i] > stop:
                         stop = loci['stop'][i]
                     else:
                         pass
