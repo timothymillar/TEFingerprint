@@ -127,7 +127,8 @@ class FingerprintComparison(object):
         assert len({(f.reference,
                      f.family,
                      f.strand,
-                     f.eps,
+                     f.eps[0],
+                     f.eps[-1],
                      f.min_reads) for f in fingerprints}) == 1
         self.reference = self.fingerprints[0].reference
         self.family = self.fingerprints[0].family
