@@ -176,14 +176,14 @@ class FingerprintComparison(object):
                                  absent=data['absent'],
                                  max_reads=data['max_reads'],
                                  min_reads=data['min_reads'])
-            for sample in data['samples']:
+            for sample_number, sample in enumerate(data['samples']):
                 if len(sample['fingerprint']) > 0:
                     for print_start, print_end in sample['fingerprint']:
                         child_feature = GffFeature(self.reference,
                                                    start=print_start,
                                                    end=print_end,
                                                    strand=self.strand,
-                                                   ID="{0}_{1}_{2}_{3}_{4}".format(sample['source'],
+                                                   ID="{0}_{1}_{2}_{3}_{4}".format(sample_number,
                                                                                    self.family,
                                                                                    self.reference,
                                                                                    self.strand,
