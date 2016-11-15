@@ -22,7 +22,7 @@ class GffFeature(object):
         self.strand = strand
         self.phase = phase
         self.attributes = kwargs
-        self.children = None
+        self.children = []
 
     def attribute_names(self):
         return set(self.attributes.keys())

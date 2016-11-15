@@ -97,7 +97,7 @@ class CompareProgram(object):
         fingerprints = (Fingerprint(bam, reference, family, strand, eps, min_reads) for bam in input_bams)
         comparison = FingerprintComparison(tuple(fingerprints))
         for feature in comparison.to_gff():
-            print(feature)
+            print(format(feature, 'nested'))
 
     def run(self):
         """
