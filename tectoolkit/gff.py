@@ -4,7 +4,7 @@
 class GffFeature(object):
     """"""
     def __init__(self,
-                 seqid,
+                 seqid='.',
                  source='.',
                  ftype='.',
                  start='.',

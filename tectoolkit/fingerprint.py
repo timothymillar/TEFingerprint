@@ -157,7 +157,7 @@ class Fingerprint(object):
 
     def loci_to_gff(self):
         for start, end in self.loci:
-            yield GffFeature(self.reference,
+            yield GffFeature(seqid=self.reference,
                              start=start,
                              end=end,
                              strand=self.strand,
