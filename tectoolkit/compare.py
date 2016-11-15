@@ -95,9 +95,9 @@ class CompareProgram(object):
 
     def _run_comparison(self, input_bams, reference, family, strand, eps, min_reads):
         fingerprints = (Fingerprint(bam, reference, family, strand, eps, min_reads) for bam in input_bams)
-        comparison = FingerprintComparison(tuple(fingerprints), 50)
+        comparison = FingerprintComparison(tuple(fingerprints), 100)
         for feature in comparison.to_gff():
-            if feature.tags["min_reads"] == 0:
+            if feature.tags["read_count_min"] == 0:
                 print(format(feature, 'nested'))
             else:
                 pass
@@ -170,44 +170,51 @@ class FingerprintComparison(object):
         """
         local_reads = tuple(f.reads.subset_by_locus(start, end) for f in self.fingerprints)
         sources = tuple(f.source for f in self.fingerprints)
-        local_read_counts = tuple(len(r) for r in local_reads)
+        local_read_counts = np.array([len(r) for r in local_reads])
+        read_count_max = max(local_read_counts)
+        read_count_min = min(local_read_counts)
+        read_presence = sum(local_read_counts != 0)
+        read_absence = sum(local_read_counts == 0)
         local_fingerprints = tuple(FUDC.flat_cluster(r['tip'], self.min_reads, max(self.eps)) for r in local_reads)
-        data = {'min_reads': min(local_read_counts),
-                'max_reads': max(local_read_counts),
-                'absent': sum(np.invert(np.array([len(f) for f in local_fingerprints], dtype=bool)))}
-        z = zip(sources, local_read_counts, local_fingerprints)
-        data['samples'] = [{'source': i[0], 'count': i[1], 'fingerprint': i[2]} for i in z]
-        return data
+        local_cluster_counts = np.array([len(f) for f in local_fingerprints])
+        cluster_presence = sum(local_cluster_counts != 0)
+        cluster_absence = sum(local_cluster_counts == 0)
+        bin_dict = {'seqid': self.reference,
+                    'start': start,
+                    'end': end,
+                    'strand': self.strand,
+                    'ID': "bin_{0}_{1}_{2}_{3}".format(self.family, self.reference, self.strand, start),
+                    'Name': self.family,
+                    'read_count_min': read_count_min,
+                    'read_count_max': read_count_max,
+                    'read_presence': read_presence,
+                    'read_absence': read_absence,
+                    'cluster_presence': cluster_presence,
+                    'cluster_absence': cluster_absence}
+        sample_dicts = []
+        for number, sample in enumerate(zip(sources, local_fingerprints)):
+            source, fingerprint = sample
+            if len(fingerprint) == 0:
+                pass
+            else:
+                sample_dicts += [{'seqid': self.reference,
+                                  'start': start,
+                                  'end': end,
+                                  'strand': self.strand,
+                                  'ID': "{0}_{1}_{2}_{3}_{4}".format(number,
+                                                                     self.family,
+                                                                     self.reference,
+                                                                     self.strand,
+                                                                     start),
+                                  'Name': self.family,
+                                  'sample': source} for start, end in fingerprint]
+        return bin_dict, sample_dicts
 
     def to_gff(self):
         for start, end in self.bin_loci:
-            data = self._compare_bin(start, end)
-            feature = GffFeature(self.reference,
-                                 start=start,
-                                 end=end,
-                                 strand=self.strand,
-                                 ID="bin_{0}_{1}_{2}_{3}".format(self.family, self.reference, self.strand, start),
-                                 Name=self.family,
-                                 absent=data['absent'],
-                                 max_reads=data['max_reads'],
-                                 min_reads=data['min_reads'])
-            for sample_number, sample in enumerate(data['samples']):
-                if len(sample['fingerprint']) > 0:
-                    for print_start, print_end in sample['fingerprint']:
-                        child_feature = GffFeature(self.reference,
-                                                   start=print_start,
-                                                   end=print_end,
-                                                   strand=self.strand,
-                                                   ID="{0}_{1}_{2}_{3}_{4}".format(sample_number,
-                                                                                   self.family,
-                                                                                   self.reference,
-                                                                                   self.strand,
-                                                                                   start),
-                                                   Name=self.family,
-                                                   sample=sample['source'])
-                        feature.add_children(child_feature)
-                else:
-                    pass
+            bin_dict, sample_dicts = self._compare_bin(start, end)
+            feature = GffFeature(**bin_dict)
+            feature.add_children(*[GffFeature(**d) for d in sample_dicts])
             yield feature
 
 if __name__ == '__main__':
