@@ -95,9 +95,12 @@ class CompareProgram(object):
 
     def _run_comparison(self, input_bams, reference, family, strand, eps, min_reads):
         fingerprints = (Fingerprint(bam, reference, family, strand, eps, min_reads) for bam in input_bams)
-        comparison = FingerprintComparison(tuple(fingerprints))
+        comparison = FingerprintComparison(tuple(fingerprints), 50)
         for feature in comparison.to_gff():
-            print(format(feature, 'nested'))
+            if feature.tags["min_reads"] == 0:
+                print(format(feature, 'nested'))
+            else:
+                pass
 
     def run(self):
         """
@@ -120,7 +123,7 @@ class CompareProgram(object):
 
 class FingerprintComparison(object):
     """"""
-    def __init__(self, fingerprints):
+    def __init__(self, fingerprints, buffer):
         self.fingerprints = fingerprints
         for f in fingerprints:
             assert type(f) == Fingerprint
@@ -136,6 +139,7 @@ class FingerprintComparison(object):
         self.eps = self.fingerprints[0].eps
         self.min_reads = self.fingerprints[0].min_reads
         self.bin_loci = self._identify_bins()
+        self._buffer_bins(buffer)
 
     def _identify_bins(self):
         """
@@ -146,6 +150,17 @@ class FingerprintComparison(object):
         loci = reduce(ReadLoci.append, [f.loci for f in self.fingerprints])
         loci.melt()
         return loci
+
+    def _buffer_bins(self, buffer):
+        """
+        Expands bins by buffer zone.
+        :return:
+        """
+        if buffer == 0:
+            pass
+        else:
+            self.bin_loci.loci['start'] -= buffer
+            self.bin_loci.loci['stop'] += buffer
 
     def _compare_bin(self, start, end):
         """
