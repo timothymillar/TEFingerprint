@@ -1,6 +1,7 @@
 #! /usr/bin/env python
 
 import pysam
+import numpy as np
 
 
 SAM_FLAGS = {'+': ('-F', '20'),
@@ -18,8 +19,9 @@ def read_bam_strings(input_bam, reference='', family='', strand='.'):
     :return:
     """
     flag = SAM_FLAGS[strand]
-    sam_strings = (string for string in pysam.view(*flag, input_bam, reference, family).splitlines())
-    return sam_strings
+    sam_strings = np.array(pysam.view(*flag, input_bam, reference).splitlines())
+    in_family = np.array([string.startswith(family) for string in sam_strings])
+    return sam_strings[in_family]
 
 
 def read_bam_references(input_bam):
