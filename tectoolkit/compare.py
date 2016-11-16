@@ -131,10 +131,7 @@ class CompareProgram(object):
         reference_length = self.reference_lengths[reference]
         comparison = FingerprintComparison(tuple(fingerprints), bin_buffer, reference_length)
         for feature in comparison.to_gff():
-            if feature.tags["read_count_min"] == 0:
-                print(format(feature, 'nested'))
-            else:
-                pass
+            print(format(feature, 'nested'))
 
     def run(self):
         """
