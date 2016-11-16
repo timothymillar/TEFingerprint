@@ -59,6 +59,11 @@ class CompareProgram(object):
                             type=int,
                             default=1,
                             help='Maximum number of cpu threads to be used')
+        parser.add_argument('-b', '--bin_buffer',
+                            type=int,
+                            default=[0],
+                            nargs=1,
+                            help='Additional buffer to be added to margins of comparative bins')
         try:
             arguments = parser.parse_args(args)
         except:
@@ -67,7 +72,7 @@ class CompareProgram(object):
         else:
             return arguments
 
-    def _build_jobs(self, input_bams, references, families, strands, eps, min_reads):
+    def _build_jobs(self, input_bams, references, families, strands, eps, min_reads, bin_buffer):
         """
 
         :param input_bams:
@@ -91,11 +96,12 @@ class CompareProgram(object):
                        families,
                        strands,
                        [eps],
-                       min_reads)
+                       min_reads,
+                       bin_buffer)
 
-    def _run_comparison(self, input_bams, reference, family, strand, eps, min_reads):
+    def _run_comparison(self, input_bams, reference, family, strand, eps, min_reads, bin_buffer):
         fingerprints = (Fingerprint(bam, reference, family, strand, eps, min_reads) for bam in input_bams)
-        comparison = FingerprintComparison(tuple(fingerprints), 100)
+        comparison = FingerprintComparison(tuple(fingerprints), bin_buffer)
         for feature in comparison.to_gff():
             if feature.tags["read_count_min"] == 0:
                 print(format(feature, 'nested'))
@@ -112,7 +118,8 @@ class CompareProgram(object):
                                 self.args.families,
                                 self.args.strands,
                                 self.args.eps,
-                                self.args.min_reads)
+                                self.args.min_reads,
+                                self.args.bin_buffer)
         if self.args.threads == 1:
             for job in jobs:
                 self._run_comparison(*job)
@@ -123,7 +130,7 @@ class CompareProgram(object):
 
 class FingerprintComparison(object):
     """"""
-    def __init__(self, fingerprints, buffer):
+    def __init__(self, fingerprints, buffer=0):
         self.fingerprints = fingerprints
         for f in fingerprints:
             assert type(f) == Fingerprint
