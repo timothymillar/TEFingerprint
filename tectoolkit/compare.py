@@ -72,6 +72,19 @@ class CompareProgram(object):
         else:
             return arguments
 
+    def _return_references(self, input_bams):
+        """
+
+        :param input_bams:
+        :return:
+        """
+        bam_refs = [set(io.read_bam_references(bam)) for bam in input_bams]
+        references = bam_refs[0]
+        for refs in bam_refs[1:]:
+            references = references.intersection(refs)
+        references = list(references)
+        return references
+
     def _build_jobs(self, input_bams, references, families, strands, eps, min_reads, bin_buffer):
         """
 
@@ -84,11 +97,7 @@ class CompareProgram(object):
         :return:
         """
         if references == ['']:
-            bam_refs = [set(io.read_bam_references(bam)) for bam in input_bams]
-            references = bam_refs[0]
-            for refs in bam_refs[1:]:
-                references = references.intersection(refs)
-            references = list(references)
+            references = self._return_references(input_bams)
         else:
             pass
         return product([input_bams],
@@ -100,6 +109,17 @@ class CompareProgram(object):
                        bin_buffer)
 
     def _run_comparison(self, input_bams, reference, family, strand, eps, min_reads, bin_buffer):
+        """
+
+        :param input_bams:
+        :param reference:
+        :param family:
+        :param strand:
+        :param eps:
+        :param min_reads:
+        :param bin_buffer:
+        :return:
+        """
         fingerprints = (Fingerprint(bam, reference, family, strand, eps, min_reads) for bam in input_bams)
         comparison = FingerprintComparison(tuple(fingerprints), bin_buffer)
         for feature in comparison.to_gff():
