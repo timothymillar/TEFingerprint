@@ -17,6 +17,11 @@ class CompareProgram(object):
     """"""
     def __init__(self, arguments):
         self.args = self.parse_args(arguments)
+        if self.args.references == ['']:
+            self.references = self._return_references(self.args.input_bams)
+        else:
+            self.references = self.args.references
+        self.reference_lengths = self._return_reference_lengths(self.references, self.args.input_bams)
 
     def parse_args(self, args):
         """
@@ -85,28 +90,30 @@ class CompareProgram(object):
         references = list(references)
         return references
 
-    def _build_jobs(self, input_bams, references, families, strands, eps, min_reads, bin_buffer):
+    def _return_reference_lengths(self, references, input_bams):
         """
 
-        :param input_bams:
         :param references:
-        :param families:
-        :param strands:
-        :param eps:
-        :param min_reads:
+        :param input_bams:
         :return:
         """
-        if references == ['']:
-            references = self._return_references(input_bams)
-        else:
-            pass
-        return product([input_bams],
-                       references,
-                       families,
-                       strands,
-                       [eps],
-                       min_reads,
-                       bin_buffer)
+        reference_dicts = [io.read_bam_reference_lengths(bam) for bam in input_bams]
+        reference_lengths = {tuple(d[ref] for ref in references) for d in reference_dicts}
+        assert len(reference_lengths) == 1
+        return {ref: length for ref, length in zip(references, reference_lengths.pop())}
+
+    def _build_jobs(self):
+        """
+
+        :return:
+        """
+        return product([self.args.input_bams],
+                       self.references,
+                       self.args.families,
+                       self.args.strands,
+                       [self.args.eps],
+                       self.args.min_reads,
+                       self.args.bin_buffer)
 
     def _run_comparison(self, input_bams, reference, family, strand, eps, min_reads, bin_buffer):
         """
@@ -121,7 +128,8 @@ class CompareProgram(object):
         :return:
         """
         fingerprints = (Fingerprint(bam, reference, family, strand, eps, min_reads) for bam in input_bams)
-        comparison = FingerprintComparison(tuple(fingerprints), bin_buffer)
+        reference_length = self.reference_lengths[reference]
+        comparison = FingerprintComparison(tuple(fingerprints), bin_buffer, reference_length)
         for feature in comparison.to_gff():
             if feature.tags["read_count_min"] == 0:
                 print(format(feature, 'nested'))
@@ -133,13 +141,7 @@ class CompareProgram(object):
 
         :return:
         """
-        jobs = self._build_jobs(self.args.input_bams,
-                                self.args.references,
-                                self.args.families,
-                                self.args.strands,
-                                self.args.eps,
-                                self.args.min_reads,
-                                self.args.bin_buffer)
+        jobs = self._build_jobs()
         if self.args.threads == 1:
             for job in jobs:
                 self._run_comparison(*job)
@@ -150,7 +152,7 @@ class CompareProgram(object):
 
 class FingerprintComparison(object):
     """"""
-    def __init__(self, fingerprints, buffer=0):
+    def __init__(self, fingerprints, buffer, reference_length):
         self.fingerprints = fingerprints
         for f in fingerprints:
             assert type(f) == Fingerprint
@@ -166,7 +168,7 @@ class FingerprintComparison(object):
         self.eps = self.fingerprints[0].eps
         self.min_reads = self.fingerprints[0].min_reads
         self.bin_loci = self._identify_bins()
-        self._buffer_bins(buffer)
+        self._buffer_bins(buffer, reference_length)
 
     def _identify_bins(self):
         """
@@ -178,7 +180,7 @@ class FingerprintComparison(object):
         loci.melt()
         return loci
 
-    def _buffer_bins(self, buffer):
+    def _buffer_bins(self, buffer, reference_length):
         """
         Expands bins by buffer zone.
         :return:
@@ -188,6 +190,8 @@ class FingerprintComparison(object):
         else:
             self.bin_loci.loci['start'] -= buffer
             self.bin_loci.loci['stop'] += buffer
+            self.bin_loci.loci['start'][self.bin_loci.loci['start'] <= 0] = 0
+            self.bin_loci.loci['stop'][self.bin_loci.loci['stop'] >= reference_length] = reference_length
 
     def _compare_bin(self, start, end):
         """
