@@ -8,7 +8,6 @@ import gffutils
 class FilterGffProgram(object):
     def __init__(self, arguments):
         self.args = self.parse_args(arguments)
-        self.run()
 
     def parse_args(self, args):
         """
