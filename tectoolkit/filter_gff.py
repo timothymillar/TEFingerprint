@@ -49,7 +49,7 @@ class FilterGffProgram(object):
         return filt
 
     def run(self):
-        gff_db = GffFilterDB(self.args.input_gff)
+        gff_db = GffFilterDB(self.args.input_gff[0])
         filters = [self._parse_filter(string) for string in self.args.filters]
         gff_db.filter_by_attributes(filters)
         for feature in gff_db.db.all_features():
