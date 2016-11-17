@@ -38,6 +38,8 @@ class FilterGffProgram(object):
             filt['operator'] = '<='
         elif '==' in string:
             filt['operator'] = '=='
+        elif '!=' in string:
+            filt['operator'] = '!='
         elif '>' in string:
             filt['operator'] = '>'
         elif '<' in string:
@@ -77,6 +79,8 @@ class GffFilterDB(object):
     def _apply_filter(self, feature, filt):
         if filt['operator'] == '=':
             return feature.attributes[filt['attribute']][0] == filt['value']
+        if filt['operator'] == '!=':
+            return feature.attributes[filt['attribute']][0] != filt['value']
         elif filt['operator'] == '==':
             return float(feature.attributes[filt['attribute']][0]) == float(filt['value'])
         elif filt['operator'] == '>=':
