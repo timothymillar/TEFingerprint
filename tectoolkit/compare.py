@@ -10,7 +10,6 @@ from tectoolkit import io
 from tectoolkit.classes import ReadLoci
 from tectoolkit.gff import GffFeature
 from tectoolkit.fingerprint import Fingerprint
-from tectoolkit.cluster import FUDC
 
 
 class CompareProgram(object):
@@ -197,14 +196,14 @@ class FingerprintComparison(object):
         :return:
         """
         local_reads = tuple(f.reads.subset_by_locus(start, end) for f in self.fingerprints)
+        local_clusters = tuple(f.loci.subset_by_locus(start, end) for f in self.fingerprints)
         sources = tuple(f.source for f in self.fingerprints)
-        local_read_counts = np.array([len(r) for r in local_reads])
+        local_read_counts = np.array([len(reads) for reads in local_reads])
         read_count_max = max(local_read_counts)
         read_count_min = min(local_read_counts)
         read_presence = sum(local_read_counts != 0)
         read_absence = sum(local_read_counts == 0)
-        local_fingerprints = tuple(FUDC.flat_cluster(r['tip'], self.min_reads, max(self.eps)) for r in local_reads)
-        local_cluster_counts = np.array([len(f) for f in local_fingerprints])
+        local_cluster_counts = np.array([len(loci) for loci in local_clusters])
         cluster_presence = sum(local_cluster_counts != 0)
         cluster_absence = sum(local_cluster_counts == 0)
         bin_dict = {'seqid': self.reference,
@@ -220,9 +219,9 @@ class FingerprintComparison(object):
                     'cluster_presence': cluster_presence,
                     'cluster_absence': cluster_absence}
         sample_dicts = []
-        for number, sample in enumerate(zip(sources, local_fingerprints)):
-            source, fingerprint = sample
-            if len(fingerprint) == 0:
+        for number, sample in enumerate(zip(sources, local_clusters)):
+            source, loci = sample
+            if len(loci) == 0:
                 pass
             else:
                 sample_dicts += [{'seqid': self.reference,
@@ -235,7 +234,7 @@ class FingerprintComparison(object):
                                                                      self.strand,
                                                                      start),
                                   'Name': self.family,
-                                  'sample': source} for start, end in fingerprint]
+                                  'sample': source} for start, end in loci]
         return bin_dict, sample_dicts
 
     def to_gff(self):
