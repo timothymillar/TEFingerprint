@@ -162,7 +162,8 @@ class Fingerprint(object):
                              end=end,
                              strand=self.strand,
                              ID="{0}_{1}_{2}_{3}".format(self.family, self.reference, self.strand, start),
-                             Name=self.family)
+                             Name=self.family,
+                             sample=self.source)
 
 if __name__ == '__main__':
     pass
