@@ -13,15 +13,26 @@ from tectoolkit.cluster import FUDC
 
 
 class FingerprintProgram(object):
-    """"""
+    """Main class for the fingerprint program"""
     def __init__(self, arguments):
+        if self.args.references == ['']:
+            self.references = io.read_bam_references(self.args.input_bam)
+        else:
+            self.references = self.args.references
+        """
+        Init method for :class:`FingerprintProgram`.
+
+        :param arguments: A list of commandline arguments to be parsed for the fingerprint program
+        """
         self.args = self.parse_args(arguments)
 
     def parse_args(self, args):
         """
+        Defines an argument parser to handle commandline inputs for the fingerprint program.
 
-        :param args:
-        :return:
+        :param args: A list of commandline arguments for the fingerprint program
+
+        :return: A dictionary like object of arguments and values for the fingerprint program
         """
         parser = argparse.ArgumentParser('Identify potential TE flanking regions')
         parser.add_argument('input_bam',
@@ -65,7 +76,7 @@ class FingerprintProgram(object):
             sys.exit(0)
         else:
             return arguments
-
+    
     def _build_jobs(self, input_bam, references, families, strands, eps, min_reads):
         """
 
@@ -77,10 +88,6 @@ class FingerprintProgram(object):
         :param min_reads:
         :return:
         """
-        if references == ['']:
-            references = io.read_bam_references(input_bam)
-        else:
-            pass
         return product(input_bam,
                        references,
                        families,
