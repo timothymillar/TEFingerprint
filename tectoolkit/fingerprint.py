@@ -15,6 +15,7 @@ from tectoolkit.cluster import FUDC
 class FingerprintProgram(object):
     """Main class for the fingerprint program"""
     def __init__(self, arguments):
+        self.args = self.parse_args(arguments)
         if self.args.references == ['']:
             self.references = io.read_bam_references(self.args.input_bam)
         else:
@@ -24,7 +25,6 @@ class FingerprintProgram(object):
 
         :param arguments: A list of commandline arguments to be parsed for the fingerprint program
         """
-        self.args = self.parse_args(arguments)
 
     def parse_args(self, args):
         """
