@@ -6,14 +6,22 @@ import gffutils
 
 
 class FilterGffProgram(object):
+    """Main class for the filter_gff program"""
     def __init__(self, arguments):
+        """
+        Init method for :class:`FilterGffProgram`.
+
+        :param arguments: A list of commandline arguments to be parsed for the filter_gff program
+        """
         self.args = self.parse_args(arguments)
 
     def parse_args(self, args):
         """
+        Defines an argument parser to handle commandline inputs for the filter_gff program.
 
-        :param args:
-        :return:
+        :param args: A list of commandline arguments for the filter_gff program
+
+        :return: A dictionary like object of arguments and values for the filter_gff program
         """
         parser = argparse.ArgumentParser('Identify potential TE flanking regions')
         parser.add_argument('input_gff',
@@ -31,6 +39,15 @@ class FilterGffProgram(object):
             return arguments
 
     def _parse_filter(self, string):
+        """
+        Parse a filter string to identify the attribute, operator and value
+
+        :param string: A valid filter string in the form '<attribute><operator><value>'
+        :type string: str
+
+        :return: A dictionary with the keys 'attribute', 'operator' and 'value'
+        :rtype: dict[str, str]
+        """
         filt = {}
         if '>=' in string:
             filt['operator'] = '>='
@@ -50,6 +67,10 @@ class FilterGffProgram(object):
         return filt
 
     def run(self):
+        """
+        Run the filter_gff program with parameters specified in an instance of :class:`FilterGffProgram`.
+        Imports the target gff file, subsets it by specified filters, and prints subset to stdout.
+        """
         gff_db = GffFilterDB(self.args.input_gff[0])
         filters = [self._parse_filter(string) for string in self.args.filters]
         gff_db.filter_by_attributes(filters)
@@ -58,7 +79,7 @@ class FilterGffProgram(object):
 
 
 class GffFilterDB(object):
-    """"""
+    """Subset a gff file using a list of filters"""
     def __init__(self, input_gff):
         self.db = gffutils.create_db(input_gff,
                                      dbfn=':memory:',
