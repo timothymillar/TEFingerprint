@@ -76,8 +76,8 @@ class FingerprintProgram(object):
             sys.exit(0)
         else:
             return arguments
-    
-    def _build_jobs(self, input_bam, references, families, strands, eps, min_reads):
+
+    def _build_jobs(self):
         """
 
         :param input_bam:
@@ -88,12 +88,12 @@ class FingerprintProgram(object):
         :param min_reads:
         :return:
         """
-        return product(input_bam,
-                       references,
-                       families,
-                       strands,
-                       [eps],
-                       min_reads)
+        return product(self.args.input_bam,
+                       self.references,
+                       self.args.families,
+                       self.args.strands,
+                       [self.args.eps],
+                       self.args.min_reads)
 
     def _fingerprint(self, input_bam, reference, family, strand, eps, min_reads):
         """
@@ -115,12 +115,7 @@ class FingerprintProgram(object):
 
         :return:
         """
-        jobs = self._build_jobs(self.args.input_bam,
-                                self.args.references,
-                                self.args.families,
-                                self.args.strands,
-                                self.args.eps,
-                                self.args.min_reads)
+        jobs = self._build_jobs()
         if self.args.threads == 1:
             for job in jobs:
                 self._fingerprint(*job)
