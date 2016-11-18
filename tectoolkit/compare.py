@@ -13,8 +13,13 @@ from tectoolkit.fingerprint import Fingerprint
 
 
 class CompareProgram(object):
-    """"""
+    """Main class for the compare program"""
     def __init__(self, arguments):
+        """
+        Init method for :class:`CompareProgram`.
+
+        :param arguments: A list of commandline arguments to be parsed for the compare program
+        """
         self.args = self.parse_args(arguments)
         if self.args.references == ['']:
             self.references = self._return_references(self.args.input_bams)
@@ -24,9 +29,11 @@ class CompareProgram(object):
 
     def parse_args(self, args):
         """
+        Defines an argument parser to handle commandline inputs for the compare program.
 
-        :param args:
-        :return:
+        :param args: A list of commandline arguments for the compare program
+
+        :return: A dictionary like object of arguments and values for the compare program
         """
         parser = argparse.ArgumentParser('Compare potential TE flanking regions')
         parser.add_argument('input_bams',
@@ -78,9 +85,13 @@ class CompareProgram(object):
 
     def _return_references(self, input_bams):
         """
+        Returns the intersection of references names in sam header for a collection of bam files.
 
-        :param input_bams:
-        :return:
+        :param input_bams: A list of bam file paths
+        :type input_bams: list[str]
+
+        :return: A list of reference names
+        :rtype: list[str]
         """
         bam_refs = [set(io.read_bam_references(bam)) for bam in input_bams]
         references = bam_refs[0]
@@ -91,10 +102,16 @@ class CompareProgram(object):
 
     def _return_reference_lengths(self, references, input_bams):
         """
+        Returns a dictionary of reference lengths for a collection of bam files.
+        Reference lengths must be identical in all bam files.
 
-        :param references:
-        :param input_bams:
-        :return:
+        :param references: A collection of reference names
+        :type references: list[str]
+        :param input_bams: A list of bam file paths
+        :type input_bams: list[str]
+
+        :return: A dictionary of reference lengths with names as keys
+        :rtype: dict[str, int]
         """
         reference_dicts = [io.read_bam_reference_lengths(bam) for bam in input_bams]
         reference_lengths = {tuple(d[ref] for ref in references) for d in reference_dicts}
@@ -103,8 +120,10 @@ class CompareProgram(object):
 
     def _build_jobs(self):
         """
+        Builds a collection of tuples with parameters for compare jobs from class attributes.
 
-        :return:
+        :return: A generator like object of tuples of job parameters
+        :rtype: :class:`itertools.product`
         """
         return product([self.args.input_bams],
                        self.references,
@@ -116,15 +135,24 @@ class CompareProgram(object):
 
     def _run_comparison(self, input_bams, reference, family, strand, eps, min_reads, bin_buffer):
         """
+        Creates a :class:`Fingerprint` for each of a set of bam files and then combines these in an
+        instance of :class:`FingerprintComparison` and prints the GFF3 formatted results to stdout.
 
-        :param input_bams:
-        :param reference:
-        :param family:
-        :param strand:
-        :param eps:
-        :param min_reads:
-        :param bin_buffer:
-        :return:
+        :param input_bams: A list of bam file paths
+        :type input_bams: list[str]
+        :param reference: The target reference name common to all input bam files
+        :type reference: str
+        :param family: The target family/category of TE's to be fingerprinted and compared
+        :type family: str
+        :param strand: The target strand to compared ('+' or '-')
+        :type strand: str
+        :param eps: The eps value(s) to be used in the cluster analysis (:class:`FUDC` for one values
+        or :class:`HUDC` for two values)
+        :type eps: list[int]
+        :param min_reads: Minimum number of reads required to form cluster in cluster analysis
+        :type min_reads: int
+        :param bin_buffer: A value to extend the comparative bins by in both directions
+        :type bin_buffer: int
         """
         fingerprints = (Fingerprint(bam, reference, family, strand, eps, min_reads) for bam in input_bams)
         reference_length = self.reference_lengths[reference]
@@ -134,8 +162,7 @@ class CompareProgram(object):
 
     def run(self):
         """
-
-        :return:
+        Method to run the compare program.
         """
         jobs = self._build_jobs()
         if self.args.threads == 1:
@@ -147,8 +174,18 @@ class CompareProgram(object):
 
 
 class FingerprintComparison(object):
-    """"""
+    """Compare a collection of :class:`fingerprint` objects."""
     def __init__(self, fingerprints, buffer, reference_length):
+        """
+        Init method for :class:`FingerprintComparison`.
+
+        :param fingerprints: a collection of :class:`fingerprint` objects
+        :type fingerprints: tuple[:class:`FingerprintComparison`]
+        :param buffer: A value to extend the comparative bins by in both directions
+        :type buffer: int
+        :param reference_length: The length of the reference used in fingerprints
+        :type reference_length: int
+        """
         self.fingerprints = fingerprints
         for f in fingerprints:
             assert type(f) == Fingerprint
@@ -170,7 +207,9 @@ class FingerprintComparison(object):
         """
         Identifies bins (loci) in which to compare fingerprints from different samples (bam files).
         Bins are calculated by merging the overlapping fingerprints from all samples.
-        :return:
+
+        :return: The union of loci among compared fingerprints
+        :rtype: :class:`ReadLoci`
         """
         loci = reduce(ReadLoci.append, [f.loci for f in self.fingerprints])
         loci.melt()
@@ -178,8 +217,7 @@ class FingerprintComparison(object):
 
     def _buffer_bins(self, buffer, reference_length):
         """
-        Expands bins by buffer zone.
-        :return:
+        Expands comparative bins by buffer zone.
         """
         if buffer == 0:
             pass
@@ -192,8 +230,16 @@ class FingerprintComparison(object):
     def _compare_bin(self, start, end):
         """
         Calculates basic statistics for a given bin (loci) to be compared across samples.
-        Identifies the location of read-tip dense areas for each sample within the bin bounds.
-        :return:
+        Identifies (nested) fingerprint loci that fall within the bin bounds.
+        Collects bin and nested fingerprint loci attributes into dictionaries of parameters for :class:`GffFeature`
+
+        :param start: Start location of comparative bin
+        :type start: int
+        :param end: End location of comparative bin
+        :type end: int
+
+        :return: Bin and nested fingerprint loci attributes
+        :rtype: (dict[str, any], list[dict[str, any]])
         """
         local_reads = tuple(f.reads.subset_by_locus(start, end) for f in self.fingerprints)
         local_clusters = tuple(f.loci.subset_by_locus(start, end) for f in self.fingerprints)
@@ -238,6 +284,13 @@ class FingerprintComparison(object):
         return bin_dict, sample_dicts
 
     def to_gff(self):
+        """
+        Creates :class:`GffFeature` object for each comparative bins in :class:`FingerprintComparison`.
+        Component :class:`Fingerprint` loci found within the comparative bin are included as nested features.
+
+        :return: A generator of nested :class:`GffFeature` objects
+        :rtype: generator[:class:`GffFeature`]
+        """
         for start, end in self.bin_loci:
             bin_dict, sample_dicts = self._compare_bin(start, end)
             feature = GffFeature(**bin_dict)
