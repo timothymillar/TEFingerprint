@@ -34,5 +34,17 @@ def read_bam_references(input_bam):
         references = bam.references
         return references
 
+
+def read_bam_reference_lengths(input_bam):
+    """
+
+    :param input_bam:
+    :return:
+    """
+    with pysam.AlignmentFile(input_bam, 'rb') as bam:
+        references = bam.header['SQ']
+        references = {r['SN']: r['LN'] for r in references}
+        return references
+
 if __name__ == '__main__':
     pass

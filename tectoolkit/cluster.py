@@ -93,7 +93,7 @@ class FUDC(_UnivariateLoci):
         return loci
 
     @staticmethod
-    def _flat_cluster(points, min_pts, eps):
+    def flat_cluster(points, min_pts, eps):
         """
 
         :param points:
@@ -114,7 +114,7 @@ class FUDC(_UnivariateLoci):
         """
         self.points = np.array(points, copy=True)
         self.points.sort()
-        self.loci = FUDC._flat_cluster(self.points, self.min_pts, self.eps)
+        self.loci = FUDC.flat_cluster(self.points, self.min_pts, self.eps)
 
 
 class HUDC(FUDC):
@@ -154,7 +154,7 @@ class HUDC(FUDC):
         if base_locus is None:
             base_locus = (min(points), max(points))
         area += len(points)
-        child_loci = HUDC._flat_cluster(points, min_pts, eps - 1)
+        child_loci = HUDC.flat_cluster(points, min_pts, eps - 1)
         if len(child_loci) == 1:
             # branch doesn't fork
             if eps > min_eps:
@@ -262,7 +262,7 @@ class HUDC(FUDC):
         :param min_eps:
         :return:
         """
-        base_loci = HUDC._flat_cluster(points, min_pts, max_eps)
+        base_loci = HUDC.flat_cluster(points, min_pts, max_eps)
         base_points = (HUDC._locus_points(locus, points) for locus in base_loci)
         loci_generator = (HUDC._single_hierarchical_cluster(points, min_pts, max_eps, min_eps) for points in base_points)
         loci = reduce(np.append, loci_generator)

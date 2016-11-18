@@ -4,7 +4,7 @@
 class GffFeature(object):
     """"""
     def __init__(self,
-                 seqid,
+                 seqid='.',
                  source='.',
                  ftype='.',
                  start='.',
@@ -21,23 +21,23 @@ class GffFeature(object):
         self.score = score
         self.strand = strand
         self.phase = phase
-        self.attributes = kwargs
+        self.tags = kwargs
         self.children = []
 
     def attribute_names(self):
-        return set(self.attributes.keys())
+        return set(self.tags.keys())
 
     def _parse_attributes(self, attributes):
         if attributes is not None:
-            return ';'.join(tuple('{0}={1}'.format(key, value) for key, value in self.attributes.items()))
+            return ';'.join(tuple('{0}={1}'.format(key, value) for key, value in self.tags.items()))
         else:
             return'.'
 
     def add_children(self, *args):
         for child in args:
             assert isinstance(child, GffFeature)
-            assert "ID" in self.attributes
-            child.attributes["Parent"] = self.attributes["ID"]
+            assert "ID" in self.tags
+            child.tags["Parent"] = self.tags["ID"]
             self.children.append(child)
 
     def __str__(self):
@@ -50,7 +50,7 @@ class GffFeature(object):
                                self.score,
                                self.strand,
                                self.phase,
-                               self._parse_attributes(self.attributes))
+                               self._parse_attributes(self.tags))
 
     def _str_nested(self):
         return [self.__str__()] + [child._str_nested() for child in self.children]
@@ -58,7 +58,7 @@ class GffFeature(object):
     def _flatten(self, item):
         """
 
-        :param lst:
+        :param item:
         :return:
         """
         if isinstance(item, list):
