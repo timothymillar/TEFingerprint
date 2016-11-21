@@ -13,8 +13,8 @@ class _UnivariateLoci(object):
         """"""
         self.loci = np.array([], dtype=_UnivariateLoci._ulocus)
 
-    @classmethod
-    def _melt_uloci(cls, loci):
+    @staticmethod
+    def _melt_uloci(loci):
         """
 
         :param loci:
@@ -25,8 +25,8 @@ class _UnivariateLoci(object):
             start = loci['start'][0]
             stop = loci['stop'][0]
             for i in range(1, len(loci)):
-                if (loci['start'][i] <= stop):
-                    if (loci['stop'][i] > stop):
+                if loci['start'][i] <= stop:
+                    if loci['stop'][i] > stop:
                         stop = loci['stop'][i]
                     else:
                         pass
@@ -41,8 +41,8 @@ class _UnivariateLoci(object):
         loci.sort(order=('start', 'stop'))
         return loci
 
-    @classmethod
-    def _locus_points(cls, locus, points):
+    @staticmethod
+    def _locus_points(locus, points):
         """
 
         :param locus:
@@ -61,77 +61,18 @@ class _UnivariateLoci(object):
         self.loci.sort(order=order)
 
 
-class UnivariateLoci(_UnivariateLoci):
-    """"""
-    def __init__(self, loci):
-        """"""
-        self.loci = loci
-
-    def __iter__(self):
-        """"""
-        for locus in self.loci:
-            yield locus
-
-    def __getitem__(self, item):
-        """"""
-        return self.loci[item]
-
-    def __len__(self):
-        """"""
-        return len(self.loci)
-
-    def sort(self, order=('start', 'stop')):
-        """
-
-        :param order:
-        :return:
-        """
-        self.loci.sort(order=order)
-
-    def melt(self):
-        """
-
-        :return:
-        """
-
-        self.sort()
-        self.loci = self._melt_uloci(self.loci)
-
-    @classmethod
-    def from_iterable(cls, iterable):
-        """
-
-        :param iterable:
-        :return:
-        """
-        loci = UnivariateLoci(np.fromiter(iterable, dtype=UnivariateLoci._ulocus))
-        loci.sort()
-        return loci
-
-    @classmethod
-    def append(cls, x, y):
-        """
-
-        :param x:
-        :param y:
-        :return:
-        """
-        loci = UnivariateLoci(np.append(x.loci, y.loci))
-        loci.sort()
-        return loci
-
-
-class FlatUnivariateDensityCluster(_UnivariateLoci):
-    """"""
+class FUDC(_UnivariateLoci):
+    """Flat Univariate Density Cluster"""
     def __init__(self, min_points, eps):
         """"""
         self.min_pts = min_points
         self.eps = eps
-        self.loci = np.array([], dtype=FlatUnivariateDensityCluster._ulocus)
+        self.loci = np.array([], dtype=FUDC._ulocus)
         self.points = np.empty_like
         self.labels = np.array([])
 
-    def _flat_subcluster(self, points, min_pts, eps):
+    @staticmethod
+    def _flat_subcluster(points, min_pts, eps):
         """
 
         :param points:
@@ -148,10 +89,11 @@ class FlatUnivariateDensityCluster(_UnivariateLoci):
         lower = lower[dense]
         upper = upper[dense]
         loci = ((lower[i], upper[i]) for i in range(len(lower)))
-        loci = np.fromiter(loci, dtype=FlatUnivariateDensityCluster._ulocus)
+        loci = np.fromiter(loci, dtype=FUDC._ulocus)
         return loci
 
-    def _flat_cluster(self, points, min_pts, eps):
+    @staticmethod
+    def flat_cluster(points, min_pts, eps):
         """
 
         :param points:
@@ -159,9 +101,9 @@ class FlatUnivariateDensityCluster(_UnivariateLoci):
         :param eps:
         :return:
         """
-        loci = self._flat_subcluster(points, min_pts, eps)
+        loci = FUDC._flat_subcluster(points, min_pts, eps)
         if len(loci) > 1:
-            loci = FlatUnivariateDensityCluster._melt_uloci(loci)
+            loci = FUDC._melt_uloci(loci)
         return loci
 
     def fit(self, points):
@@ -172,11 +114,11 @@ class FlatUnivariateDensityCluster(_UnivariateLoci):
         """
         self.points = np.array(points, copy=True)
         self.points.sort()
-        self.loci = self._flat_cluster(self.points, self.min_pts, self.eps)
+        self.loci = FUDC.flat_cluster(self.points, self.min_pts, self.eps)
 
 
-class HierarchicalUnivariateDensityCluster(FlatUnivariateDensityCluster):
-    """"""
+class HUDC(FUDC):
+    """Hierarchical Univariate Density Cluster"""
     _node_template = {'base_eps': None,
                       'base_locus': (None, None),
                       'area': 0,
@@ -190,11 +132,12 @@ class HierarchicalUnivariateDensityCluster(FlatUnivariateDensityCluster):
         self.min_pts = min_points
         self.max_eps = max_eps
         self.min_eps = min_eps
-        self.loci = np.array([], dtype=FlatUnivariateDensityCluster._ulocus)
+        self.loci = np.array([], dtype=FUDC._ulocus)
         self.points = np.empty_like
         self.labels = np.array([])
 
-    def _grow_tree(self, points, min_pts, eps, min_eps, area=0, base_eps=None, base_locus=None):
+    @staticmethod
+    def _grow_tree(points, min_pts, eps, min_eps, area=0, base_eps=None, base_locus=None):
         """
 
         :param points:
@@ -211,12 +154,12 @@ class HierarchicalUnivariateDensityCluster(FlatUnivariateDensityCluster):
         if base_locus is None:
             base_locus = (min(points), max(points))
         area += len(points)
-        child_loci = self._flat_cluster(points, min_pts, eps - 1)
+        child_loci = HUDC.flat_cluster(points, min_pts, eps - 1)
         if len(child_loci) == 1:
             # branch doesn't fork
             if eps > min_eps:
                 # branch grows
-                return self._grow_tree(points,
+                return HUDC._grow_tree(points,
                                        min_pts,
                                        eps - 1,
                                        min_eps=min_eps,
@@ -225,7 +168,7 @@ class HierarchicalUnivariateDensityCluster(FlatUnivariateDensityCluster):
                                        base_locus=base_locus)
             else:
                 # branch terminates
-                node = HierarchicalUnivariateDensityCluster._node_template.copy()
+                node = HUDC._node_template.copy()
                 node['area'] = area
                 node['base_eps'] = base_eps
                 node['base_locus'] = base_locus
@@ -233,27 +176,29 @@ class HierarchicalUnivariateDensityCluster(FlatUnivariateDensityCluster):
                 return node
         else:
             # branch forks
-            child_points = [self._locus_points(loci, points) for loci in child_loci]
-            node = HierarchicalUnivariateDensityCluster._node_template.copy()
+            child_points = [HUDC._locus_points(loci, points) for loci in child_loci]
+            node = HUDC._node_template.copy()
             node['area'] = area
             node['base_eps'] = base_eps
             node['base_locus'] = base_locus
-            node['children'] = [self._grow_tree(pts, min_pts, eps -1, min_eps=min_eps) for pts in child_points]
+            node['children'] = [HUDC._grow_tree(pts, min_pts, eps - 1, min_eps=min_eps) for pts in child_points]
             return node
 
-    def _child_area(self, node):
+    @staticmethod
+    def _child_area(node):
         """
 
         :param node:
         :return:
         """
         if node['children']:
-            node['child_area'] = sum([self._child_area(n) for n in node['children']])
+            node['child_area'] = sum([HUDC._child_area(n) for n in node['children']])
         else:
             node['child_area'] = 0
         return node['child_area'] + node['area']
 
-    def _select_nodes(self, node):
+    @staticmethod
+    def _select_nodes(node):
         """
 
         :param node:
@@ -263,9 +208,10 @@ class HierarchicalUnivariateDensityCluster(FlatUnivariateDensityCluster):
             node['selected'] = True
         else:
             for node in node['children']:
-                self._select_nodes(node)
+                HUDC._select_nodes(node)
 
-    def _retrieve_selected_loci(self, node):
+    @staticmethod
+    def _retrieve_selected_loci(node):
         """
 
         :param node:
@@ -274,22 +220,24 @@ class HierarchicalUnivariateDensityCluster(FlatUnivariateDensityCluster):
         if node['selected']:
             return node['base_locus']
         elif node['children']:
-            return [self._retrieve_selected_loci(node) for node in node['children']]
+            return [HUDC._retrieve_selected_loci(node) for node in node['children']]
 
-    def _flatten(self, item):
+    @staticmethod
+    def _flatten_list(item):
         """
 
-        :param lst:
+        :param item:
         :return:
         """
         if isinstance(item, list):
             for element in item:
-                for item in self._flatten(element):
+                for item in HUDC._flatten_list(element):
                     yield item
         else:
             yield item
 
-    def _single_hierarchical_cluster(self, points, min_pts, max_eps, min_eps):
+    @staticmethod
+    def _single_hierarchical_cluster(points, min_pts, max_eps, min_eps):
         """
 
         :param points:
@@ -298,13 +246,14 @@ class HierarchicalUnivariateDensityCluster(FlatUnivariateDensityCluster):
         :param min_eps:
         :return:
         """
-        tree = self._grow_tree(points, min_pts, max_eps, min_eps)
-        self._child_area(tree)
-        self._select_nodes(tree)
-        loci = self._flatten(self._retrieve_selected_loci(tree))
-        return np.fromiter(loci, dtype=HierarchicalUnivariateDensityCluster._ulocus)
+        tree = HUDC._grow_tree(points, min_pts, max_eps, min_eps)
+        HUDC._child_area(tree)
+        HUDC._select_nodes(tree)
+        loci = HUDC._flatten_list(HUDC._retrieve_selected_loci(tree))
+        return np.fromiter(loci, dtype=HUDC._ulocus)
 
-    def _hierarchical_cluster(self, points, min_pts, max_eps, min_eps):
+    @staticmethod
+    def _hierarchical_cluster(points, min_pts, max_eps, min_eps):
         """
 
         :param points:
@@ -313,9 +262,9 @@ class HierarchicalUnivariateDensityCluster(FlatUnivariateDensityCluster):
         :param min_eps:
         :return:
         """
-        base_loci = self._flat_cluster(points, min_pts, max_eps)
-        base_points = (HierarchicalUnivariateDensityCluster._locus_points(locus, points) for locus in base_loci)
-        loci_generator = (self._single_hierarchical_cluster(points, min_pts, max_eps, min_eps) for points in base_points)
+        base_loci = HUDC.flat_cluster(points, min_pts, max_eps)
+        base_points = (HUDC._locus_points(locus, points) for locus in base_loci)
+        loci_generator = (HUDC._single_hierarchical_cluster(points, min_pts, max_eps, min_eps) for points in base_points)
         loci = reduce(np.append, loci_generator)
         return loci
 
@@ -327,7 +276,7 @@ class HierarchicalUnivariateDensityCluster(FlatUnivariateDensityCluster):
         """
         self.points = np.array(points, copy=True)
         self.points.sort()
-        self.loci = self._hierarchical_cluster(self.points, self.min_pts, self.max_eps, self.min_eps)
+        self.loci = HUDC._hierarchical_cluster(self.points, self.min_pts, self.max_eps, self.min_eps)
 
 if __name__ == '__main__':
     pass

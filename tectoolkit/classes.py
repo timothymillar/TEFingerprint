@@ -1,6 +1,8 @@
 #! /usr/bin/env python
 
 import numpy as np
+from tectoolkit.cluster import _UnivariateLoci
+from tectoolkit.gff import GffFeature
 
 
 class ReadGroup(object):
@@ -11,7 +13,7 @@ class ReadGroup(object):
                      ('name', np.str_, 254)])
 
     def __init__(self, reads):
-        self.reads = reads
+        self.reads = np.array(reads, dtype=ReadGroup.read, copy=True)
 
     def __iter__(self):
         for read in self.reads:
@@ -42,7 +44,7 @@ class ReadGroup(object):
         else:
             return variation.pop()
 
-    def sub_group_by_locus(self, start, stop, margin=0, end='tip'):
+    def subset_by_locus(self, start, stop, margin=0, end='tip'):
         """
 
         :param start:
@@ -152,22 +154,23 @@ class ReadGroup(object):
         return ReadGroup(reads)
 
 
-class ReferenceLoci(object):
+class ReadLoci(_UnivariateLoci):
     """"""
-    locus = np.dtype([('start', np.int64),
-                      ('stop', np.int64)])
-
     def __init__(self, loci):
-        self.loci = loci
+        """"""
+        self.loci = np.array(loci, dtype=ReadLoci._ulocus, copy=True)
 
     def __iter__(self):
+        """"""
         for locus in self.loci:
             yield locus
 
     def __getitem__(self, item):
+        """"""
         return self.loci[item]
 
     def __len__(self):
+        """"""
         return len(self.loci)
 
     def sort(self, order=('start', 'stop')):
@@ -178,27 +181,43 @@ class ReferenceLoci(object):
         """
         self.loci.sort(order=order)
 
-    def merge_overlapping(self):
+    def melt(self):
         """
 
         :return:
         """
 
-        def merge(loci):
-            self.sort()
-            start = loci['start'][0]
-            stop = loci['stop'][0]
-            for i in range(1, len(loci)):
-                if loci['start'][i] <= stop:
-                    stop = loci['stop'][i]
-                else:
-                    yield start, stop
-                    start = loci['start'][i]
-                    stop = loci['stop'][i]
-            yield start, stop
-
         self.sort()
-        self.loci = np.fromiter(merge(self.loci), dtype=ReferenceLoci.locus)
+        self.loci = self._melt_uloci(self.loci)
+
+    def subset_by_locus(self, start, stop, margin=0, end='start'):
+        """
+
+        :param start:
+        :param stop:
+        :param margin:
+        :param end:
+        :return:
+        """
+        assert end in {'start', 'stop'}
+        start -= margin
+        stop += margin
+        loci = self.loci[np.logical_and(self.loci[end] >= start, self.loci[end] <= stop)]
+        return ReadLoci(loci)
+
+    def as_gff(self, *args, **kwargs):
+        return [GffFeature(*args, start=locus[0], end=locus[1], **kwargs) for locus in self.loci]
+
+    @classmethod
+    def from_iterable(cls, iterable):
+        """
+
+        :param iterable:
+        :return:
+        """
+        loci = ReadLoci(np.fromiter(iterable, dtype=ReadLoci._ulocus))
+        loci.sort()
+        return loci
 
     @classmethod
     def append(cls, x, y):
@@ -208,87 +227,9 @@ class ReferenceLoci(object):
         :param y:
         :return:
         """
-        loci = ReferenceLoci(np.append(x.loci, y.loci))
+        loci = ReadLoci(np.append(x.loci, y.loci))
         loci.sort()
         return loci
-
-    @classmethod
-    def from_simple_subcluster(cls, points, minpts, eps):
-        """
-
-        :param points:
-        :param minpts:
-        :param eps:
-        :return:
-        """
-        points.sort()
-        offset = minpts - 1
-        upper = points[offset:]
-        lower = points[:-offset]
-        diff = upper - lower
-        dense = diff <= eps
-        lower = lower[dense]
-        upper = upper[dense]
-        loci = ((lower[i], upper[i]) for i in range(len(lower)))
-        loci = np.fromiter(loci, dtype=ReferenceLoci.locus)
-        return ReferenceLoci(loci)
-
-    @classmethod
-    def from_simple_cluster(cls, points, minpts, eps):
-        """
-
-        :param points:
-        :param minpts:
-        :param eps:
-        :return:
-        """
-        reference_loci = cls.from_simple_subcluster(points, minpts, eps)
-        reference_loci.merge_overlapping()
-        return reference_loci
-
-
-class GffFeature(object):
-    """"""
-    def __init__(self,
-                 seqid,
-                 source='.',
-                 ftype='.',
-                 start='.',
-                 end='.',
-                 score='.',
-                 strand='.',
-                 phase='.',
-                 **kwargs):
-        self.seqid = seqid
-        self.source = source
-        self.type = ftype
-        self.start = start
-        self.end = end
-        self.score = score
-        self.strand = strand
-        self.phase = phase
-        self.attributes = kwargs
-
-    def attribute_names(self):
-        return set(self.attributes.keys())
-
-    def _parse_attributes(self, attributes):
-        if attributes is not None:
-            return ';'.join(tuple('{0}={1}'.format(key, value) for key, value in self.attributes.items()))
-        else:
-            return'.'
-
-    def __str__(self):
-        template = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}"
-        return template.format(self.seqid,
-                               self.source,
-                               self.type,
-                               self.start,
-                               self.end,
-                               self.score,
-                               self.strand,
-                               self.phase,
-                               self._parse_attributes(self.attributes))
 
 if __name__ == '__main__':
     pass
