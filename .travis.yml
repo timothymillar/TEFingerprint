@@ -2,6 +2,11 @@ language: python
 python:
   - "3.5"
 
-install: "pip install -r requirements.txt"
-
+install:
+  - wget https://repo.continuum.io/miniconda/Miniconda2-4.0.5-Linux-x86.sh
+  - bash miniconda.sh -b -p $HOME/miniconda
+  - export PATH="$HOME/miniconda/bin:$PATH"
+  - conda config --set always_yes yes --set changeps1 no
+  - conda env create -f environment.yml -n test-environment
+  - source activate test-environment
 script: pytest
