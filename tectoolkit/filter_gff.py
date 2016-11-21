@@ -150,7 +150,7 @@ class GffFilterDB(object):
         """
         if filt['operator'] == '=':
             return feature.attributes[filt['attribute']][0] == filt['value']
-        if filt['operator'] == '!=':
+        elif filt['operator'] == '!=':
             return feature.attributes[filt['attribute']][0] != filt['value']
         elif filt['operator'] == '==':
             return float(feature.attributes[filt['attribute']][0]) == float(filt['value'])
