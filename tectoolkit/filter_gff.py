@@ -81,27 +81,29 @@ class FilterGffProgram(object):
         Run the filter_gff program with parameters specified in an instance of :class:`FilterGffProgram`.
         Imports the target gff file, subsets it by specified filters, and prints subset to stdout.
         """
-        gff_db = GffFilterDB(self.args.input_gff[0])
+        db = GffFilterDB(gffutils.create_db(self.args.input_gff[0],
+                                            dbfn=':memory:',
+                                            keep_order=True,
+                                            merge_strategy='merge',
+                                            sort_attribute_values=True))
         filters = [self._parse_filter(string) for string in self.args.filters]
-        gff_db.filter_by_attributes(filters)
-        for feature in gff_db.db.all_features():
-            print(feature)
+        db.filter_by_attributes(filters)
+        print(db)
 
 
 class GffFilterDB(object):
     """Subset a gff file using a list of filters."""
-    def __init__(self, input_gff):
+    def __init__(self, db):
         """
         Init method for :class:`GffFilterDB`.
 
         :param input_gff: GFF file to be read into database for sub-setting.
         :type input_gff: str
         """
-        self.db = gffutils.create_db(input_gff,
-                                     dbfn=':memory:',
-                                     keep_order=True,
-                                     merge_strategy='merge',
-                                     sort_attribute_values=True)
+        self.db = db
+
+    def __str__(self):
+        return '\n'.join([str(feature) for feature in self.db.all_features()])
 
     def descendants(self, feature):
         """
