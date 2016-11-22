@@ -150,8 +150,31 @@ class TestGffFilterDB:
         assert filter_db.matches_filter(query, filt) is False
 
     def test_matches_filters(self):
-        """matches_filters"""
-        pass
+        """
+        Test for method matches_filters.
+        """
+        filter_db = GffFilterDB(gffutils.create_db(GFF_UNSORTED,
+                                                   dbfn=':memory:',
+                                                   keep_order=True,
+                                                   from_string=True,
+                                                   merge_strategy='merge',
+                                                   sort_attribute_values=True))
+
+        feature = filter_db.db['bin_Gypsy_chr11_-_10275156']
+
+        # feature matches all filters
+        filters = [{'attribute': 'Name', 'operator': '=', 'value': 'Gypsy'},
+                   {'attribute': 'Name', 'operator': '!=', 'value': 'Copia'},
+                   {'attribute': 'read_count_max', 'operator': '>=', 'value': '31'},
+                   {'attribute': 'read_count_max', 'operator': '<', 'value': '32'}]
+        assert filter_db.matches_filters(feature, filters) is True
+
+        # feature does not matches all filters
+        filters = [{'attribute': 'Name', 'operator': '=', 'value': 'Gypsy'},
+                   {'attribute': 'Name', 'operator': '!=', 'value': 'Copia'},
+                   {'attribute': 'read_count_max', 'operator': '>=', 'value': '32'},  # feature does not matches filter
+                   {'attribute': 'read_count_max', 'operator': '<', 'value': '32'}]
+        assert filter_db.matches_filters(feature, filters) is False
 
     def test_relative_matches_filters(self):
         """relative_matches_filters"""
