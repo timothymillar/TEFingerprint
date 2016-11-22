@@ -97,12 +97,18 @@ class GffFilterDB(object):
         """
         Init method for :class:`GffFilterDB`.
 
-        :param input_gff: GFF file to be read into database for sub-setting.
-        :type input_gff: str
+        :param db: GFF db to be filtered.
+        :type db: :class:`gffutils.FeatureDB`
         """
         self.db = db
 
     def __str__(self):
+        """
+        String method for :class:`GffFilterDB`.
+
+        :return: String of every :class:`gffutils.feature.Feature` in the :class:`GffFilterDB`
+        :rtype: str
+        """
         return '\n'.join([str(feature) for feature in self.db.all_features()])
 
     def descendants(self, feature):
