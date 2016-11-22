@@ -152,6 +152,7 @@ class TestGffFilterDB:
     def test_matches_filters(self):
         """
         Test for method matches_filters.
+        Tests a case where feature matches all filters and a case where feature does not match all filters.
         """
         filter_db = GffFilterDB(gffutils.create_db(GFF_UNSORTED,
                                                    dbfn=':memory:',
@@ -160,9 +161,8 @@ class TestGffFilterDB:
                                                    merge_strategy='merge',
                                                    sort_attribute_values=True))
 
-        feature = filter_db.db['bin_Gypsy_chr11_-_10275156']
-
         # feature matches all filters
+        feature = filter_db.db['bin_Gypsy_chr11_-_10275156']
         filters = [{'attribute': 'Name', 'operator': '=', 'value': 'Gypsy'},
                    {'attribute': 'Name', 'operator': '!=', 'value': 'Copia'},
                    {'attribute': 'read_count_max', 'operator': '>=', 'value': '31'},
@@ -170,6 +170,7 @@ class TestGffFilterDB:
         assert filter_db.matches_filters(feature, filters) is True
 
         # feature does not matches all filters
+        feature = filter_db.db['bin_Gypsy_chr11_-_10275156']
         filters = [{'attribute': 'Name', 'operator': '=', 'value': 'Gypsy'},
                    {'attribute': 'Name', 'operator': '!=', 'value': 'Copia'},
                    {'attribute': 'read_count_max', 'operator': '>=', 'value': '32'},  # feature does not matches filter
