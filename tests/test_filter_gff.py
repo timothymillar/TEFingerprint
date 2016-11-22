@@ -50,16 +50,42 @@ class TestGffFilterDB:
                                             from_string=True,
                                             merge_strategy='merge',
                                             sort_attribute_values=True))
-        print(db)
         assert str(db) == GFF_SORTED
 
     def test_descendants(self):
-        """descendants"""
-        pass
+        """
+        Test for method descendants.
+        This method returns a generator of :class:`gffutils.Feature` which should be coerced to a
+        list of feature ids for comparison.
+        """
+        filter_db = GffFilterDB(gffutils.create_db(GFF_UNSORTED,
+                                                   dbfn=':memory:',
+                                                   keep_order=True,
+                                                   from_string=True,
+                                                   merge_strategy='merge',
+                                                   sort_attribute_values=True))
+        query = filter_db.db['bin_Gypsy_chr11_-_10275156']  # Get feature object by ID
+        answer = ['0_Gypsy_chr11_-_10275256',
+                  '0_Gypsy_chr11_-_10276179',
+                  '1_Gypsy_chr11_-_10275392',
+                  '2_Gypsy_chr11_-_10275513']
+        assert [descendant.id for descendant in filter_db.descendants(query)] == answer
 
     def test_ancestors(self):
-        """ancestors"""
-        pass
+        """
+        Test for method ancestors.
+        This method returns a generator of :class:`gffutils.Feature` which should be coerced to a
+        list of feature ids for comparison.
+        """
+        filter_db = GffFilterDB(gffutils.create_db(GFF_UNSORTED,
+                                                   dbfn=':memory:',
+                                                   keep_order=True,
+                                                   from_string=True,
+                                                   merge_strategy='merge',
+                                                   sort_attribute_values=True))
+        query = filter_db.db['1_Gypsy_chr11_-_10275392']  # Get feature object by ID
+        answer = ['bin_Gypsy_chr11_-_10275156']
+        assert [ancestor.id for ancestor in filter_db.ancestors(query)] == answer
 
     def test_matches_filter(self):
         """matches_filter"""
