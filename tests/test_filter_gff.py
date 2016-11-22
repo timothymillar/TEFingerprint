@@ -44,13 +44,13 @@ class TestGffFilterDB:
         This method should return an identical GFF formatted string to the input to the database
         with the exception that attributes should be ordered consistently.
         """
-        db = GffFilterDB(gffutils.create_db(GFF_UNSORTED,
+        gff_db = GffFilterDB(gffutils.create_db(GFF_UNSORTED,
                                             dbfn=':memory:',
                                             keep_order=True,
                                             from_string=True,
                                             merge_strategy='merge',
                                             sort_attribute_values=True))
-        assert str(db) == GFF_SORTED
+        assert str(gff_db) == GFF_SORTED
 
     def test_descendants(self):
         """
@@ -64,12 +64,12 @@ class TestGffFilterDB:
                                                    from_string=True,
                                                    merge_strategy='merge',
                                                    sort_attribute_values=True))
-        query = filter_db.db['bin_Gypsy_chr11_-_10275156']  # Get feature object by ID
+        feature = filter_db.db['bin_Gypsy_chr11_-_10275156']  # Get feature object by ID
         answer = ['0_Gypsy_chr11_-_10275256',
                   '0_Gypsy_chr11_-_10276179',
                   '1_Gypsy_chr11_-_10275392',
                   '2_Gypsy_chr11_-_10275513']
-        assert [descendant.id for descendant in filter_db.descendants(query)] == answer
+        assert [descendant.id for descendant in filter_db.descendants(feature)] == answer
 
     def test_ancestors(self):
         """
@@ -83,9 +83,9 @@ class TestGffFilterDB:
                                                    from_string=True,
                                                    merge_strategy='merge',
                                                    sort_attribute_values=True))
-        query = filter_db.db['1_Gypsy_chr11_-_10275392']  # Get feature object by ID
+        feature = filter_db.db['1_Gypsy_chr11_-_10275392']  # Get feature object by ID
         answer = ['bin_Gypsy_chr11_-_10275156']
-        assert [ancestor.id for ancestor in filter_db.ancestors(query)] == answer
+        assert [ancestor.id for ancestor in filter_db.ancestors(feature)] == answer
 
     def test_matches_filter(self):
         """
@@ -100,54 +100,54 @@ class TestGffFilterDB:
                                                    sort_attribute_values=True))
 
         # Check if string values are equivalent they are ('Gypsy'=='Gypsy')
-        query = filter_db.db['bin_Gypsy_chr11_-_10275156']  # Get feature object by ID
+        feature = filter_db.db['bin_Gypsy_chr11_-_10275156']  # Get feature object by ID
         filt = {'attribute': 'Name', 'operator': '=', 'value': 'Gypsy'}  # Name=Gypsy
-        assert filter_db.matches_filter(query, filt) is True
+        assert filter_db.matches_filter(feature, filt) is True
 
         # Check if string values are equal, they are not('31'=='31.0')
-        query = filter_db.db['bin_Gypsy_chr11_-_10275156']
+        feature = filter_db.db['bin_Gypsy_chr11_-_10275156']
         filt = {'attribute': 'read_count_max', 'operator': '=', 'value': '31.0'}  # Note floating point
-        assert filter_db.matches_filter(query, filt) is False
+        assert filter_db.matches_filter(feature, filt) is False
 
         # Check if string values are not equivalent they are not not equivalent ('Gypsy'!='Gypsy')
-        query = filter_db.db['bin_Gypsy_chr11_-_10275156']
+        feature = filter_db.db['bin_Gypsy_chr11_-_10275156']
         filt = {'attribute': 'Name', 'operator': '!=', 'value': 'Gypsy'}  # Name=Gypsy
-        assert filter_db.matches_filter(query, filt) is False
+        assert filter_db.matches_filter(feature, filt) is False
 
         # Check if string values are not equivalent they are are not equivalent ('Gypsy'!='Copia')
-        query = filter_db.db['bin_Gypsy_chr11_-_10275156']
+        feature = filter_db.db['bin_Gypsy_chr11_-_10275156']
         filt = {'attribute': 'Name', 'operator': '!=', 'value': 'Copia'}  # Name=Copia
-        assert filter_db.matches_filter(query, filt) is True
+        assert filter_db.matches_filter(feature, filt) is True
 
         # Check if numerical values are equal, they are (31==31.0)
-        query = filter_db.db['bin_Gypsy_chr11_-_10275156']
+        feature = filter_db.db['bin_Gypsy_chr11_-_10275156']
         filt = {'attribute': 'read_count_max', 'operator': '==', 'value': '31.0'}  # Note floating point
-        assert filter_db.matches_filter(query, filt) is True
+        assert filter_db.matches_filter(feature, filt) is True
 
         # Check if numerical values are equal, they are not (31==32)
-        query = filter_db.db['bin_Gypsy_chr11_-_10275156']
+        feature = filter_db.db['bin_Gypsy_chr11_-_10275156']
         filt = {'attribute': 'read_count_max', 'operator': '==', 'value': '32'}
-        assert filter_db.matches_filter(query, filt) is False
+        assert filter_db.matches_filter(feature, filt) is False
 
         # Check if numerical value is greater, it is (31>30)
-        query = filter_db.db['bin_Gypsy_chr11_-_10275156']
+        feature = filter_db.db['bin_Gypsy_chr11_-_10275156']
         filt = {'attribute': 'read_count_max', 'operator': '>', 'value': '30'}
-        assert filter_db.matches_filter(query, filt) is True
+        assert filter_db.matches_filter(feature, filt) is True
 
         # Check if numerical value is greater, it is not (31>31)
-        query = filter_db.db['bin_Gypsy_chr11_-_10275156']
+        feature = filter_db.db['bin_Gypsy_chr11_-_10275156']
         filt = {'attribute': 'read_count_max', 'operator': '>', 'value': '31'}
-        assert filter_db.matches_filter(query, filt) is False
+        assert filter_db.matches_filter(feature, filt) is False
 
         # Check if numerical value is less, it is (31<32)
-        query = filter_db.db['bin_Gypsy_chr11_-_10275156']
+        feature = filter_db.db['bin_Gypsy_chr11_-_10275156']
         filt = {'attribute': 'read_count_max', 'operator': '<', 'value': '32'}
-        assert filter_db.matches_filter(query, filt) is True
+        assert filter_db.matches_filter(feature, filt) is True
 
         # Check if numerical value is less, it is not (31<30)
-        query = filter_db.db['bin_Gypsy_chr11_-_10275156']
+        feature = filter_db.db['bin_Gypsy_chr11_-_10275156']
         filt = {'attribute': 'read_count_max', 'operator': '<', 'value': '30'}
-        assert filter_db.matches_filter(query, filt) is False
+        assert filter_db.matches_filter(feature, filt) is False
 
     def test_matches_filters(self):
         """
