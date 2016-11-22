@@ -35,6 +35,11 @@ chr11\t.\t.\t1177377\t1177778\t.\t-\t.\tName=hAT;ID=0_hAT_chr11_-_1177377;sample
 chr11\t.\t.\t1177894\t1178429\t.\t-\t.\tName=hAT;ID=bin_hAT_chr11_-_1177894;read_count_max=20;read_count_min=0;cluster_absence=2;read_presence=1;cluster_presence=1;read_absence=2
 chr11\t.\t.\t1177994\t1178329\t.\t-\t.\tName=hAT;ID=0_hAT_chr11_-_1177994;sample=Regen_49_danglers.vitis.bwa_mem.bam;Parent=bin_hAT_chr11_-_1177894"""
 
+GFF_SINGLE_CLUSTERS_WITH_20_READS = """chr11\t.\t.\t1177277\t1177878\t.\t-\t.\tName=hAT;ID=bin_hAT_chr11_-_1177277;read_count_max=45;read_count_min=0;cluster_absence=2;read_presence=1;cluster_presence=1;read_absence=2
+chr11\t.\t.\t1177377\t1177778\t.\t-\t.\tName=hAT;ID=0_hAT_chr11_-_1177377;sample=Regen_49_danglers.vitis.bwa_mem.bam;Parent=bin_hAT_chr11_-_1177277
+chr11\t.\t.\t1177894\t1178429\t.\t-\t.\tName=hAT;ID=bin_hAT_chr11_-_1177894;read_count_max=20;read_count_min=0;cluster_absence=2;read_presence=1;cluster_presence=1;read_absence=2
+chr11\t.\t.\t1177994\t1178329\t.\t-\t.\tName=hAT;ID=0_hAT_chr11_-_1177994;sample=Regen_49_danglers.vitis.bwa_mem.bam;Parent=bin_hAT_chr11_-_1177894"""
+
 
 class TestGffFilterDB:
     """Tests for class GffFilterDB"""
@@ -44,13 +49,13 @@ class TestGffFilterDB:
         This method should return an identical GFF formatted string to the input to the database
         with the exception that attributes should be ordered consistently.
         """
-        gff_db = GffFilterDB(gffutils.create_db(GFF_UNSORTED,
-                                            dbfn=':memory:',
-                                            keep_order=True,
-                                            from_string=True,
-                                            merge_strategy='merge',
-                                            sort_attribute_values=True))
-        assert str(gff_db) == GFF_SORTED
+        filter_db = GffFilterDB(gffutils.create_db(GFF_UNSORTED,
+                                                   dbfn=':memory:',
+                                                   keep_order=True,
+                                                   from_string=True,
+                                                   merge_strategy='merge',
+                                                   sort_attribute_values=True))
+        assert str(filter_db) == GFF_SORTED
 
     def test_descendants(self):
         """
@@ -179,7 +184,7 @@ class TestGffFilterDB:
 
     def test_relative_matches_filters(self):
         """
-        Test for method relative_matches_filters
+        Test for method relative_matches_filters.
         """
         filter_db = GffFilterDB(gffutils.create_db(GFF_UNSORTED,
                                                    dbfn=':memory:',
@@ -214,5 +219,19 @@ class TestGffFilterDB:
         assert filter_db.relative_matches_filters(feature, filters) is True
 
     def test_filter_by_attributes(self):
-        """filter_by_attributes"""
-        pass
+        """
+        Test for method filter_by_attributes.
+        This method mutates the :class:`gffutils.FeatureDB` in place.
+        This test selects features that meet the filters 'cluster_presence=1' and 'read_count_max>=20'
+        as well as relatives (descendants or ancestors) of those features.
+        """
+        filter_db = GffFilterDB(gffutils.create_db(GFF_UNSORTED,
+                                                   dbfn=':memory:',
+                                                   keep_order=True,
+                                                   from_string=True,
+                                                   merge_strategy='merge',
+                                                   sort_attribute_values=True))
+        filters = [{'attribute': 'cluster_presence', 'operator': '=', 'value': '1'},
+                   {'attribute': 'read_count_max', 'operator': '>=', 'value': '20'}]
+        filter_db.filter_by_attributes(filters)
+        assert str(filter_db) == GFF_SINGLE_CLUSTERS_WITH_20_READS
