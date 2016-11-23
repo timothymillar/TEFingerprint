@@ -6,23 +6,64 @@ from tectoolkit.gff import GffFeature
 
 
 class ReadGroup(object):
-    """"""
-    read = np.dtype([('tip', np.int64),
-                     ('tail', np.int64),
-                     ('strand', np.str_, 1),
-                     ('name', np.str_, 254)])
+    """
+    A collection of mapped SAM read positions. This class does not contain read sequences.
+
+    Each read is represented as a single element in a numpy array with the following slots:
+     - tip: np.int64
+     - tail: np.int64
+     - strand: np.str_, 1
+     - name: np.str_, 256
+    Where 'tip' and 'tail' are the coordinates (1 based indexing) of the read mapped to its reference,
+    'strand' is a single character ('-' or '+') indicating the strand the read mapped to
+    and 'name' is a string of up to 256 characters containing the read name.
+    """
+    DTYPE_READ = np.dtype([('tip', np.int64),
+                           ('tail', np.int64),
+                           ('strand', np.str_, 1),
+                           ('name', np.str_, 254)])
 
     def __init__(self, reads):
-        self.reads = np.array(reads, dtype=ReadGroup.read, copy=True)
+        """
+        Init method for :class:`ReadGroup`.
+
+        :param reads: A numpy array.
+        :type reads: :class:`numpy.ndarray`[(int, int, str, str)]
+        """
+        self.reads = np.array(reads, dtype=ReadGroup.DTYPE_READ, copy=True)
 
     def __iter__(self):
+        """
+        Iter method for :class:`ReadGroup`.
+        Passes through to wrapped numpy array.
+
+        :return: An iterable of mapped SAM read positions and names
+        :rtype: generator[(int, int, str, str)]
+        """
         for read in self.reads:
             yield read
 
     def __getitem__(self, item):
+        """
+        Getitem method for :class:`ReadGroup`.
+        Passes through to wrapped numpy array.
+
+        :param item:
+        :type item: int | slice | str | numpy.ndarray[int] | numpy.ndarray[bool]
+
+        :return: An numpy array with dtype = :class:`ReadGroup`.DTYPE_READ
+        :rtype: :class:`numpy.ndarray`[(int, int, str, str)]
+        """
         return self.reads[item]
 
     def __len__(self):
+        """
+        Len method for :class:`ReadGroup`.
+        Passes through to wrapped numpy array.
+
+        :return: Number of reads in group
+        :rtype: int
+        """
         return len(self.reads)
 
     def sort(self, order='tip'):
@@ -35,8 +76,10 @@ class ReadGroup(object):
 
     def strand(self):
         """
+        Identifies the consensus strand of all reads in the group.
 
-        :return:
+        :return: '+', '-' or '.' respectively if all reads are on forwards, reverse or combination of strands
+        :rtype: str
         """
         variation = set(self.reads['strand'])
         if len(variation) > 1:
@@ -46,12 +89,18 @@ class ReadGroup(object):
 
     def subset_by_locus(self, start, stop, margin=0, end='tip'):
         """
+        Returns a new ReadGroup object containing (the specified end of) all reads within specified (inclusive) bounds.
 
-        :param start:
-        :param stop:
-        :param margin:
-        :param end:
-        :return:
+        :param start: Lower bound
+        :type start: int
+        :param stop: Upper bound
+        :type stop: int
+        :param margin: A value to extend both bounds by, defaults to 0
+        :param end: The read end that must fall within the bounds, must be 'tip' or 'tail', defaults to 'tip'
+        :type end: str
+
+        :return: The subset of reads that fall within the specified bounds
+        :rtype: :class:`ReadGroup`
         """
         assert end in {'tip', 'tail'}
         start -= margin
@@ -149,7 +198,7 @@ class ReadGroup(object):
         :return:
         """
         reads = cls._parse_sam_strings(strings, single_strand=strand)
-        reads = np.fromiter(reads, dtype=ReadGroup.read)
+        reads = np.fromiter(reads, dtype=ReadGroup.DTYPE_READ)
         reads.sort(order=('tip', 'tail'))
         return ReadGroup(reads)
 
