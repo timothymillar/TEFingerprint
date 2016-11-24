@@ -111,9 +111,13 @@ class ReadGroup(object):
     @classmethod
     def _parse_sam_flag(cls, flag):
         """
+        Parses a SAM flag into a boolean array.
 
-        :param flag:
-        :return:
+        :param flag: SAM flag
+        :type flag: int
+
+        :return: Boolean array
+        :rtype: :class:`numpy.array`[bool]
         """
         attributes = np.zeros(12, dtype=np.bool)
         bits = np.fromiter(map(int, tuple(bin(int(flag)))[:1:-1]), dtype=np.bool)
@@ -123,9 +127,13 @@ class ReadGroup(object):
     @classmethod
     def _flag_orientation(cls, flag):
         """
+        Determines whether a SAM flag indicates that its read is on the forward or reverse strand.
 
-        :param flag:
-        :return:
+        :param flag: SAM flag
+        :type flag: int
+
+        :return: '+', '-' or None
+        :rtype: str | None
         """
         attributes = cls._parse_sam_flag(flag)
         if attributes[2]:  # read is unmapped
@@ -137,6 +145,15 @@ class ReadGroup(object):
 
     @classmethod
     def _flag_attributes(cls, flag):
+        """
+        Parses a SAM flag into a dictionary with attributes as keys and booleans as values.
+
+        :param flag: SAM flag
+        :type flag: int
+
+        :return: Dictionary with attributes as keys and booleans as values
+        :rtype: dict[str, bool]
+        """
         attributes = ("read paired",
                       "read mapped in proper pair",
                       "read unmapped mate unmapped",
@@ -154,19 +171,18 @@ class ReadGroup(object):
     @classmethod
     def _parse_sam_strings(cls, strings, single_strand=None):
         """
+        Parses a collection of SAM formatted strings into a tuple generator.
 
-        :param strings:
-        :param single_strand:
-        :return:
+        :param strings: A collection of SAM formatted strings
+        :type strings: iterable[str]
+        :param single_strand: Strand ('+' or '-') of all reads (if known)
+        :type single_strand: str
+
+        :return: An iterable of mapped SAM read positions and names
+        :rtype: generator[(int, int, str, str)]
         """
 
         def _parse_sam_string(string, strand):
-            """
-
-            :param string:
-            :param strand:
-            :return:
-            """
             attr = string.split("\t")
             name = str(attr[0])
             start = int(attr[3])
@@ -192,10 +208,15 @@ class ReadGroup(object):
     @classmethod
     def from_sam_strings(cls, strings, strand=None):
         """
+        Construct an instance of :class:`ReadGroup` from an iterable of SAM formatted strings.
 
-        :param strings:
-        :param strand:
-        :return:
+        :param strings: An iterable of SAM formatted strings
+        :type strings: iterable[str]
+        :param strand: Strand ('+' or '-') of all reads (if known)
+        :type strand: str
+
+        :return: An instance of :class:`ReadGroup`
+        :rtype: :class:`ReadGroup`
         """
         reads = cls._parse_sam_strings(strings, single_strand=strand)
         reads = np.fromiter(reads, dtype=ReadGroup.DTYPE_READ)
