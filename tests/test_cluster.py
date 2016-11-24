@@ -24,11 +24,11 @@ class TestUL:
                           (13, 13),
                           (15, 25),
                           (16, 17),
-                          (19, 20)], dtype=_UnivariateLoci._ulocus)
+                          (19, 20)], dtype=_UnivariateLoci.DTYPE_ULOCUS)
         answer = np.array([(3, 9),
                            (10, 12),
                            (13, 13),
-                           (15, 25)], dtype=_UnivariateLoci._ulocus)
+                           (15, 25)], dtype=_UnivariateLoci.DTYPE_ULOCUS)
         npt.assert_array_equal(_UnivariateLoci._melt_uloci(query), answer)
 
     def test_sort_uloci(self):
@@ -42,14 +42,14 @@ class TestUL:
                                (3, 3),
                                (4, 4),
                                (3, 99),
-                               (1, 1)], dtype=_UnivariateLoci._ulocus)
+                               (1, 1)], dtype=_UnivariateLoci.DTYPE_ULOCUS)
         answer = _UnivariateLoci()
         answer.loci = np.array([(1, 1),
                                 (2, 4),
                                 (3, 3),
                                 (3, 4),
                                 (3, 99),
-                                (4, 4)], dtype=_UnivariateLoci._ulocus)
+                                (4, 4)], dtype=_UnivariateLoci.DTYPE_ULOCUS)
         query._sort_uloci()
         npt.assert_array_equal(query.loci, answer.loci)
 
@@ -74,7 +74,7 @@ class TestFUDC:
 
         """
         query = np.array([5, 2, 1, 5, 15, 1, 1, 6, 13, 5, 7, 14], dtype=int)
-        answer = np.array([(1, 2), (2, 5), (5, 6), (5, 7)], dtype=FUDC._ulocus)
+        answer = np.array([(1, 2), (2, 5), (5, 6), (5, 7)], dtype=FUDC.DTYPE_ULOCUS)
         npt.assert_array_equal(HUDC._flat_subcluster(query, 4, 3), answer)
 
     def test_flat_cluster(self):
@@ -83,7 +83,7 @@ class TestFUDC:
         Most edge cases should be caught in tests for component methods.
         """
         query = np.array([9, 2, 2, 1, 7, 19, 1, 1, 6, 13, 10, 7, 14, 11, 11], dtype=int)
-        answer = np.array([(1, 2), (6, 14)], dtype=FUDC._ulocus)
+        answer = np.array([(1, 2), (6, 14)], dtype=FUDC.DTYPE_ULOCUS)
         npt.assert_array_equal(FUDC.flat_cluster(query, 5, 4), answer)
 
     def test_fit(self):
@@ -96,7 +96,7 @@ class TestFUDC:
         query = FUDC(5, 4)
         input_points = np.array([9, 2, 2, 1, 7, 19, 1, 1, 6, 13, 10, 7, 14, 11, 11], dtype=int)
         answer_points = np.array([1, 1, 1, 2, 2, 6, 7, 7, 9, 10, 11, 11, 13, 14, 19], dtype=int)
-        answer_loci = np.array([(1, 2), (6, 14)], dtype=FUDC._ulocus)
+        answer_loci = np.array([(1, 2), (6, 14)], dtype=FUDC.DTYPE_ULOCUS)
         query.fit(input_points)
         assert query.points is not input_points
         npt.assert_array_equal(query.points, answer_points)
@@ -352,7 +352,7 @@ class TestHUDC:
         Test for hidden method _single_hierarchical_cluster.
         """
         query = np.array([1, 1, 2, 2, 2, 2, 2, 3, 3, 4, 4, 4, 4, 13, 21, 21, 21, 22, 22, 22, 23, 31], dtype=int)
-        answer = np.array([(1, 4), (13, 23)], dtype=_UnivariateLoci._ulocus)
+        answer = np.array([(1, 4), (13, 23)], dtype=_UnivariateLoci.DTYPE_ULOCUS)
         npt.assert_array_equal(HUDC._single_hierarchical_cluster(query, 3, 10, 2), answer)
 
     def test_hierarchical_cluster(self):
@@ -360,7 +360,7 @@ class TestHUDC:
         Test for hidden method _hierarchical_cluster.
         """
         query = np.array([1, 2, 21, 22, 22, 22, 24, 38, 54, 54, 55, 56, 65, 65, 66, 67, 68, 90], dtype=int)
-        answer = np.array([(21, 24), (54, 56), (65, 68)], dtype=_UnivariateLoci._ulocus)
+        answer = np.array([(21, 24), (54, 56), (65, 68)], dtype=_UnivariateLoci.DTYPE_ULOCUS)
         npt.assert_array_equal(HUDC._single_hierarchical_cluster(query, 3, 10, 2), answer)
 
     def test_fit(self):
@@ -373,7 +373,7 @@ class TestHUDC:
         query = HUDC(3, 10, 2)
         input_points = np.array([22, 54, 24, 22, 2, 21, 54, 22, 90, 38, 65, 67, 68, 56, 55, 65, 66, 1], dtype=int)
         answer_points = np.array([1, 2, 21, 22, 22, 22, 24, 38, 54, 54, 55, 56, 65, 65, 66, 67, 68, 90], dtype=int)
-        answer_loci = np.array([(21, 24), (54, 56), (65, 68)], dtype=FUDC._ulocus)
+        answer_loci = np.array([(21, 24), (54, 56), (65, 68)], dtype=FUDC.DTYPE_ULOCUS)
         query.fit(input_points)
         assert query.points is not input_points
         npt.assert_array_equal(query.points, answer_points)

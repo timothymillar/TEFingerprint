@@ -225,18 +225,46 @@ class ReadGroup(object):
 
 
 class ReadLoci(_UnivariateLoci):
-    """"""
+    """
+    A collection of univariate loci that relate to reads mapped to a reference genome.
+
+    Each locus is represented as a single element in a numpy array with the following slots:
+     - start: np.int64
+     - stop: np.int64
+    Where 'start' and 'stop' are respectively the lower and upper coordinates that define a segment of the reference.
+    These coordinates are inclusive, 1 based integers (i.e, use the SAM coordinate system).
+    """
     def __init__(self, loci):
-        """"""
-        self.loci = np.array(loci, dtype=ReadLoci._ulocus, copy=True)
+        """
+        Init method for :class:`ReadLoci`.
+
+        :param loci: A numpy array.
+        :type loci: :class:`numpy.ndarray`[(int, int)]
+        """
+        self.loci = np.array(loci, dtype=ReadLoci.DTYPE_ULOCUS, copy=True)
 
     def __iter__(self):
-        """"""
+        """
+        Iter method for :class:`ReadLoci`.
+        Passes through to wrapped numpy array.
+
+        :return: an iterator of loci
+        :rtype: generator[(int, int)]
+        """
         for locus in self.loci:
             yield locus
 
     def __getitem__(self, item):
-        """"""
+        """
+        Getitem method for :class:`ReadLoci`.
+        Passes through to wrapped numpy array.
+
+        :param item: Index
+        :type item: int | slice | str | numpy.ndarray[int] | numpy.ndarray[bool]
+
+        :return: An numpy array with dtype = :class:`ReadLoci`.DTYPE_ULOCUS
+        :rtype: :class:`numpy.ndarray`[(int, int)]
+        """
         return self.loci[item]
 
     def __len__(self):
@@ -285,7 +313,7 @@ class ReadLoci(_UnivariateLoci):
         :param iterable:
         :return:
         """
-        loci = ReadLoci(np.fromiter(iterable, dtype=ReadLoci._ulocus))
+        loci = ReadLoci(np.fromiter(iterable, dtype=ReadLoci.DTYPE_ULOCUS))
         loci.sort()
         return loci
 
