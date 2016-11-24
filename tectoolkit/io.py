@@ -4,11 +4,6 @@ import pysam
 import numpy as np
 
 
-SAM_FLAGS = {'+': ('-F', '20'),
-             '-': ('-f', '16'),
-             '.': ('-F', '4')}
-
-
 def read_bam_strings(input_bam, reference='', family='', strand='.'):
     """
     Read a subset of strings from an indexed Bam file.
@@ -25,6 +20,9 @@ def read_bam_strings(input_bam, reference='', family='', strand='.'):
     :return: A list of Sam formatted strings
     :rtype: list[str]
     """
+    SAM_FLAGS = {'+': ('-F', '20'),
+                 '-': ('-f', '16'),
+                 '.': ('-F', '4')}
     flag = SAM_FLAGS[strand]
     sam_strings = np.array(pysam.view(*flag, input_bam, reference).splitlines())
     in_family = np.array([string.startswith(family) for string in sam_strings])
