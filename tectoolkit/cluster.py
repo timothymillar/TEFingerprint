@@ -154,6 +154,18 @@ class UnivariateLoci(object):
         return [GffFeature(*args, start=locus[0], end=locus[1], **kwargs) for locus in self.loci]
 
     @classmethod
+    def from_loci(cls, loci):
+        """
+        Construct an instance of :class:`ReadLoci` form an a numpy array with dtype = :class:`ReadLoci`.DTYPE_ULOCUS
+
+        :param loci: Numpy array with dtype = :class:`ReadLoci`.DTYPE_ULOCUS
+        :type loci: :class:`numpy.array`[(int, int)]
+
+        :return: Instance of :class:`ReadLoci`
+        :rtype: :class:`UnivariateLoci`
+        """
+
+    @classmethod
     def from_iterable(cls, iterable):
         """
         Construct an instance of :class:`ReadLoci` form an iterable.
