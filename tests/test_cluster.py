@@ -29,32 +29,14 @@ class TestUnivariateLoci:
                            (4, 4)], dtype=UnivariateLoci.DTYPE_ULOCUS)
         npt.assert_array_equal(query.loci, answer)
 
-    def test_melt_uloci(self):
-        """
-        Test for hidden method _melt_uloci.
-        Test includes following edge cases:
-         * Long locus completely overlaps short locus: (15, 25) & (16, 17) --> (15, 25)
-         * Adjacent loci do not get merged: (7, 9) & (10, 12) -->  (*, 9) & (10, *)
-         * Locus may span a single base: (13, 13) --> (13, 13)
-        """
-        query = np.array([(3, 6),
-                          (6, 8),
-                          (7, 9),
-                          (10, 12),
-                          (13, 13),
-                          (15, 25),
-                          (16, 17),
-                          (19, 20)], dtype=UnivariateLoci.DTYPE_ULOCUS)
-        answer = np.array([(3, 9),
-                           (10, 12),
-                           (13, 13),
-                           (15, 25)], dtype=UnivariateLoci.DTYPE_ULOCUS)
-        npt.assert_array_equal(UnivariateLoci._melt_uloci(query), answer)
-
     def test_melt(self):
         """
         Test for method melt.
         Method modifies loci in place.
+        Test includes following edge cases:
+         * Long locus completely overlaps short locus: (15, 25) & (16, 17) --> (15, 25)
+         * Adjacent loci do not get merged: (7, 9) & (10, 12) -->  (*, 9) & (10, *)
+         * Locus may span a single base: (13, 13) --> (13, 13)
         """
         input_loci = np.array([(3, 6),
                                (6, 8),

@@ -77,34 +77,6 @@ class UnivariateLoci(object):
         """
         self.loci.sort(order=order)
 
-    @staticmethod
-    def _melt_uloci(loci):
-        """
-
-        :param loci:
-        :return:
-        """
-
-        def _merge(loci):
-            start = loci['start'][0]
-            stop = loci['stop'][0]
-            for i in range(1, len(loci)):
-                if loci['start'][i] <= stop:
-                    if loci['stop'][i] > stop:
-                        stop = loci['stop'][i]
-                    else:
-                        pass
-                else:
-                    yield start, stop
-                    start = loci['start'][i]
-                    stop = loci['stop'][i]
-            yield start, stop
-
-        loci.sort(order=('start', 'stop'))
-        loci = np.fromiter(_merge(loci), dtype=UnivariateLoci.DTYPE_ULOCUS)
-        loci.sort(order=('start', 'stop'))
-        return loci
-
     def melt(self):
         """
         Merge overlapping loci into a single loci.
@@ -118,9 +90,22 @@ class UnivariateLoci(object):
             list(loci)
             [(1, 7), (8, 12), (14, 15)]
         """
-
+        def _melter(loci):
+            start = loci['start'][0]
+            stop = loci['stop'][0]
+            for i in range(1, len(loci)):
+                if loci['start'][i] <= stop:
+                    if loci['stop'][i] > stop:
+                        stop = loci['stop'][i]
+                    else:
+                        pass
+                else:
+                    yield start, stop
+                    start = loci['start'][i]
+                    stop = loci['stop'][i]
+            yield start, stop
         self.sort()
-        self.loci = self._melt_uloci(self.loci)
+        self.loci = np.fromiter(_melter(self.loci), dtype=UnivariateLoci.DTYPE_ULOCUS)
 
     def subset_by_locus(self, start, stop, margin=0, end='start'):
         """
