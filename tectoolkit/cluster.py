@@ -198,13 +198,13 @@ class UnivariateLoci(object):
         return loci
 
 
-class FUDC(UnivariateLoci):
+class FUDC(object):
     """Flat Univariate Density Cluster"""
     def __init__(self, min_points, eps):
         """"""
         self.min_pts = min_points
         self.eps = eps
-        self.loci = np.array([], dtype=FUDC.DTYPE_ULOCUS)
+        self.clusters = UnivariateLoci.from_loci(np.array([], dtype=UnivariateLoci.DTYPE_ULOCUS))
         self.points = np.empty_like
         self.labels = np.array([])
 
@@ -226,8 +226,7 @@ class FUDC(UnivariateLoci):
         lower = lower[dense]
         upper = upper[dense]
         loci = ((lower[i], upper[i]) for i in range(len(lower)))
-        loci = np.fromiter(loci, dtype=FUDC.DTYPE_ULOCUS)
-        return loci
+        return UnivariateLoci.from_iterable(loci)
 
     @staticmethod
     def flat_cluster(points, min_pts, eps):
@@ -238,10 +237,10 @@ class FUDC(UnivariateLoci):
         :param eps:
         :return:
         """
-        loci = FUDC._flat_subcluster(points, min_pts, eps)
-        if len(loci) > 1:
-            loci = FUDC._melt_uloci(loci)
-        return loci
+        clusters = FUDC._flat_subcluster(points, min_pts, eps)
+        if len(clusters) > 1:
+            clusters.melt()
+        return clusters
 
     def fit(self, points):
         """
@@ -251,7 +250,7 @@ class FUDC(UnivariateLoci):
         """
         self.points = np.array(points, copy=True)
         self.points.sort()
-        self.loci = FUDC.flat_cluster(self.points, self.min_pts, self.eps)
+        self.clusters = FUDC.flat_cluster(self.points, self.min_pts, self.eps)
 
 
 class HUDC(FUDC):
@@ -269,7 +268,7 @@ class HUDC(FUDC):
         self.min_pts = min_points
         self.max_eps = max_eps
         self.min_eps = min_eps
-        self.loci = np.array([], dtype=FUDC.DTYPE_ULOCUS)
+        self.clusters = np.array([], dtype=UnivariateLoci.DTYPE_ULOCUS)
         self.points = np.empty_like
         self.labels = np.array([])
 
@@ -302,8 +301,8 @@ class HUDC(FUDC):
         if base_locus is None:
             base_locus = (min(points), max(points))
         area += len(points)
-        child_loci = HUDC.flat_cluster(points, min_pts, eps - 1)
-        if len(child_loci) == 1:
+        child_clusters = HUDC.flat_cluster(points, min_pts, eps - 1)
+        if len(child_clusters) == 1:
             # branch doesn't fork
             if eps > min_eps:
                 # branch grows
@@ -324,7 +323,7 @@ class HUDC(FUDC):
                 return node
         else:
             # branch forks
-            child_points = [HUDC._locus_points(loci, points) for loci in child_loci]
+            child_points = [HUDC._locus_points(loci, points) for loci in child_clusters]
             node = HUDC._node_template.copy()
             node['area'] = area
             node['base_eps'] = base_eps
@@ -398,7 +397,7 @@ class HUDC(FUDC):
         HUDC._child_area(tree)
         HUDC._select_nodes(tree)
         loci = HUDC._flatten_list(HUDC._retrieve_selected_loci(tree))
-        return np.fromiter(loci, dtype=HUDC.DTYPE_ULOCUS)
+        return UnivariateLoci.from_iterable(loci)
 
     @staticmethod
     def _hierarchical_cluster(points, min_pts, max_eps, min_eps):
@@ -413,8 +412,8 @@ class HUDC(FUDC):
         base_loci = HUDC.flat_cluster(points, min_pts, max_eps)
         base_points = (HUDC._locus_points(locus, points) for locus in base_loci)
         loci_generator = (HUDC._single_hierarchical_cluster(points, min_pts, max_eps, min_eps) for points in base_points)
-        loci = reduce(np.append, loci_generator)
-        return loci
+        clusters = reduce(UnivariateLoci.append, loci_generator)
+        return clusters
 
     def fit(self, points):
         """
@@ -424,7 +423,7 @@ class HUDC(FUDC):
         """
         self.points = np.array(points, copy=True)
         self.points.sort()
-        self.loci = HUDC._hierarchical_cluster(self.points, self.min_pts, self.max_eps, self.min_eps)
+        self.clusters = HUDC._hierarchical_cluster(self.points, self.min_pts, self.max_eps, self.min_eps)
 
 if __name__ == '__main__':
     pass

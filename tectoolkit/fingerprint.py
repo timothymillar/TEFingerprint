@@ -8,7 +8,7 @@ from multiprocessing import Pool
 from tectoolkit import io
 from tectoolkit.classes import ReadGroup
 from tectoolkit.gff import GffFeature
-from tectoolkit.cluster import UnivariateLoci, FUDC, HUDC
+from tectoolkit.cluster import FUDC, HUDC
 
 
 class FingerprintProgram(object):
@@ -184,13 +184,13 @@ class Fingerprint(object):
             max_eps, min_eps = max(self.eps), min(self.eps)
             hudc = HUDC(self.min_reads, max_eps, min_eps)
             hudc.fit(self.reads['tip'])
-            return UnivariateLoci(hudc.loci)
+            return hudc.clusters
         elif len(self.eps) == 1:
             # use flat clustering method
             eps = max(self.eps)
             fudc = FUDC(self.min_reads, eps)
             fudc.fit(self.reads['tip'])
-            return UnivariateLoci(fudc.loci)
+            return fudc.clusters
         else:
             pass
 
