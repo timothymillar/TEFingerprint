@@ -7,7 +7,7 @@ from functools import reduce
 from itertools import product
 from multiprocessing import Pool
 from tectoolkit import io
-from tectoolkit.classes import ReadLoci
+from tectoolkit.cluster import UnivariateLoci
 from tectoolkit.gff import GffFeature
 from tectoolkit.fingerprint import Fingerprint
 
@@ -209,9 +209,9 @@ class FingerprintComparison(object):
         Bins are calculated by merging the overlapping fingerprints from all samples.
 
         :return: The union of loci among compared fingerprints
-        :rtype: :class:`ReadLoci`
+        :rtype: :class:`UnivariateLoci`
         """
-        loci = reduce(ReadLoci.append, [f.loci for f in self.fingerprints])
+        loci = reduce(UnivariateLoci.append, [f.loci for f in self.fingerprints])
         loci.melt()
         return loci
 
