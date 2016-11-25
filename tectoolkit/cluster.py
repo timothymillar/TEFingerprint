@@ -6,12 +6,12 @@ from functools import reduce
 
 class _UnivariateLoci(object):
     """"""
-    _ulocus = np.dtype([('start', np.int64),
-                        ('stop', np.int64)])
+    DTYPE_ULOCUS = np.dtype([('start', np.int64),
+                             ('stop', np.int64)])
 
     def __init__(self):
         """"""
-        self.loci = np.array([], dtype=_UnivariateLoci._ulocus)
+        self.loci = np.array([], dtype=_UnivariateLoci.DTYPE_ULOCUS)
 
     @staticmethod
     def _melt_uloci(loci):
@@ -37,7 +37,7 @@ class _UnivariateLoci(object):
             yield start, stop
 
         loci.sort(order=('start', 'stop'))
-        loci = np.fromiter(_merge(loci), dtype=_UnivariateLoci._ulocus)
+        loci = np.fromiter(_merge(loci), dtype=_UnivariateLoci.DTYPE_ULOCUS)
         loci.sort(order=('start', 'stop'))
         return loci
 
@@ -67,7 +67,7 @@ class FUDC(_UnivariateLoci):
         """"""
         self.min_pts = min_points
         self.eps = eps
-        self.loci = np.array([], dtype=FUDC._ulocus)
+        self.loci = np.array([], dtype=FUDC.DTYPE_ULOCUS)
         self.points = np.empty_like
         self.labels = np.array([])
 
@@ -89,7 +89,7 @@ class FUDC(_UnivariateLoci):
         lower = lower[dense]
         upper = upper[dense]
         loci = ((lower[i], upper[i]) for i in range(len(lower)))
-        loci = np.fromiter(loci, dtype=FUDC._ulocus)
+        loci = np.fromiter(loci, dtype=FUDC.DTYPE_ULOCUS)
         return loci
 
     @staticmethod
@@ -132,7 +132,7 @@ class HUDC(FUDC):
         self.min_pts = min_points
         self.max_eps = max_eps
         self.min_eps = min_eps
-        self.loci = np.array([], dtype=FUDC._ulocus)
+        self.loci = np.array([], dtype=FUDC.DTYPE_ULOCUS)
         self.points = np.empty_like
         self.labels = np.array([])
 
@@ -250,7 +250,7 @@ class HUDC(FUDC):
         HUDC._child_area(tree)
         HUDC._select_nodes(tree)
         loci = HUDC._flatten_list(HUDC._retrieve_selected_loci(tree))
-        return np.fromiter(loci, dtype=HUDC._ulocus)
+        return np.fromiter(loci, dtype=HUDC.DTYPE_ULOCUS)
 
     @staticmethod
     def _hierarchical_cluster(points, min_pts, max_eps, min_eps):
