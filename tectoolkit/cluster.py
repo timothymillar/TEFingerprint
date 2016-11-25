@@ -18,13 +18,15 @@ class UnivariateLoci(object):
     DTYPE_ULOCUS = np.dtype([('start', np.int64),
                              ('stop', np.int64)])
 
-    def __init__(self, loci):
+    def __init__(self, loci=None):
         """
         Init method for :class:`ReadLoci`.
 
         :param loci: A numpy array.
         :type loci: :class:`numpy.ndarray`[(int, int)]
         """
+        if loci is None:
+            loci = []
         self.loci = np.array(loci, dtype=UnivariateLoci.DTYPE_ULOCUS, copy=True)
 
     def __iter__(self):
@@ -139,18 +141,6 @@ class UnivariateLoci(object):
         return [GffFeature(*args, start=locus[0], end=locus[1], **kwargs) for locus in self.loci]
 
     @classmethod
-    def from_loci(cls, loci):
-        """
-        Construct an instance of :class:`ReadLoci` form an a numpy array with dtype = :class:`ReadLoci`.DTYPE_ULOCUS
-
-        :param loci: Numpy array with dtype = :class:`ReadLoci`.DTYPE_ULOCUS
-        :type loci: :class:`numpy.array`[(int, int)]
-
-        :return: Instance of :class:`ReadLoci`
-        :rtype: :class:`UnivariateLoci`
-        """
-
-    @classmethod
     def from_iterable(cls, iterable):
         """
         Construct an instance of :class:`ReadLoci` form an iterable.
@@ -189,7 +179,7 @@ class FUDC(object):
         """"""
         self.min_pts = min_points
         self.eps = eps
-        self.clusters = UnivariateLoci.from_loci(np.array([], dtype=UnivariateLoci.DTYPE_ULOCUS))
+        self.clusters = UnivariateLoci()
         self.points = np.empty_like
         self.labels = np.array([])
 
@@ -253,7 +243,7 @@ class HUDC(FUDC):
         self.min_pts = min_points
         self.max_eps = max_eps
         self.min_eps = min_eps
-        self.clusters = np.array([], dtype=UnivariateLoci.DTYPE_ULOCUS)
+        self.clusters = UnivariateLoci()
         self.points = np.empty_like
         self.labels = np.array([])
 
