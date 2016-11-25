@@ -188,7 +188,7 @@ class ReadGroup(object):
             name = str(attr[0])
             start = int(attr[3])
             length = len(attr[9])
-            end = start + length
+            end = start + length - 1  # 1 based indexing used in SAM format
             if strand is None:
                 strand = cls._flag_orientation(int(attr[1]))
             if strand == '+':
