@@ -2,7 +2,7 @@
 
 import numpy as np
 import numpy.testing as npt
-from tectoolkit.classes import ReadGroup
+from tectoolkit.classes import ReadGroup, ReadLoci
 from tectoolkit.fingerprint import Fingerprint
 from tectoolkit.compare import FingerprintComparison
 
@@ -114,3 +114,109 @@ class TestReadGroup:
                                      (4, 6, '-', 'Gypsy27_b'),
                                      (7, 9, '-', 'Gypsy27_c')], dtype=ReadGroup.DTYPE_READ))
         npt.assert_array_equal(query.reads, answer.reads)
+
+
+class TestReadLoci:
+    """
+    Tests for class ReadLoci
+    """
+    def test_sort(self):
+        """
+        Test for method sort.
+        """
+        input_loci = np.array([(2, 4),
+                               (3, 4),
+                               (3, 3),
+                               (4, 4),
+                               (3, 99),
+                               (1, 1)], dtype=ReadLoci.DTYPE_ULOCUS)
+        query = ReadLoci(input_loci)
+        query.sort()
+        answer = np.array([(1, 1),
+                           (2, 4),
+                           (3, 3),
+                           (3, 4),
+                           (3, 99),
+                           (4, 4)], dtype=ReadLoci.DTYPE_ULOCUS)
+        npt.assert_array_equal(query.loci, answer)
+
+    def test_melt(self):
+        """
+        Test for method melt.
+        Method modifies loci in place.
+        """
+        input_loci = np.array([(3, 6),
+                               (6, 8),
+                               (7, 9),
+                               (10, 12),
+                               (13, 13),
+                               (15, 25),
+                               (16, 17),
+                               (19, 20)], dtype=ReadLoci.DTYPE_ULOCUS)
+        query = ReadLoci(input_loci)
+        query.melt()
+        answer = np.array([(3, 9),
+                           (10, 12),
+                           (13, 13),
+                           (15, 25)], dtype=ReadLoci.DTYPE_ULOCUS)
+        npt.assert_array_equal(query.loci, answer)
+
+    def test_subset_by_locus(self):
+        """
+        Test for method subset_by_locus.
+        """
+        input_loci = np.array([(3, 6),
+                               (6, 8),
+                               (7, 9),
+                               (10, 12),
+                               (13, 13),
+                               (15, 25),
+                               (16, 17),
+                               (19, 20)], dtype=ReadLoci.DTYPE_ULOCUS)
+        query = ReadLoci(input_loci)
+        answer = np.array([(7, 9),
+                           (10, 12),
+                           (13, 13),
+                           (15, 25),
+                           (16, 17)], dtype=ReadLoci.DTYPE_ULOCUS)
+        npt.assert_array_equal(query.subset_by_locus(7, 17).loci, answer)
+
+    def test_from_iterable(self):
+        """
+        Test for method from_iterable.
+        """
+        iterable = [(3, 6), (6, 8), (7, 9), (10, 12), (13, 13), (15, 25), (16, 17), (19, 20)]
+        query = ReadLoci.from_iterable(iterable)
+        answer = np.array([(3, 6),
+                           (6, 8),
+                           (7, 9),
+                           (10, 12),
+                           (13, 13),
+                           (15, 25),
+                           (16, 17),
+                           (19, 20)], dtype=ReadLoci.DTYPE_ULOCUS)
+        npt.assert_array_equal(query.loci, answer)
+
+    def test_append(self):
+        """
+        Test for method append.
+        """
+        loci_x = np.array([(3, 9),
+                           (10, 12),
+                           (13, 13),
+                           (15, 25)], dtype=ReadLoci.DTYPE_ULOCUS)
+        loci_y = np.array([(4, 11),
+                           (7, 22),
+                           (23, 33),
+                           (25, 35)], dtype=ReadLoci.DTYPE_ULOCUS)
+        x, y = ReadLoci(loci_x), ReadLoci(loci_y)
+        query = ReadLoci.append(x, y)
+        answer = np.array([(3, 9),
+                           (4, 11),
+                           (7, 22),
+                           (10, 12),
+                           (13, 13),
+                           (15, 25),
+                           (23, 33),
+                           (25, 35)], dtype=ReadLoci.DTYPE_ULOCUS)
+        npt.assert_array_equal(query.loci, answer)
