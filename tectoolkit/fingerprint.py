@@ -5,7 +5,7 @@ import os
 import argparse
 from itertools import product
 from multiprocessing import Pool
-from tectoolkit import io
+from tectoolkit import bam_io
 from tectoolkit.classes import ReadGroup
 from tectoolkit.gff import GffFeature
 from tectoolkit.cluster import FUDC, HUDC
@@ -14,16 +14,16 @@ from tectoolkit.cluster import FUDC, HUDC
 class FingerprintProgram(object):
     """Main class for the fingerprint program"""
     def __init__(self, arguments):
-        self.args = self.parse_args(arguments)
-        if self.args.references == ['']:
-            self.references = io.read_bam_references(self.args.input_bam)
-        else:
-            self.references = self.args.references
         """
         Init method for :class:`FingerprintProgram`.
 
         :param arguments: A list of commandline arguments to be parsed for the fingerprint program
         """
+        self.args = self.parse_args(arguments)
+        if self.args.references == ['']:
+            self.references = bam_io.read_bam_references(self.args.input_bam)
+        else:
+            self.references = self.args.references
 
     def parse_args(self, args):
         """
@@ -167,7 +167,7 @@ class Fingerprint(object):
         :return: Subset of bam reads
         :rtype: :class:`ReadGroup`
         """
-        sam = io.read_bam_strings(bam, reference=self.reference, family=self.family, strand=self.strand)
+        sam = bam_io.read_bam_strings(bam, reference=self.reference, family=self.family, strand=self.strand)
         return ReadGroup.from_sam_strings(sam, strand=self.strand)
 
     def _fit(self):

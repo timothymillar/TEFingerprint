@@ -6,7 +6,7 @@ import numpy as np
 from functools import reduce
 from itertools import product
 from multiprocessing import Pool
-from tectoolkit import io
+from tectoolkit import bam_io
 from tectoolkit.cluster import UnivariateLoci
 from tectoolkit.gff import GffFeature
 from tectoolkit.fingerprint import Fingerprint
@@ -93,7 +93,7 @@ class CompareProgram(object):
         :return: A list of reference names
         :rtype: list[str]
         """
-        bam_refs = [set(io.read_bam_references(bam)) for bam in input_bams]
+        bam_refs = [set(bam_io.read_bam_references(bam)) for bam in input_bams]
         references = bam_refs[0]
         for refs in bam_refs[1:]:
             references = references.intersection(refs)
@@ -113,7 +113,7 @@ class CompareProgram(object):
         :return: A dictionary of reference lengths with names as keys
         :rtype: dict[str, int]
         """
-        reference_dicts = [io.read_bam_reference_lengths(bam) for bam in input_bams]
+        reference_dicts = [bam_io.read_bam_reference_lengths(bam) for bam in input_bams]
         reference_lengths = {tuple(d[ref] for ref in references) for d in reference_dicts}
         assert len(reference_lengths) == 1
         return {ref: length for ref, length in zip(references, reference_lengths.pop())}
