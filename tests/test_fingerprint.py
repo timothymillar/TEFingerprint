@@ -64,15 +64,53 @@ class TestReadGroup:
         npt.assert_array_equal(query.subset_by_locus(1, 3, end='tail').reads, answer.reads)
 
     def test_parse_sam_strings(self):
+        """
+        Test for hidden method _parse_sam_strings.
+        Test for parsing both forwards and reverse reads.
+        """
+        # forwards reads
+        input_strings = ["Gypsy27_a\t0\tchr1\t2\t66M19S\t*\t0\t0\tAACCCTA\tFFFIIII\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66",
+                         "Gypsy27_b\t0\tchr1\t3\t66M19S\t*\t0\t0\tACC\tFFI\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66",
+                         "Gypsy27_c\t0\tchr1\t5\t66M19S\t*\t0\t0\tAAC\tFFF\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66"]
+        query = list(ReadGroup._parse_sam_strings(input_strings))
+        query.sort()
+        answer = [(8, 2, '+', 'Gypsy27_a'), (5, 3, '+', 'Gypsy27_b'), (7, 5, '+', 'Gypsy27_c')]
+        answer.sort()
+        npt.assert_array_equal(query, answer)
+
+        # reverse reads
+        input_strings = ["Gypsy27_a\t16\tchr1\t2\t66M19S\t*\t0\t0\tAACCCTA\tFFFIIII\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66",
+                         "Gypsy27_b\t16\tchr1\t4\t66M19S\t*\t0\t0\tACC\tFFI\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66",
+                         "Gypsy27_c\t16\tchr1\t7\t66M19S\t*\t0\t0\tAAC\tFFF\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66"]
+        query = list(ReadGroup._parse_sam_strings(input_strings))
+        query.sort()
+        answer = [(2, 8, '-', 'Gypsy27_a'), (4, 6, '-', 'Gypsy27_b'), (7, 9, '-', 'Gypsy27_c')]
+        answer.sort()
+        npt.assert_array_equal(query, answer)
+
+    def test_from_sam_strings(self):
+        """
+        Test for method from_sam_strings.
+        Test for parsing both forwards and reverse reads.
+        """
+        # forwards reads
         input_strings = ["Gypsy27_a\t0\tchr1\t2\t66M19S\t*\t0\t0\tAACCCTA\tFFFIIII\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66",
                          "Gypsy27_b\t0\tchr1\t3\t66M19S\t*\t0\t0\tACC\tFFI\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66",
                          "Gypsy27_c\t0\tchr1\t5\t66M19S\t*\t0\t0\tAAC\tFFF\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66"]
         query = ReadGroup.from_sam_strings(input_strings)
-        query.sort( order='name')
+        query.sort(order='name')
         answer = ReadGroup(np.array([(8, 2, '+', 'Gypsy27_a'),
                                      (5, 3, '+', 'Gypsy27_b'),
                                      (7, 5, '+', 'Gypsy27_c')], dtype=ReadGroup.DTYPE_READ))
         npt.assert_array_equal(query.reads, answer.reads)
 
-    def test_from_sam_strings(self):
-        pass
+        # reverse reads
+        input_strings = ["Gypsy27_a\t16\tchr1\t2\t66M19S\t*\t0\t0\tAACCCTA\tFFFIIII\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66",
+                         "Gypsy27_b\t16\tchr1\t4\t66M19S\t*\t0\t0\tACC\tFFI\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66",
+                         "Gypsy27_c\t16\tchr1\t7\t66M19S\t*\t0\t0\tAAC\tFFF\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66"]
+        query = ReadGroup.from_sam_strings(input_strings)
+        query.sort(order='name')
+        answer = ReadGroup(np.array([(2, 8, '-', 'Gypsy27_a'),
+                                     (4, 6, '-', 'Gypsy27_b'),
+                                     (7, 9, '-', 'Gypsy27_c')], dtype=ReadGroup.DTYPE_READ))
+        npt.assert_array_equal(query.reads, answer.reads)
