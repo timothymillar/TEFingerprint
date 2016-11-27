@@ -130,16 +130,6 @@ class UnivariateLoci(object):
         loci = self.loci[np.logical_and(self.loci[end] >= start, self.loci[end] <= stop)]
         return UnivariateLoci(loci)
 
-    def as_gff(self, *args, **kwargs):
-        """
-        Converts an instance of :class:`ReadLoci` to a list of :class:`GffFeature` objects.
-        Start and end fields are automatically filled by loci bounds.
-
-        :param kwargs: Optional gff attributes
-        :return: list[:class:`GffFeature`]
-        """
-        return [GffFeature(*args, start=locus[0], end=locus[1], **kwargs) for locus in self.loci]
-
     @classmethod
     def from_iterable(cls, iterable):
         """
