@@ -61,14 +61,6 @@ class UnivariateLoci(object):
         """
         return len(self.loci)
 
-    def _sort_uloci(self, order=('start', 'stop')):
-        """
-
-        :param order:
-        :return:
-        """
-        self.loci.sort(order=order)
-
     def sort(self, order=('start', 'stop')):
         """
         Sort loci in place by field(s).

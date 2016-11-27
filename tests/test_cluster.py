@@ -54,26 +54,6 @@ class TestUnivariateLoci:
                            (15, 25)], dtype=UnivariateLoci.DTYPE_ULOCUS)
         npt.assert_array_equal(query.loci, answer)
 
-    def test_sort_uloci(self):
-        """
-        Test for hidden method _sort_uloci.
-        By default, loci should be sorted by lower bound then upper bound.
-        """
-        query = UnivariateLoci(np.array([(2, 4),
-                                         (3, 4),
-                                         (3, 3),
-                                         (4, 4),
-                                         (3, 99),
-                                         (1, 1)], dtype=UnivariateLoci.DTYPE_ULOCUS))
-        answer = UnivariateLoci(np.array([(1, 1),
-                                          (2, 4),
-                                          (3, 3),
-                                          (3, 4),
-                                          (3, 99),
-                                          (4, 4)], dtype=UnivariateLoci.DTYPE_ULOCUS))
-        query._sort_uloci()
-        npt.assert_array_equal(query.loci, answer.loci)
-
     def test_subset_by_locus(self):
         """
         Test for method subset_by_locus.
