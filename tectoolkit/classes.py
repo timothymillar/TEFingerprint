@@ -143,7 +143,7 @@ class ReadGroup(object):
         return reads
 
     @classmethod
-    def from_sam_strings(cls, strings, strand=None):
+    def _from_sam_strings(cls, strings, strand=None):
         """
         Construct an instance of :class:`ReadGroup` from an iterable of SAM formatted strings.
 
@@ -159,6 +159,27 @@ class ReadGroup(object):
         reads = np.fromiter(reads, dtype=ReadGroup.DTYPE_READ)
         reads.sort(order=('tip', 'tail'))
         return ReadGroup(reads)
+
+    @classmethod
+    def from_bam(cls, bam, reference, family, strand):
+        """
+        Reads subset of reads from bam file that are of the targeted reference, family and strand.
+
+        :param bam: A bam file path
+        :type bam: str
+        :param reference: Target reference of reads
+        :type reference: str
+        :param family: Target family of reads
+        :type family: str
+        :param strand: Target strand of reads ('+' or '-')
+        :type strand: str
+
+        :return: Subset of bam reads
+        :rtype: :class:`ReadGroup`
+        """
+        assert strand in ('+', '-')
+        sam = bam_io.read_bam_strings(bam, reference=reference, family=family, strand=strand)
+        return ReadGroup._from_sam_strings(sam, strand=strand)
 
 if __name__ == '__main__':
     pass

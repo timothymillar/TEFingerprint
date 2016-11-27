@@ -97,7 +97,7 @@ class TestReadGroup:
         input_strings = ["Gypsy27_a\t0\tchr1\t2\t66M19S\t*\t0\t0\tAACCCTA\tFFFIIII\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66",
                          "Gypsy27_b\t0\tchr1\t3\t66M19S\t*\t0\t0\tACC\tFFI\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66",
                          "Gypsy27_c\t0\tchr1\t5\t66M19S\t*\t0\t0\tAAC\tFFF\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66"]
-        query = ReadGroup.from_sam_strings(input_strings)
+        query = ReadGroup._from_sam_strings(input_strings)
         query.sort(order='name')
         answer = ReadGroup(np.array([(8, 2, '+', 'Gypsy27_a'),
                                      (5, 3, '+', 'Gypsy27_b'),
@@ -108,7 +108,7 @@ class TestReadGroup:
         input_strings = ["Gypsy27_a\t16\tchr1\t2\t66M19S\t*\t0\t0\tAACCCTA\tFFFIIII\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66",
                          "Gypsy27_b\t16\tchr1\t4\t66M19S\t*\t0\t0\tACC\tFFI\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66",
                          "Gypsy27_c\t16\tchr1\t7\t66M19S\t*\t0\t0\tAAC\tFFF\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66"]
-        query = ReadGroup.from_sam_strings(input_strings)
+        query = ReadGroup._from_sam_strings(input_strings)
         query.sort(order='name')
         answer = ReadGroup(np.array([(2, 8, '-', 'Gypsy27_a'),
                                      (4, 6, '-', 'Gypsy27_b'),

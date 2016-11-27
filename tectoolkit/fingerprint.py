@@ -153,7 +153,7 @@ class Fingerprint(object):
         self.min_reads = min_reads
         self.sample_name = ''
         self.source = os.path.basename(bam)
-        self.reads = self._reads_from_bam(bam)
+        self.reads = ReadGroup.from_bam(bam, self.reference, self.family, self.strand)
         self.loci = self._fit()
 
     def _reads_from_bam(self, bam):
@@ -168,7 +168,7 @@ class Fingerprint(object):
         :rtype: :class:`ReadGroup`
         """
         sam = bam_io.read_bam_strings(bam, reference=self.reference, family=self.family, strand=self.strand)
-        return ReadGroup.from_sam_strings(sam, strand=self.strand)
+        return ReadGroup._from_sam_strings(sam, strand=self.strand)
 
     def _fit(self):
         """
