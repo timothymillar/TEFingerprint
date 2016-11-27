@@ -1,6 +1,7 @@
 #! /usr/bin/env python
 
 import numpy as np
+from tectoolkit import bam_io
 
 
 class ReadGroup(object):
@@ -108,79 +109,18 @@ class ReadGroup(object):
         return ReadGroup(reads)
 
     @classmethod
-    def _parse_sam_flag(cls, flag):
-        """
-        Parses a SAM flag into a boolean array.
-
-        :param flag: SAM flag
-        :type flag: int
-
-        :return: Boolean array
-        :rtype: :class:`numpy.array`[bool]
-        """
-        attributes = np.zeros(12, dtype=np.bool)
-        bits = np.fromiter(map(int, tuple(bin(int(flag)))[:1:-1]), dtype=np.bool)
-        attributes[:bits.shape[0]] = bits
-        return attributes
-
-    @classmethod
-    def _flag_orientation(cls, flag):
-        """
-        Determines whether a SAM flag indicates that its read is on the forward or reverse strand.
-
-        :param flag: SAM flag
-        :type flag: int
-
-        :return: '+', '-' or None
-        :rtype: str | None
-        """
-        attributes = cls._parse_sam_flag(flag)
-        if attributes[2]:  # read is unmapped
-            return None
-        elif attributes[4]:  # read is reversed
-            return '-'
-        else:  # read is forwards
-            return '+'
-
-    @classmethod
-    def _flag_attributes(cls, flag):
-        """
-        Parses a SAM flag into a dictionary with attributes as keys and booleans as values.
-
-        :param flag: SAM flag
-        :type flag: int
-
-        :return: Dictionary with attributes as keys and booleans as values
-        :rtype: dict[str, bool]
-        """
-        attributes = ("read paired",
-                      "read mapped in proper pair",
-                      "read unmapped mate unmapped",
-                      "read reverse strand",
-                      "mate reverse strand",
-                      "first in pair",
-                      "second in pair",
-                      "not primary alignment",
-                      "read fails platform / vendor quality checks",
-                      "read is PCR or optical duplicate",
-                      "supplementary alignment")
-        values = cls._parse_sam_flag(flag)
-        return dict(zip(attributes, values))
-
-    @classmethod
-    def _parse_sam_strings(cls, strings, single_strand=None):
+    def _parse_sam_strings(cls, strings, strand=None):
         """
         Parses a collection of SAM formatted strings into a tuple generator.
 
         :param strings: A collection of SAM formatted strings
         :type strings: iterable[str]
-        :param single_strand: Strand ('+' or '-') of all reads (if known)
-        :type single_strand: str
+        :param strand: Strand ('+' or '-') of all reads (if known)
+        :type strand: str
 
         :return: An iterable of mapped SAM read positions and names
         :rtype: generator[(int, int, str, str)]
         """
-
         def _parse_sam_string(string, strand):
             attr = string.split("\t")
             name = str(attr[0])
@@ -188,7 +128,7 @@ class ReadGroup(object):
             length = len(attr[9])
             end = start + length - 1  # 1 based indexing used in SAM format
             if strand is None:
-                strand = cls._flag_orientation(int(attr[1]))
+                strand = bam_io.flag_orientation(int(attr[1]))
             if strand == '+':
                 tip = end
                 tail = start
@@ -197,11 +137,9 @@ class ReadGroup(object):
                 tip = start
                 tail = end
                 return tip, tail, strand, name
-            elif strand is None:
-                pass
 
-        assert single_strand in ['+', '-', None]
-        reads = (_parse_sam_string(string, single_strand) for string in strings)
+        assert strand in ['+', '-', None]
+        reads = (_parse_sam_string(string, strand) for string in strings)
         return reads
 
     @classmethod
@@ -217,7 +155,7 @@ class ReadGroup(object):
         :return: An instance of :class:`ReadGroup`
         :rtype: :class:`ReadGroup`
         """
-        reads = cls._parse_sam_strings(strings, single_strand=strand)
+        reads = cls._parse_sam_strings(strings, strand=strand)
         reads = np.fromiter(reads, dtype=ReadGroup.DTYPE_READ)
         reads.sort(order=('tip', 'tail'))
         return ReadGroup(reads)

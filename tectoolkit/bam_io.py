@@ -59,5 +59,66 @@ def read_bam_reference_lengths(input_bam):
         references = {r['SN']: r['LN'] for r in references}
         return references
 
+
+def parse_flag(flag):
+    """
+    Parses a SAM flag into a boolean array.
+
+    :param flag: SAM flag
+    :type flag: int
+
+    :return: Boolean array
+    :rtype: :class:`numpy.array`[bool]
+    """
+    attributes = np.zeros(12, dtype=np.bool)
+    bits = np.fromiter(map(int, tuple(bin(int(flag)))[:1:-1]), dtype=np.bool)
+    attributes[:bits.shape[0]] = bits
+    return attributes
+
+
+def flag_orientation(flag):
+    """
+    Determines whether a SAM flag indicates that its read is on the forward or reverse strand.
+
+    :param flag: SAM flag
+    :type flag: int
+
+    :return: '+', '-' or None
+    :rtype: str | None
+    """
+    attributes = parse_flag(flag)
+    if attributes[2]:  # read is unmapped
+        return None
+    elif attributes[4]:  # read is reversed
+        return '-'
+    else:  # read is forwards
+        return '+'
+
+
+def flag_attributes(flag):
+    """
+    Parses a SAM flag into a dictionary with attributes as keys and booleans as values.
+
+    :param flag: SAM flag
+    :type flag: int
+
+    :return: Dictionary with attributes as keys and booleans as values
+    :rtype: dict[str, bool]
+    """
+    attributes = ("read paired",
+                  "read mapped in proper pair",
+                  "read unmapped mate unmapped",
+                  "read reverse strand",
+                  "mate reverse strand",
+                  "first in pair",
+                  "second in pair",
+                  "not primary alignment",
+                  "read fails platform / vendor quality checks",
+                  "read is PCR or optical duplicate",
+                  "supplementary alignment")
+    values = parse_flag(flag)
+    return dict(zip(attributes, values))
+
+
 if __name__ == '__main__':
     pass
