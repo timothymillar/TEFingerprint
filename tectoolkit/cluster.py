@@ -2,7 +2,6 @@
 
 import numpy as np
 from functools import reduce
-from tectoolkit.gff import GffFeature
 
 
 class UnivariateLoci(object):
