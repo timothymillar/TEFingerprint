@@ -2,9 +2,7 @@
 
 import numpy as np
 import numpy.testing as npt
-from tectoolkit.classes import ReadGroup
-from tectoolkit.fingerprint import Fingerprint
-from tectoolkit.compare import FingerprintComparison
+from tectoolkit.reads import ReadGroup
 
 
 class TestReadGroup:

@@ -1,4 +1,4 @@
 from . import bam_io
-from . import classes
+from . import reads
 from . import fingerprint
 from . import compare

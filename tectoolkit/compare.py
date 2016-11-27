@@ -8,7 +8,7 @@ from itertools import product
 from multiprocessing import Pool
 from tectoolkit import bam_io
 from tectoolkit.cluster import UnivariateLoci
-from tectoolkit.gff import GffFeature
+from tectoolkit.gff_io import NestedFeature
 from tectoolkit.fingerprint import Fingerprint
 
 
@@ -293,8 +293,8 @@ class FingerprintComparison(object):
         """
         for start, end in self.bin_loci:
             bin_dict, sample_dicts = self._compare_bin(start, end)
-            feature = GffFeature(**bin_dict)
-            feature.add_children(*[GffFeature(**d) for d in sample_dicts])
+            feature = NestedFeature(**bin_dict)
+            feature.add_children(*[NestedFeature(**d) for d in sample_dicts])
             yield feature
 
 if __name__ == '__main__':

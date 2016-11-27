@@ -6,8 +6,8 @@ import argparse
 from itertools import product
 from multiprocessing import Pool
 from tectoolkit import bam_io
-from tectoolkit.classes import ReadGroup
-from tectoolkit.gff import GffFeature
+from tectoolkit.reads import ReadGroup
+from tectoolkit.gff_io import NestedFeature
 from tectoolkit.cluster import FUDC, HUDC
 
 
@@ -188,13 +188,13 @@ class Fingerprint(object):
         :rtype: generator[:class:`GffFeature`]
         """
         for start, end in self.loci:
-            yield GffFeature(seqid=self.reference,
-                             start=start,
-                             end=end,
-                             strand=self.strand,
-                             ID="{0}_{1}_{2}_{3}".format(self.family, self.reference, self.strand, start),
-                             Name=self.family,
-                             sample=self.source)
+            yield NestedFeature(seqid=self.reference,
+                                start=start,
+                                end=end,
+                                strand=self.strand,
+                                ID="{0}_{1}_{2}_{3}".format(self.family, self.reference, self.strand, start),
+                                Name=self.family,
+                                sample=self.source)
 
 if __name__ == '__main__':
     pass
