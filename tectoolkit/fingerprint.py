@@ -156,20 +156,6 @@ class Fingerprint(object):
         self.reads = ReadGroup.from_bam(bam, self.reference, self.family, self.strand)
         self.loci = self._fit()
 
-    def _reads_from_bam(self, bam):
-        """
-        Reads subset of reads from bam file that are of the targeted reference, family and strand specified
-        in an instance of :class:`Fingerprint`.
-
-        :param bam: A bam file path
-        :type bam: str
-
-        :return: Subset of bam reads
-        :rtype: :class:`ReadGroup`
-        """
-        sam = bam_io.read_bam_strings(bam, reference=self.reference, family=self.family, strand=self.strand)
-        return ReadGroup._from_sam_strings(sam, strand=self.strand)
-
     def _fit(self):
         """
         Run a clustering algorithm on the targeted reads specified in an instance of :class:`Fingerprint`.
