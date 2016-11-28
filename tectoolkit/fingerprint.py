@@ -51,9 +51,9 @@ class FingerprintProgram(object):
         parser.add_argument('-s', '--strands',
                             type=str,
                             nargs='+',
-                            choices=set("+-."),
+                            choices=set("+-"),
                             default=['+', '-'],
-                            help='Strand(s) to be analysed. Use + for forward, - for reverse and . for both')
+                            help='Strand(s) to be analysed. Use + for forward or - for reverse')
         parser.add_argument('-e', '--eps',
                             type=int,
                             default=[100],
