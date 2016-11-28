@@ -22,13 +22,15 @@ class ReadGroup(object):
                            ('strand', np.str_, 1),
                            ('name', np.str_, 254)])
 
-    def __init__(self, reads):
+    def __init__(self, reads=None):
         """
         Init method for :class:`ReadGroup`.
 
         :param reads: A numpy array.
         :type reads: :class:`numpy.ndarray`[(int, int, str, str)]
         """
+        if reads is None:
+            reads = []
         self.reads = np.array(reads, dtype=ReadGroup.DTYPE_READ, copy=True)
 
     def __iter__(self):
@@ -154,15 +156,28 @@ class ReadGroup(object):
         Construct an instance of :class:`ReadGroup` from an iterable of SAM formatted strings.
 
         :param strings: An iterable of SAM formatted strings
-        :type strings: iterable[str]
+        :type strings: iter[str]
         :param strand: Strand ('+' or '-') of all reads (if known)
         :type strand: str
 
         :return: An instance of :class:`ReadGroup`
         :rtype: :class:`ReadGroup`
         """
-        reads = cls._parse_sam_strings(strings, strand=strand)
-        reads = np.fromiter(reads, dtype=ReadGroup.DTYPE_READ)
+        generator = cls._parse_sam_strings(strings, strand=strand)
+        return cls._from_iter(generator)
+
+    @classmethod
+    def _from_iter(cls, iterable):
+        """
+        Create an instance of :class:`ReadGroup` from an iterable.
+
+        :param iterable: an iterable of read positions
+        :type iterable: iter[(int, int, str, str)]
+
+        :return: An instance of :class:`ReadGroup`
+        :rtype: :class:`ReadGroup`
+        """
+        reads = np.fromiter(iterable, dtype=ReadGroup.DTYPE_READ)
         reads.sort(order=('tip', 'tail'))
         return ReadGroup(reads)
 
