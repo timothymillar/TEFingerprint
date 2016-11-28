@@ -102,10 +102,16 @@ class ReadGroup(object):
         :return: The subset of reads that fall within the specified bounds
         :rtype: :class:`ReadGroup`
         """
-        assert end in {'tip', 'tail'}
+        assert end in {'tip', 'tail', 'both'}
         start -= margin
         stop += margin
-        reads = self.reads[np.logical_and(self.reads[end] >= start, self.reads[end] <= stop)]
+        if end == 'both':
+            # 'tip' may be smaller or larger than 'tail'
+            reads = self.reads
+            reads = reads[np.logical_and(reads['tip'] >= start, reads['tip'] <= stop)]
+            reads = reads[np.logical_and(reads['tail'] >= start, reads['tail'] <= stop)]
+        else:
+            reads = self.reads[np.logical_and(self.reads[end] >= start, self.reads[end] <= stop)]
         return ReadGroup(reads)
 
     @classmethod

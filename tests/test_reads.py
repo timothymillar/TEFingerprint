@@ -61,6 +61,11 @@ class TestReadGroup:
         answer = ReadGroup(np.array([(8, 2, '+', 'a'), (5, 3, '+', 'b')], dtype=ReadGroup.DTYPE_READ))
         npt.assert_array_equal(query.subset_by_locus(1, 3, end='tail').reads, answer.reads)
 
+        # subset using end='both'
+        query = ReadGroup(np.array([(8, 3, '+', 'a'), (5, 3, '+', 'b'), (5, 2, '+', 'c')], dtype=ReadGroup.DTYPE_READ))
+        answer = ReadGroup(np.array([(5, 3, '+', 'b')], dtype=ReadGroup.DTYPE_READ))
+        npt.assert_array_equal(query.subset_by_locus(3, 5, end='both').reads, answer.reads)
+
     def test_parse_sam_strings(self):
         """
         Test for hidden method _parse_sam_strings.

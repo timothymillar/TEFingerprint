@@ -100,7 +100,7 @@ class UnivariateLoci(object):
         self.sort()
         self.loci = np.fromiter(_melter(self.loci), dtype=UnivariateLoci.DTYPE_ULOCUS)
 
-    def subset_by_locus(self, start, stop, margin=0, end='start'):
+    def subset_by_locus(self, start, stop, margin=0, end='both'):
         """
         Returns a new ReadGroup object containing (the specified end of) all reads within specified (inclusive) bounds.
 
@@ -115,10 +115,13 @@ class UnivariateLoci(object):
         :return: The subset of reads that fall within the specified bounds
         :rtype: :class:`ReadGroup`
         """
-        assert end in {'start', 'stop'}
+        assert end in {'start', 'stop', 'both'}
         start -= margin
         stop += margin
-        loci = self.loci[np.logical_and(self.loci[end] >= start, self.loci[end] <= stop)]
+        if end == 'both':
+            loci = self.loci[np.logical_and(self.loci['start'] >= start, self.loci['stop'] <= stop)]
+        else:
+            loci = self.loci[np.logical_and(self.loci[end] >= start, self.loci[end] <= stop)]
         return UnivariateLoci(loci)
 
     @classmethod

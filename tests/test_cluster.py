@@ -58,6 +58,23 @@ class TestUnivariateLoci:
         """
         Test for method subset_by_locus.
         """
+        # check if both 'start' and 'stop' ends are in locus
+        input_loci = np.array([(3, 6),
+                               (6, 8),
+                               (7, 9),
+                               (10, 12),
+                               (13, 13),
+                               (15, 25),
+                               (16, 17),
+                               (19, 20)], dtype=UnivariateLoci.DTYPE_ULOCUS)
+        query = UnivariateLoci(input_loci)
+        answer = np.array([(7, 9),
+                           (10, 12),
+                           (13, 13),
+                           (16, 17)], dtype=UnivariateLoci.DTYPE_ULOCUS)
+        npt.assert_array_equal(query.subset_by_locus(7, 17, end='both').loci, answer)
+
+        # check if only 'start' end is in locus
         input_loci = np.array([(3, 6),
                                (6, 8),
                                (7, 9),
@@ -72,7 +89,7 @@ class TestUnivariateLoci:
                            (13, 13),
                            (15, 25),
                            (16, 17)], dtype=UnivariateLoci.DTYPE_ULOCUS)
-        npt.assert_array_equal(query.subset_by_locus(7, 17).loci, answer)
+        npt.assert_array_equal(query.subset_by_locus(7, 17, end='start').loci, answer)
 
     def test_from_iterable(self):
         """
