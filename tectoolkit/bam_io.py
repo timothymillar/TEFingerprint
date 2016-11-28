@@ -107,7 +107,8 @@ def flag_attributes(flag):
     """
     attributes = ("read paired",
                   "read mapped in proper pair",
-                  "read unmapped mate unmapped",
+                  "read unmapped",
+                  "mate unmapped",
                   "read reverse strand",
                   "mate reverse strand",
                   "first in pair",
