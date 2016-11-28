@@ -21,8 +21,7 @@ def read_bam_strings(input_bam, reference='', family='', strand='.'):
     :rtype: list[str]
     """
     SAM_FLAGS = {'+': ('-F', '20'),
-                 '-': ('-f', '16'),
-                 '.': ('-F', '4')}
+                 '-': ('-f', '16', '-F', '4')}
     flag = SAM_FLAGS[strand]
     sam_strings = np.array(pysam.view(*flag, input_bam, reference).splitlines())
     in_family = np.array([string.startswith(family) for string in sam_strings])
