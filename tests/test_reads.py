@@ -2,9 +2,7 @@
 
 import numpy as np
 import numpy.testing as npt
-from tectoolkit.classes import ReadGroup, ReadLoci
-from tectoolkit.fingerprint import Fingerprint
-from tectoolkit.compare import FingerprintComparison
+from tectoolkit.reads import ReadGroup
 
 
 class TestReadGroup:
@@ -63,6 +61,11 @@ class TestReadGroup:
         answer = ReadGroup(np.array([(8, 2, '+', 'a'), (5, 3, '+', 'b')], dtype=ReadGroup.DTYPE_READ))
         npt.assert_array_equal(query.subset_by_locus(1, 3, end='tail').reads, answer.reads)
 
+        # subset using end='both'
+        query = ReadGroup(np.array([(8, 3, '+', 'a'), (5, 3, '+', 'b'), (5, 2, '+', 'c')], dtype=ReadGroup.DTYPE_READ))
+        answer = ReadGroup(np.array([(5, 3, '+', 'b')], dtype=ReadGroup.DTYPE_READ))
+        npt.assert_array_equal(query.subset_by_locus(3, 5, end='both').reads, answer.reads)
+
     def test_parse_sam_strings(self):
         """
         Test for hidden method _parse_sam_strings.
@@ -97,7 +100,7 @@ class TestReadGroup:
         input_strings = ["Gypsy27_a\t0\tchr1\t2\t66M19S\t*\t0\t0\tAACCCTA\tFFFIIII\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66",
                          "Gypsy27_b\t0\tchr1\t3\t66M19S\t*\t0\t0\tACC\tFFI\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66",
                          "Gypsy27_c\t0\tchr1\t5\t66M19S\t*\t0\t0\tAAC\tFFF\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66"]
-        query = ReadGroup.from_sam_strings(input_strings)
+        query = ReadGroup._from_sam_strings(input_strings)
         query.sort(order='name')
         answer = ReadGroup(np.array([(8, 2, '+', 'Gypsy27_a'),
                                      (5, 3, '+', 'Gypsy27_b'),
@@ -108,115 +111,9 @@ class TestReadGroup:
         input_strings = ["Gypsy27_a\t16\tchr1\t2\t66M19S\t*\t0\t0\tAACCCTA\tFFFIIII\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66",
                          "Gypsy27_b\t16\tchr1\t4\t66M19S\t*\t0\t0\tACC\tFFI\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66",
                          "Gypsy27_c\t16\tchr1\t7\t66M19S\t*\t0\t0\tAAC\tFFF\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66"]
-        query = ReadGroup.from_sam_strings(input_strings)
+        query = ReadGroup._from_sam_strings(input_strings)
         query.sort(order='name')
         answer = ReadGroup(np.array([(2, 8, '-', 'Gypsy27_a'),
                                      (4, 6, '-', 'Gypsy27_b'),
                                      (7, 9, '-', 'Gypsy27_c')], dtype=ReadGroup.DTYPE_READ))
         npt.assert_array_equal(query.reads, answer.reads)
-
-
-class TestReadLoci:
-    """
-    Tests for class ReadLoci
-    """
-    def test_sort(self):
-        """
-        Test for method sort.
-        """
-        input_loci = np.array([(2, 4),
-                               (3, 4),
-                               (3, 3),
-                               (4, 4),
-                               (3, 99),
-                               (1, 1)], dtype=ReadLoci.DTYPE_ULOCUS)
-        query = ReadLoci(input_loci)
-        query.sort()
-        answer = np.array([(1, 1),
-                           (2, 4),
-                           (3, 3),
-                           (3, 4),
-                           (3, 99),
-                           (4, 4)], dtype=ReadLoci.DTYPE_ULOCUS)
-        npt.assert_array_equal(query.loci, answer)
-
-    def test_melt(self):
-        """
-        Test for method melt.
-        Method modifies loci in place.
-        """
-        input_loci = np.array([(3, 6),
-                               (6, 8),
-                               (7, 9),
-                               (10, 12),
-                               (13, 13),
-                               (15, 25),
-                               (16, 17),
-                               (19, 20)], dtype=ReadLoci.DTYPE_ULOCUS)
-        query = ReadLoci(input_loci)
-        query.melt()
-        answer = np.array([(3, 9),
-                           (10, 12),
-                           (13, 13),
-                           (15, 25)], dtype=ReadLoci.DTYPE_ULOCUS)
-        npt.assert_array_equal(query.loci, answer)
-
-    def test_subset_by_locus(self):
-        """
-        Test for method subset_by_locus.
-        """
-        input_loci = np.array([(3, 6),
-                               (6, 8),
-                               (7, 9),
-                               (10, 12),
-                               (13, 13),
-                               (15, 25),
-                               (16, 17),
-                               (19, 20)], dtype=ReadLoci.DTYPE_ULOCUS)
-        query = ReadLoci(input_loci)
-        answer = np.array([(7, 9),
-                           (10, 12),
-                           (13, 13),
-                           (15, 25),
-                           (16, 17)], dtype=ReadLoci.DTYPE_ULOCUS)
-        npt.assert_array_equal(query.subset_by_locus(7, 17).loci, answer)
-
-    def test_from_iterable(self):
-        """
-        Test for method from_iterable.
-        """
-        iterable = [(3, 6), (6, 8), (7, 9), (10, 12), (13, 13), (15, 25), (16, 17), (19, 20)]
-        query = ReadLoci.from_iterable(iterable)
-        answer = np.array([(3, 6),
-                           (6, 8),
-                           (7, 9),
-                           (10, 12),
-                           (13, 13),
-                           (15, 25),
-                           (16, 17),
-                           (19, 20)], dtype=ReadLoci.DTYPE_ULOCUS)
-        npt.assert_array_equal(query.loci, answer)
-
-    def test_append(self):
-        """
-        Test for method append.
-        """
-        loci_x = np.array([(3, 9),
-                           (10, 12),
-                           (13, 13),
-                           (15, 25)], dtype=ReadLoci.DTYPE_ULOCUS)
-        loci_y = np.array([(4, 11),
-                           (7, 22),
-                           (23, 33),
-                           (25, 35)], dtype=ReadLoci.DTYPE_ULOCUS)
-        x, y = ReadLoci(loci_x), ReadLoci(loci_y)
-        query = ReadLoci.append(x, y)
-        answer = np.array([(3, 9),
-                           (4, 11),
-                           (7, 22),
-                           (10, 12),
-                           (13, 13),
-                           (15, 25),
-                           (23, 33),
-                           (25, 35)], dtype=ReadLoci.DTYPE_ULOCUS)
-        npt.assert_array_equal(query.loci, answer)

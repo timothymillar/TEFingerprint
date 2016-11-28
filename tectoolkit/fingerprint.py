@@ -5,26 +5,25 @@ import os
 import argparse
 from itertools import product
 from multiprocessing import Pool
-from tectoolkit import io
-from tectoolkit.classes import ReadGroup, ReadLoci
-from tectoolkit.gff import GffFeature
-from tectoolkit.cluster import HUDC
-from tectoolkit.cluster import FUDC
+from tectoolkit import bam_io
+from tectoolkit.reads import ReadGroup
+from tectoolkit.gff_io import NestedFeature
+from tectoolkit.cluster import FUDC, HUDC
 
 
 class FingerprintProgram(object):
     """Main class for the fingerprint program"""
     def __init__(self, arguments):
-        self.args = self.parse_args(arguments)
-        if self.args.references == ['']:
-            self.references = io.read_bam_references(self.args.input_bam)
-        else:
-            self.references = self.args.references
         """
         Init method for :class:`FingerprintProgram`.
 
         :param arguments: A list of commandline arguments to be parsed for the fingerprint program
         """
+        self.args = self.parse_args(arguments)
+        if self.args.references == ['']:
+            self.references = bam_io.read_bam_references(self.args.input_bam)
+        else:
+            self.references = self.args.references
 
     def parse_args(self, args):
         """
@@ -52,9 +51,9 @@ class FingerprintProgram(object):
         parser.add_argument('-s', '--strands',
                             type=str,
                             nargs='+',
-                            choices=set("+-."),
+                            choices=set("+-"),
                             default=['+', '-'],
-                            help='Strand(s) to be analysed. Use + for forward, - for reverse and . for both')
+                            help='Strand(s) to be analysed. Use + for forward or - for reverse')
         parser.add_argument('-e', '--eps',
                             type=int,
                             default=[100],
@@ -154,22 +153,8 @@ class Fingerprint(object):
         self.min_reads = min_reads
         self.sample_name = ''
         self.source = os.path.basename(bam)
-        self.reads = self._reads_from_bam(bam)
+        self.reads = ReadGroup.from_bam(bam, self.reference, self.family, self.strand)
         self.loci = self._fit()
-
-    def _reads_from_bam(self, bam):
-        """
-        Reads subset of reads from bam file that are of the targeted reference, family and strand specified
-        in an instance of :class:`Fingerprint`.
-
-        :param bam: A bam file path
-        :type bam: str
-
-        :return: Subset of bam reads
-        :rtype: :class:`ReadGroup`
-        """
-        sam = io.read_bam_strings(bam, reference=self.reference, family=self.family, strand=self.strand)
-        return ReadGroup.from_sam_strings(sam, strand=self.strand)
 
     def _fit(self):
         """
@@ -178,20 +163,20 @@ class Fingerprint(object):
         If two eps values were passed to the instance of :class:`Fingerprint` the :class:`HUDC` algorithm is used.
 
         :return: Loci identified by the clustering algorithm
-        :rtype: :class:`ReadLoci`
+        :rtype: :class:`UnivariateLoci`
         """
         if len(self.eps) == 2:
             # use hierarchical clustering method
             max_eps, min_eps = max(self.eps), min(self.eps)
             hudc = HUDC(self.min_reads, max_eps, min_eps)
             hudc.fit(self.reads['tip'])
-            return ReadLoci(hudc.loci)
+            return hudc.clusters
         elif len(self.eps) == 1:
             # use flat clustering method
             eps = max(self.eps)
             fudc = FUDC(self.min_reads, eps)
             fudc.fit(self.reads['tip'])
-            return ReadLoci(fudc.loci)
+            return fudc.clusters
         else:
             pass
 
@@ -203,13 +188,13 @@ class Fingerprint(object):
         :rtype: generator[:class:`GffFeature`]
         """
         for start, end in self.loci:
-            yield GffFeature(seqid=self.reference,
-                             start=start,
-                             end=end,
-                             strand=self.strand,
-                             ID="{0}_{1}_{2}_{3}".format(self.family, self.reference, self.strand, start),
-                             Name=self.family,
-                             sample=self.source)
+            yield NestedFeature(seqid=self.reference,
+                                start=start,
+                                end=end,
+                                strand=self.strand,
+                                ID="{0}_{1}_{2}_{3}".format(self.family, self.reference, self.strand, start),
+                                Name=self.family,
+                                sample=self.source)
 
 if __name__ == '__main__':
     pass
