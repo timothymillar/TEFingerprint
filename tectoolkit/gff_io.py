@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 
 
-class GffFeature(object):
+class NestedFeature(object):
     """"""
     def __init__(self,
                  seqid='.',
@@ -35,7 +35,7 @@ class GffFeature(object):
 
     def add_children(self, *args):
         for child in args:
-            assert isinstance(child, GffFeature)
+            assert isinstance(child, NestedFeature)
             assert "ID" in self.tags
             child.tags["Parent"] = self.tags["ID"]
             self.children.append(child)

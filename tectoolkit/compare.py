@@ -6,9 +6,9 @@ import numpy as np
 from functools import reduce
 from itertools import product
 from multiprocessing import Pool
-from tectoolkit import io
-from tectoolkit.classes import ReadLoci
-from tectoolkit.gff import GffFeature
+from tectoolkit import bam_io
+from tectoolkit.cluster import UnivariateLoci
+from tectoolkit.gff_io import NestedFeature
 from tectoolkit.fingerprint import Fingerprint
 
 
@@ -53,9 +53,9 @@ class CompareProgram(object):
         parser.add_argument('-s', '--strands',
                             type=str,
                             nargs='+',
-                            choices=set("+-."),
+                            choices=set("+-"),
                             default=['+', '-'],
-                            help='Strand(s) to be analysed. Use + for forward, - for reverse and . for both')
+                            help='Strand(s) to be analysed. Use + for forward or - for reverse')
         parser.add_argument('-e', '--eps',
                             type=int,
                             default=[100],
@@ -93,7 +93,7 @@ class CompareProgram(object):
         :return: A list of reference names
         :rtype: list[str]
         """
-        bam_refs = [set(io.read_bam_references(bam)) for bam in input_bams]
+        bam_refs = [set(bam_io.read_bam_references(bam)) for bam in input_bams]
         references = bam_refs[0]
         for refs in bam_refs[1:]:
             references = references.intersection(refs)
@@ -113,7 +113,7 @@ class CompareProgram(object):
         :return: A dictionary of reference lengths with names as keys
         :rtype: dict[str, int]
         """
-        reference_dicts = [io.read_bam_reference_lengths(bam) for bam in input_bams]
+        reference_dicts = [bam_io.read_bam_reference_lengths(bam) for bam in input_bams]
         reference_lengths = {tuple(d[ref] for ref in references) for d in reference_dicts}
         assert len(reference_lengths) == 1
         return {ref: length for ref, length in zip(references, reference_lengths.pop())}
@@ -209,9 +209,9 @@ class FingerprintComparison(object):
         Bins are calculated by merging the overlapping fingerprints from all samples.
 
         :return: The union of loci among compared fingerprints
-        :rtype: :class:`ReadLoci`
+        :rtype: :class:`UnivariateLoci`
         """
-        loci = reduce(ReadLoci.append, [f.loci for f in self.fingerprints])
+        loci = reduce(UnivariateLoci.append, [f.loci for f in self.fingerprints])
         loci.melt()
         return loci
 
@@ -293,8 +293,8 @@ class FingerprintComparison(object):
         """
         for start, end in self.bin_loci:
             bin_dict, sample_dicts = self._compare_bin(start, end)
-            feature = GffFeature(**bin_dict)
-            feature.add_children(*[GffFeature(**d) for d in sample_dicts])
+            feature = NestedFeature(**bin_dict)
+            feature.add_children(*[NestedFeature(**d) for d in sample_dicts])
             yield feature
 
 if __name__ == '__main__':
