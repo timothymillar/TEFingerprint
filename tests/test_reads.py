@@ -63,7 +63,6 @@ class TestReadGroup:
         answer.sort()
         npt.assert_array_equal(query, answer)
 
-
     @pytest.mark.parametrize("query,answer,locus,end",
                              # loci contain read tips
                              [([(8, 2, '+', 'a'), (5, 3, '+', 'b'), (7, 5, '+', 'c')],
