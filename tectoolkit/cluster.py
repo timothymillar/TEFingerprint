@@ -125,7 +125,7 @@ class UnivariateLoci(object):
         return UnivariateLoci(loci)
 
     @classmethod
-    def from_iterable(cls, iterable):
+    def from_iter(cls, iterable):
         """
         Construct an instance of :class:`ReadLoci` form an iterable.
 
@@ -185,7 +185,7 @@ class FUDC(object):
         lower = lower[dense]
         upper = upper[dense]
         loci = ((lower[i], upper[i]) for i in range(len(lower)))
-        return UnivariateLoci.from_iterable(loci)
+        return UnivariateLoci.from_iter(loci)
 
     @staticmethod
     def flat_cluster(points, min_pts, eps):
@@ -356,7 +356,7 @@ class HUDC(FUDC):
         HUDC._child_area(tree)
         HUDC._select_nodes(tree)
         loci = HUDC._flatten_list(HUDC._retrieve_selected_loci(tree))
-        return UnivariateLoci.from_iterable(loci)
+        return UnivariateLoci.from_iter(loci)
 
     @staticmethod
     def _hierarchical_cluster(points, min_pts, max_eps, min_eps):

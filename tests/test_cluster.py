@@ -1,5 +1,6 @@
 #! /usr/bin/env python
 
+import pytest
 import numpy as np
 import numpy.testing as npt
 from tectoolkit.cluster import UnivariateLoci, FUDC, HUDC
@@ -29,107 +30,77 @@ class TestUnivariateLoci:
                            (4, 4)], dtype=UnivariateLoci.DTYPE_ULOCUS)
         npt.assert_array_equal(query.loci, answer)
 
-    def test_melt(self):
+    def test_from_iter(self):
+        """
+        Test for method from_iter.
+        """
+        loci = [(3, 6), (6, 8), (7, 9), (10, 12), (13, 13), (15, 25), (16, 17), (19, 20)]
+        iterable = (locus for locus in loci)
+        query = UnivariateLoci.from_iter(iterable)
+        query.sort()
+        answer = UnivariateLoci(np.array(loci, dtype=UnivariateLoci.DTYPE_ULOCUS))
+        npt.assert_array_equal(query, answer)
+
+    @pytest.mark.parametrize("loci,melted_loci",
+                             # single locus spanning single base
+                             [([(13, 13)],
+                               [(13, 13)]),
+                              # nested loci
+                              ([(15, 25), (16, 17), (19, 20)],
+                               [(15, 25)]),
+                              # adjacent loci
+                              ([(7, 9), (10, 12)],
+                               [(7, 9), (10, 12)]),
+                              # combined
+                              ([(3, 6), (6, 8), (7, 9), (10, 12), (13, 13), (15, 25), (16, 17), (19, 20)],
+                               [(3, 9), (10, 12), (13, 13), (15, 25)])],
+                             ids=['single', 'nested', 'adjacent', 'combined'])
+    def test_melt(self, loci, melted_loci):
         """
         Test for method melt.
         Method modifies loci in place.
         Test includes following edge cases:
-         * Long locus completely overlaps short locus: (15, 25) & (16, 17) --> (15, 25)
+         * Long locus completely overlaps short loci: (15, 25) & (16, 17) & (19, 20) --> (15, 25)
          * Adjacent loci do not get merged: (7, 9) & (10, 12) -->  (*, 9) & (10, *)
          * Locus may span a single base: (13, 13) --> (13, 13)
         """
-        input_loci = np.array([(3, 6),
-                               (6, 8),
-                               (7, 9),
-                               (10, 12),
-                               (13, 13),
-                               (15, 25),
-                               (16, 17),
-                               (19, 20)], dtype=UnivariateLoci.DTYPE_ULOCUS)
-        query = UnivariateLoci(input_loci)
-        query.melt()
-        answer = np.array([(3, 9),
-                           (10, 12),
-                           (13, 13),
-                           (15, 25)], dtype=UnivariateLoci.DTYPE_ULOCUS)
+        query = UnivariateLoci.from_iter(loci)
+        query.melt()  # melt should automatically sort loci
+        answer = UnivariateLoci.from_iter(melted_loci)
+        answer.sort()
         npt.assert_array_equal(query.loci, answer)
 
-    def test_subset_by_locus(self):
+    @pytest.mark.parametrize("loci,subset,locus,end",
+                             # check if both 'start' and 'stop' ends are in locus
+                             [([(3, 6), (6, 8), (7, 9), (10, 12), (13, 13), (15, 25), (16, 17), (19, 20)],
+                               [(7, 9), (10, 12), (13, 13), (16, 17)],
+                               (7, 17),
+                               'both'),
+                              # check if only 'start' end is in locus
+                              ([(3, 6), (6, 8), (7, 9), (10, 12), (13, 13), (15, 25), (16, 17), (19, 20)],
+                               [(7, 9), (10, 12), (13, 13), (15, 25), (16, 17)],
+                               (7, 17),
+                               'start')],
+                             ids=['both', 'start'])
+    def test_subset_by_locus(self, loci, subset, locus, end):
         """
-        Test for method subset_by_locus.
+        Test factory for method subset_by_locus.
         """
-        # check if both 'start' and 'stop' ends are in locus
-        input_loci = np.array([(3, 6),
-                               (6, 8),
-                               (7, 9),
-                               (10, 12),
-                               (13, 13),
-                               (15, 25),
-                               (16, 17),
-                               (19, 20)], dtype=UnivariateLoci.DTYPE_ULOCUS)
-        query = UnivariateLoci(input_loci)
-        answer = np.array([(7, 9),
-                           (10, 12),
-                           (13, 13),
-                           (16, 17)], dtype=UnivariateLoci.DTYPE_ULOCUS)
-        npt.assert_array_equal(query.subset_by_locus(7, 17, end='both').loci, answer)
-
-        # check if only 'start' end is in locus
-        input_loci = np.array([(3, 6),
-                               (6, 8),
-                               (7, 9),
-                               (10, 12),
-                               (13, 13),
-                               (15, 25),
-                               (16, 17),
-                               (19, 20)], dtype=UnivariateLoci.DTYPE_ULOCUS)
-        query = UnivariateLoci(input_loci)
-        answer = np.array([(7, 9),
-                           (10, 12),
-                           (13, 13),
-                           (15, 25),
-                           (16, 17)], dtype=UnivariateLoci.DTYPE_ULOCUS)
-        npt.assert_array_equal(query.subset_by_locus(7, 17, end='start').loci, answer)
-
-    def test_from_iterable(self):
-        """
-        Test for method from_iterable.
-        """
-        iterable = [(3, 6), (6, 8), (7, 9), (10, 12), (13, 13), (15, 25), (16, 17), (19, 20)]
-        query = UnivariateLoci.from_iterable(iterable)
-        answer = np.array([(3, 6),
-                           (6, 8),
-                           (7, 9),
-                           (10, 12),
-                           (13, 13),
-                           (15, 25),
-                           (16, 17),
-                           (19, 20)], dtype=UnivariateLoci.DTYPE_ULOCUS)
-        npt.assert_array_equal(query.loci, answer)
+        query = UnivariateLoci.from_iter(loci)
+        query.sort()
+        subset = UnivariateLoci.from_iter(subset)
+        subset.sort()
+        npt.assert_array_equal(query.subset_by_locus(*locus, end=end), subset)
 
     def test_append(self):
         """
         Test for method append.
         """
-        loci_x = np.array([(3, 9),
-                           (10, 12),
-                           (13, 13),
-                           (15, 25)], dtype=UnivariateLoci.DTYPE_ULOCUS)
-        loci_y = np.array([(4, 11),
-                           (7, 22),
-                           (23, 33),
-                           (25, 35)], dtype=UnivariateLoci.DTYPE_ULOCUS)
-        x, y = UnivariateLoci(loci_x), UnivariateLoci(loci_y)
+        x = UnivariateLoci.from_iter([(3, 9), (10, 12), (13, 13), (15, 25)])
+        y = UnivariateLoci.from_iter([(4, 11), (7, 22), (23, 33), (25, 35)])
         query = UnivariateLoci.append(x, y)
-        answer = np.array([(3, 9),
-                           (4, 11),
-                           (7, 22),
-                           (10, 12),
-                           (13, 13),
-                           (15, 25),
-                           (23, 33),
-                           (25, 35)], dtype=UnivariateLoci.DTYPE_ULOCUS)
-        npt.assert_array_equal(query.loci, answer)
+        answer = UnivariateLoci.from_iter([(3, 9), (4, 11), (7, 22), (10, 12), (13, 13), (15, 25), (23, 33), (25, 35)])
+        npt.assert_array_equal(query, answer)
 
 
 class TestFUDC:
@@ -139,10 +110,9 @@ class TestFUDC:
     def test_flat_subcluster(self):
         """
         Test for hidden method _flat_subcluster.
-
         """
         query = np.array([5, 2, 1, 5, 15, 1, 1, 6, 13, 5, 7, 14], dtype=int)
-        answer = UnivariateLoci.from_iterable([(1, 2), (2, 5), (5, 6), (5, 7)])
+        answer = UnivariateLoci.from_iter([(1, 2), (2, 5), (5, 6), (5, 7)])
         npt.assert_array_equal(HUDC._flat_subcluster(query, 4, 3), answer)
 
     def test_flat_cluster(self):
@@ -151,7 +121,7 @@ class TestFUDC:
         Most edge cases should be caught in tests for component methods.
         """
         query = np.array([9, 2, 2, 1, 7, 19, 1, 1, 6, 13, 10, 7, 14, 11, 11], dtype=int)
-        answer = UnivariateLoci.from_iterable([(1, 2), (6, 14)])
+        answer = UnivariateLoci.from_iter([(1, 2), (6, 14)])
         npt.assert_array_equal(FUDC.flat_cluster(query, 5, 4), answer)
 
     def test_fit(self):
@@ -164,7 +134,7 @@ class TestFUDC:
         query = FUDC(5, 4)
         input_points = np.array([9, 2, 2, 1, 7, 19, 1, 1, 6, 13, 10, 7, 14, 11, 11], dtype=int)
         answer_points = np.array([1, 1, 1, 2, 2, 6, 7, 7, 9, 10, 11, 11, 13, 14, 19], dtype=int)
-        answer_clusters = UnivariateLoci.from_iterable([(1, 2), (6, 14)])
+        answer_clusters = UnivariateLoci.from_iter([(1, 2), (6, 14)])
         query.fit(input_points)
         assert query.points is not input_points
         npt.assert_array_equal(query.points, answer_points)
@@ -430,7 +400,7 @@ class TestHUDC:
         Test for hidden method _single_hierarchical_cluster.
         """
         query = np.array([1, 1, 2, 2, 2, 2, 2, 3, 3, 4, 4, 4, 4, 13, 21, 21, 21, 22, 22, 22, 23, 31], dtype=int)
-        answer = UnivariateLoci.from_iterable([(1, 4), (13, 23)])
+        answer = UnivariateLoci.from_iter([(1, 4), (13, 23)])
         npt.assert_array_equal(HUDC._single_hierarchical_cluster(query, 3, 10, 2), answer)
 
     def test_hierarchical_cluster(self):
@@ -438,7 +408,7 @@ class TestHUDC:
         Test for hidden method _hierarchical_cluster.
         """
         query = np.array([1, 2, 21, 22, 22, 22, 24, 38, 54, 54, 55, 56, 65, 65, 66, 67, 68, 90], dtype=int)
-        answer = UnivariateLoci.from_iterable([(21, 24), (54, 56), (65, 68)])
+        answer = UnivariateLoci.from_iter([(21, 24), (54, 56), (65, 68)])
         npt.assert_array_equal(HUDC._single_hierarchical_cluster(query, 3, 10, 2), answer)
 
     def test_fit(self):
@@ -451,7 +421,7 @@ class TestHUDC:
         query = HUDC(3, 10, 2)
         input_points = np.array([22, 54, 24, 22, 2, 21, 54, 22, 90, 38, 65, 67, 68, 56, 55, 65, 66, 1], dtype=int)
         answer_points = np.array([1, 2, 21, 22, 22, 22, 24, 38, 54, 54, 55, 56, 65, 65, 66, 67, 68, 90], dtype=int)
-        answer_clusters = UnivariateLoci.from_iterable([(21, 24), (54, 56), (65, 68)])
+        answer_clusters = UnivariateLoci.from_iter([(21, 24), (54, 56), (65, 68)])
         query.fit(input_points)
         assert query.points is not input_points
         npt.assert_array_equal(query.points, answer_points)

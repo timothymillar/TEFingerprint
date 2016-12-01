@@ -1,5 +1,6 @@
 #! /usr/bin/env python
 
+import pytest
 import numpy as np
 import numpy.testing as npt
 from tectoolkit.reads import ReadGroup
@@ -46,74 +47,107 @@ class TestReadGroup:
         query = ReadGroup(input_reads)
         assert len(query) == 3
 
-    def test_subset_by_locus(self):
+    @pytest.mark.parametrize("iterable",
+                             [[(8, 2, '+', 'a')],
+                              [(8, 2, '+', 'a'), (5, 3, '+', 'b'), (7, 5, '+', 'c')],
+                              [(2, 8, '-', 'Gypsy27_a'), (5, 3, '+', 'Gypsy27_b'), (7, 9, '-', 'Gypsy27_c')]],
+                             ids=['single', 'forward', 'mixed'])
+    def test_from_iter(self, iterable):
         """
-        Test for method subset_by_locus.
-        Test for subsetting by 'tip' or 'tail' end of reads.
+        Test factory for method from_iter using generators.
         """
-        # subset using default end='tip'
-        query = ReadGroup(np.array([(8, 2, '+', 'a'), (5, 3, '+', 'b'), (7, 5, '+', 'c')], dtype=ReadGroup.DTYPE_READ))
-        answer = ReadGroup(np.array([(5, 3, '+', 'b'), (7, 5, '+', 'c')], dtype=ReadGroup.DTYPE_READ))
-        npt.assert_array_equal(query.subset_by_locus(5, 7).reads, answer.reads)
-
-        # subset using end='tail'
-        query = ReadGroup(np.array([(8, 2, '+', 'a'), (5, 3, '+', 'b'), (7, 5, '+', 'c')], dtype=ReadGroup.DTYPE_READ))
-        answer = ReadGroup(np.array([(8, 2, '+', 'a'), (5, 3, '+', 'b')], dtype=ReadGroup.DTYPE_READ))
-        npt.assert_array_equal(query.subset_by_locus(1, 3, end='tail').reads, answer.reads)
-
-        # subset using end='both'
-        query = ReadGroup(np.array([(8, 3, '+', 'a'), (5, 3, '+', 'b'), (5, 2, '+', 'c')], dtype=ReadGroup.DTYPE_READ))
-        answer = ReadGroup(np.array([(5, 3, '+', 'b')], dtype=ReadGroup.DTYPE_READ))
-        npt.assert_array_equal(query.subset_by_locus(3, 5, end='both').reads, answer.reads)
-
-    def test_parse_sam_strings(self):
-        """
-        Test for hidden method _parse_sam_strings.
-        Test for parsing both forwards and reverse reads.
-        """
-        # forwards reads
-        input_strings = ["Gypsy27_a\t0\tchr1\t2\t66M19S\t*\t0\t0\tAACCCTA\tFFFIIII\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66",
-                         "Gypsy27_b\t0\tchr1\t3\t66M19S\t*\t0\t0\tACC\tFFI\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66",
-                         "Gypsy27_c\t0\tchr1\t5\t66M19S\t*\t0\t0\tAAC\tFFF\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66"]
-        query = list(ReadGroup._parse_sam_strings(input_strings))
+        generator = (item for item in iterable)
+        query = ReadGroup.from_iter(generator)
+        answer = ReadGroup(np.array(iterable, dtype=ReadGroup.DTYPE_READ))
         query.sort()
-        answer = [(8, 2, '+', 'Gypsy27_a'), (5, 3, '+', 'Gypsy27_b'), (7, 5, '+', 'Gypsy27_c')]
         answer.sort()
         npt.assert_array_equal(query, answer)
 
-        # reverse reads
-        input_strings = ["Gypsy27_a\t16\tchr1\t2\t66M19S\t*\t0\t0\tAACCCTA\tFFFIIII\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66",
-                         "Gypsy27_b\t16\tchr1\t4\t66M19S\t*\t0\t0\tACC\tFFI\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66",
-                         "Gypsy27_c\t16\tchr1\t7\t66M19S\t*\t0\t0\tAAC\tFFF\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66"]
-        query = list(ReadGroup._parse_sam_strings(input_strings))
+    @pytest.mark.parametrize("query,answer,locus,end",
+                             # loci contain read tips
+                             [([(8, 2, '+', 'a'), (5, 3, '+', 'b'), (7, 5, '+', 'c')],
+                               [(5, 3, '+', 'b'), (7, 5, '+', 'c')],
+                               (5, 7),
+                               'tip'),
+                              # loci contain read tails
+                              ([(8, 2, '+', 'a'), (5, 3, '+', 'b'), (7, 5, '+', 'c')],
+                               [(5, 3, '+', 'b'), (8, 2, '+', 'a')],
+                               (1, 3),
+                               'tail'),
+                              # loci contain read tips and tails
+                              ([(8, 3, '+', 'a'), (5, 3, '+', 'b'), (5, 2, '+', 'c')],
+                               [(5, 3, '+', 'b')],
+                               (3, 5),
+                               'both')],
+                             ids=['tips', 'tails', 'mixed'])
+    def test_subset_by_locus(self, query, answer, locus, end):
+        """
+        Test factory for method subset_by_locus.
+        Tests for subsetting by 'tip', 'tail' or 'both' end(s) of reads.
+        """
+        query = ReadGroup.from_iter(query)
         query.sort()
-        answer = [(2, 8, '-', 'Gypsy27_a'), (4, 6, '-', 'Gypsy27_b'), (7, 9, '-', 'Gypsy27_c')]
+        answer = ReadGroup.from_iter(answer)
         answer.sort()
-        npt.assert_array_equal(query, answer)
+        npt.assert_array_equal(query.subset_by_locus(*locus, end=end), answer)
 
-    def test_from_sam_strings(self):
+    @pytest.mark.parametrize("strings,answer",
+                             # forward reads
+                             [(["Gypsy27_a\t0\tchr1\t2\t66M19S\t*\t0\t0\tAACCCTA\tFFFIIII\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66",
+                                "Gypsy27_b\t0\tchr1\t3\t66M19S\t*\t0\t0\tACC\tFFI\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66",
+                                "Gypsy27_c\t0\tchr1\t5\t66M19S\t*\t0\t0\tAAC\tFFF\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66"],
+                               [(8, 2, '+', 'Gypsy27_a'), (5, 3, '+', 'Gypsy27_b'), (7, 5, '+', 'Gypsy27_c')]),
+                              # reverse reads
+                              (["Gypsy27_a\t16\tchr1\t2\t66M19S\t*\t0\t0\tAACCCTA\tFFFIIII\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66",
+                                "Gypsy27_b\t16\tchr1\t4\t66M19S\t*\t0\t0\tACC\tFFI\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66",
+                                "Gypsy27_c\t16\tchr1\t7\t66M19S\t*\t0\t0\tAAC\tFFF\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66"],
+                               [(2, 8, '-', 'Gypsy27_a'), (4, 6, '-', 'Gypsy27_b'), (7, 9, '-', 'Gypsy27_c')]),
+                              # forward and reverse reads
+                              (["Gypsy27_a\t0\tchr1\t2\t66M19S\t*\t0\t0\tAACCCTA\tFFFIIII\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66",
+                                "Gypsy27_b\t0\tchr1\t3\t66M19S\t*\t0\t0\tACC\tFFI\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66",
+                                "Gypsy27_c\t16\tchr1\t7\t66M19S\t*\t0\t0\tAAC\tFFF\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66"],
+                               [(8, 2, '+', 'Gypsy27_a'), (5, 3, '+', 'Gypsy27_b'), (7, 9, '-', 'Gypsy27_c')]
+                               )],
+                             ids=['tips', 'tails', 'mixed'])
+    def test_parse_sam_strings(self, strings, answer):
+        """
+        Test factory for hidden method _parse_sam_strings.
+        Tests for parsing sets of forward, reverse and mixed reads.
+        """
+        query = list(ReadGroup._parse_sam_strings(strings))
+        query.sort()
+        answer.sort()
+        assert query == answer
+
+    @pytest.mark.parametrize("strings,answer",
+                             # forward reads
+                             [(["Gypsy27_a\t0\tchr1\t2\t66M19S\t*\t0\t0\tAACCCTA\tFFFIIII\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66",
+                                "Gypsy27_b\t0\tchr1\t3\t66M19S\t*\t0\t0\tACC\tFFI\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66",
+                                "Gypsy27_c\t0\tchr1\t5\t66M19S\t*\t0\t0\tAAC\tFFF\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66"],
+                               ReadGroup.from_iter([(8, 2, '+', 'Gypsy27_a'),
+                                                    (5, 3, '+', 'Gypsy27_b'),
+                                                    (7, 5, '+', 'Gypsy27_c')])),
+                              # reverse reads
+                              (["Gypsy27_a\t16\tchr1\t2\t66M19S\t*\t0\t0\tAACCCTA\tFFFIIII\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66",
+                                "Gypsy27_b\t16\tchr1\t4\t66M19S\t*\t0\t0\tACC\tFFI\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66",
+                                "Gypsy27_c\t16\tchr1\t7\t66M19S\t*\t0\t0\tAAC\tFFF\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66"],
+                               ReadGroup.from_iter([(2, 8, '-', 'Gypsy27_a'),
+                                                    (4, 6, '-', 'Gypsy27_b'),
+                                                    (7, 9, '-', 'Gypsy27_c')])),
+                              # forward and reverse reads
+                              (["Gypsy27_a\t16\tchr1\t2\t66M19S\t*\t0\t0\tAACCCTA\tFFFIIII\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66",
+                                "Gypsy27_b\t0\tchr1\t3\t66M19S\t*\t0\t0\tACC\tFFI\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66",
+                                "Gypsy27_c\t16\tchr1\t7\t66M19S\t*\t0\t0\tAAC\tFFF\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66"],
+                               ReadGroup.from_iter([(2, 8, '-', 'Gypsy27_a'),
+                                                    (5, 3, '+', 'Gypsy27_b'),
+                                                    (7, 9, '-', 'Gypsy27_c')]))],
+                              ids=['tips', 'tails', 'mixed'])
+    def test_from_sam_strings(self, strings, answer):
         """
         Test for method from_sam_strings.
         Test for parsing both forwards and reverse reads.
         """
-        # forwards reads
-        input_strings = ["Gypsy27_a\t0\tchr1\t2\t66M19S\t*\t0\t0\tAACCCTA\tFFFIIII\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66",
-                         "Gypsy27_b\t0\tchr1\t3\t66M19S\t*\t0\t0\tACC\tFFI\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66",
-                         "Gypsy27_c\t0\tchr1\t5\t66M19S\t*\t0\t0\tAAC\tFFF\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66"]
-        query = ReadGroup._from_sam_strings(input_strings)
+        query = ReadGroup._from_sam_strings(strings)
         query.sort(order='name')
-        answer = ReadGroup(np.array([(8, 2, '+', 'Gypsy27_a'),
-                                     (5, 3, '+', 'Gypsy27_b'),
-                                     (7, 5, '+', 'Gypsy27_c')], dtype=ReadGroup.DTYPE_READ))
-        npt.assert_array_equal(query.reads, answer.reads)
-
-        # reverse reads
-        input_strings = ["Gypsy27_a\t16\tchr1\t2\t66M19S\t*\t0\t0\tAACCCTA\tFFFIIII\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66",
-                         "Gypsy27_b\t16\tchr1\t4\t66M19S\t*\t0\t0\tACC\tFFI\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66",
-                         "Gypsy27_c\t16\tchr1\t7\t66M19S\t*\t0\t0\tAAC\tFFF\tNM:i:0\tMD:Z:66\tAS:i:66\tXS:i:66"]
-        query = ReadGroup._from_sam_strings(input_strings)
-        query.sort(order='name')
-        answer = ReadGroup(np.array([(2, 8, '-', 'Gypsy27_a'),
-                                     (4, 6, '-', 'Gypsy27_b'),
-                                     (7, 9, '-', 'Gypsy27_c')], dtype=ReadGroup.DTYPE_READ))
-        npt.assert_array_equal(query.reads, answer.reads)
+        answer.sort(order='name')
+        npt.assert_array_equal(query, answer)

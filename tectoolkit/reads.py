@@ -164,10 +164,10 @@ class ReadGroup(object):
         :rtype: :class:`ReadGroup`
         """
         generator = cls._parse_sam_strings(strings, strand=strand)
-        return cls._from_iter(generator)
+        return cls.from_iter(generator)
 
     @classmethod
-    def _from_iter(cls, iterable):
+    def from_iter(cls, iterable):
         """
         Create an instance of :class:`ReadGroup` from an iterable.
 
