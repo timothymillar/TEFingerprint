@@ -139,6 +139,13 @@ class TestGffFilterDB:
         """
         Test factory for method matches_filter.
         Tests many cases with different filters (operators and attributes).
+
+        :param feature: The name of a feature in the test db
+        :type feature: str
+        :param filt: A filter to test the feature with
+        :type filt: dict[str, str]
+        :param answer: Boolean specifying whether the feature matches all filters
+        :type answer: bool
         """
         filter_db = GffFilterDB(gffutils.create_db(GFF_UNSORTED,
                                                    dbfn=':memory:',
@@ -149,10 +156,34 @@ class TestGffFilterDB:
         feature = filter_db.db[feature]
         assert filter_db.matches_filter(feature, filt) is answer
 
-    def test_matches_filters(self):
+    @pytest.mark.parametrize('feature,filters,answer',
+                             # feature matches all filters
+                             [('bin_Gypsy_chr11_-_10275156',
+                               [{'attribute': 'Name', 'operator': '=', 'value': 'Gypsy'},
+                                {'attribute': 'Name', 'operator': '!=', 'value': 'Copia'},
+                                {'attribute': 'read_count_max', 'operator': '>=', 'value': '31'},
+                                {'attribute': 'read_count_max', 'operator': '<', 'value': '32'}],
+                               True),
+                              # feature does not matches all filters
+                              ('bin_Gypsy_chr11_-_10275156',
+                               [{'attribute': 'Name', 'operator': '=', 'value': 'Gypsy'},
+                                {'attribute': 'Name', 'operator': '!=', 'value': 'Copia'},
+                                {'attribute': 'read_count_max', 'operator': '>=', 'value': '32'},  # 32!=31
+                                {'attribute': 'read_count_max', 'operator': '<', 'value': '32'}],
+                               False)
+                              ],
+                             ids=["", ""])
+    def test_matches_filters(self, feature, filters, answer):
         """
         Test for method matches_filters.
         Tests a case where feature matches all filters and a case where feature does not match all filters.
+
+        :param feature: The name of a feature in the test db
+        :type feature: str
+        :param filters: A list of filters to test the feature with
+        :type filters: list[dict[str, str]]
+        :param answer: Boolean specifying whether the feature matches all filters
+        :type answer: bool
         """
         filter_db = GffFilterDB(gffutils.create_db(GFF_UNSORTED,
                                                    dbfn=':memory:',
@@ -160,26 +191,45 @@ class TestGffFilterDB:
                                                    from_string=True,
                                                    merge_strategy='merge',
                                                    sort_attribute_values=True))
+        feature = filter_db.db[feature]
+        assert filter_db.matches_filters(feature, filters) is answer
 
-        # feature matches all filters
-        feature = filter_db.db['bin_Gypsy_chr11_-_10275156']
-        filters = [{'attribute': 'Name', 'operator': '=', 'value': 'Gypsy'},
-                   {'attribute': 'Name', 'operator': '!=', 'value': 'Copia'},
-                   {'attribute': 'read_count_max', 'operator': '>=', 'value': '31'},
-                   {'attribute': 'read_count_max', 'operator': '<', 'value': '32'}]
-        assert filter_db.matches_filters(feature, filters) is True
-
-        # feature does not matches all filters
-        feature = filter_db.db['bin_Gypsy_chr11_-_10275156']
-        filters = [{'attribute': 'Name', 'operator': '=', 'value': 'Gypsy'},
-                   {'attribute': 'Name', 'operator': '!=', 'value': 'Copia'},
-                   {'attribute': 'read_count_max', 'operator': '>=', 'value': '32'},  # feature does not matches filter
-                   {'attribute': 'read_count_max', 'operator': '<', 'value': '32'}]
-        assert filter_db.matches_filters(feature, filters) is False
-
-    def test_relative_matches_filters(self):
+    @pytest.mark.parametrize('feature,filters,answer',
+                             # '0_Gypsy_chr11_-_10276179' is a child of 'bin_Gypsy_chr11_-_10275156'
+                             # 'bin_Gypsy_chr11_-_10275156' matches all filters
+                             [('0_Gypsy_chr11_-_10276179',
+                               [{'attribute': 'Name', 'operator': '=', 'value': 'Gypsy'},
+                                {'attribute': 'Name', 'operator': '!=', 'value': 'Copia'},
+                                {'attribute': 'read_count_max', 'operator': '>=', 'value': '31'},
+                                {'attribute': 'read_count_max', 'operator': '<', 'value': '32'}],
+                               True),
+                              # '0_Copia_chr11_+_126915' is a child of 'bin_Copia_chr11_+_126799'
+                              # neither of which matches all filters
+                              ('0_Copia_chr11_+_126915',
+                               [{'attribute': 'Name', 'operator': '=', 'value': 'Gypsy'},
+                                {'attribute': 'Name', 'operator': '!=', 'value': 'Copia'},
+                                {'attribute': 'read_count_max', 'operator': '>=', 'value': '31'},
+                                {'attribute': 'read_count_max', 'operator': '<', 'value': '32'}],
+                               False),
+                              # 'bin_Gypsy_chr11_-_10275156' is a parent of '0_Gypsy_chr11_-_10276179'
+                              # '0_Gypsy_chr11_-_10276179' matches all filters
+                              ('bin_Gypsy_chr11_-_10275156',
+                               [{'attribute': 'Name', 'operator': '=', 'value': 'Gypsy'},
+                                {'attribute': 'sample', 'operator': '!=',
+                                 'value': 'Regen_49_danglers.vitis.bwa_mem.bam'}],
+                               True)],
+                             ids=['', '', ''])
+    def test_relative_matches_filters(self, feature, filters, answer):
         """
         Test for method relative_matches_filters.
+        Tests whether a feature or at least one of its relatives matches a all of list of filters.
+
+        :param feature: The name of a feature in the test db
+        :type feature: str
+        :param filters: A list of filters to test the feature with
+        :type filters: list[dict[str, str]]
+        :param answer: Boolean specifying whether the feature matches all filters
+        :type answer: bool
         """
         filter_db = GffFilterDB(gffutils.create_db(GFF_UNSORTED,
                                                    dbfn=':memory:',
@@ -187,31 +237,8 @@ class TestGffFilterDB:
                                                    from_string=True,
                                                    merge_strategy='merge',
                                                    sort_attribute_values=True))
-
-        # '0_Gypsy_chr11_-_10276179' is a child of 'bin_Gypsy_chr11_-_10275156'
-        # 'bin_Gypsy_chr11_-_10275156' matches all filters
-        feature = filter_db.db['0_Gypsy_chr11_-_10276179']
-        filters = [{'attribute': 'Name', 'operator': '=', 'value': 'Gypsy'},
-                   {'attribute': 'Name', 'operator': '!=', 'value': 'Copia'},
-                   {'attribute': 'read_count_max', 'operator': '>=', 'value': '31'},
-                   {'attribute': 'read_count_max', 'operator': '<', 'value': '32'}]
-        assert filter_db.relative_matches_filters(feature, filters) is True
-
-        # '0_Copia_chr11_+_126915' is a child of 'bin_Copia_chr11_+_126799'
-        # neither of which matches all filters
-        feature = filter_db.db['0_Copia_chr11_+_126915']
-        filters = [{'attribute': 'Name', 'operator': '=', 'value': 'Gypsy'},
-                   {'attribute': 'Name', 'operator': '!=', 'value': 'Copia'},
-                   {'attribute': 'read_count_max', 'operator': '>=', 'value': '31'},
-                   {'attribute': 'read_count_max', 'operator': '<', 'value': '32'}]
-        assert filter_db.relative_matches_filters(feature, filters) is False
-
-        # 'bin_Gypsy_chr11_-_10275156' is a parent of '0_Gypsy_chr11_-_10276179'
-        # '0_Gypsy_chr11_-_10276179' matches all filters
-        feature = filter_db.db['bin_Gypsy_chr11_-_10275156']
-        filters = [{'attribute': 'Name', 'operator': '=', 'value': 'Gypsy'},
-                   {'attribute': 'sample', 'operator': '!=', 'value': 'Regen_49_danglers.vitis.bwa_mem.bam'}]
-        assert filter_db.relative_matches_filters(feature, filters) is True
+        feature = filter_db.db[feature]
+        assert filter_db.relative_matches_filters(feature, filters) is answer
 
     def test_filter_by_attributes(self):
         """
