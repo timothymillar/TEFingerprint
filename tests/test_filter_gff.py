@@ -96,12 +96,8 @@ class TestGffFilterDB:
     @pytest.mark.parametrize('feature,filt,answer',
                              # Check if string values are equivalent they are ('Gypsy'=='Gypsy')
                              [('bin_Gypsy_chr11_-_10275156',
-                               {'attribute': 'Name', 'operator': '=', 'value': 'Gypsy'},
+                               {'attribute': 'Name', 'operator': '==', 'value': 'Gypsy'},
                                True),
-                              # Check if string values are equal, they are not('31'=='31.0')
-                              ('bin_Gypsy_chr11_-_10275156',
-                               {'attribute': 'read_count_max', 'operator': '=', 'value': '31.0'},
-                               False),
                               # Check if string values are not equivalent they are not not equivalent ('Gypsy'!='Gypsy')
                               ('bin_Gypsy_chr11_-_10275156',
                                {'attribute': 'Name', 'operator': '!=', 'value': 'Gypsy'},
@@ -134,7 +130,7 @@ class TestGffFilterDB:
                               ('bin_Gypsy_chr11_-_10275156',
                                {'attribute': 'read_count_max', 'operator': '<', 'value': '30'},
                                False)],
-                             ids=['', '', '', '', '', '', '', '', '', ''])
+                             ids=['', '', '', '', '', '', '', '', ''])
     def test_matches_filter(self, feature, filt, answer):
         """
         Test factory for method matches_filter.
@@ -159,14 +155,14 @@ class TestGffFilterDB:
     @pytest.mark.parametrize('feature,filters,answer',
                              # feature matches all filters
                              [('bin_Gypsy_chr11_-_10275156',
-                               [{'attribute': 'Name', 'operator': '=', 'value': 'Gypsy'},
+                               [{'attribute': 'Name', 'operator': '==', 'value': 'Gypsy'},
                                 {'attribute': 'Name', 'operator': '!=', 'value': 'Copia'},
                                 {'attribute': 'read_count_max', 'operator': '>=', 'value': '31'},
                                 {'attribute': 'read_count_max', 'operator': '<', 'value': '32'}],
                                True),
                               # feature does not matches all filters
                               ('bin_Gypsy_chr11_-_10275156',
-                               [{'attribute': 'Name', 'operator': '=', 'value': 'Gypsy'},
+                               [{'attribute': 'Name', 'operator': '==', 'value': 'Gypsy'},
                                 {'attribute': 'Name', 'operator': '!=', 'value': 'Copia'},
                                 {'attribute': 'read_count_max', 'operator': '>=', 'value': '32'},  # 32!=31
                                 {'attribute': 'read_count_max', 'operator': '<', 'value': '32'}],
@@ -198,7 +194,7 @@ class TestGffFilterDB:
                              # '0_Gypsy_chr11_-_10276179' is a child of 'bin_Gypsy_chr11_-_10275156'
                              # 'bin_Gypsy_chr11_-_10275156' matches all filters
                              [('0_Gypsy_chr11_-_10276179',
-                               [{'attribute': 'Name', 'operator': '=', 'value': 'Gypsy'},
+                               [{'attribute': 'Name', 'operator': '==', 'value': 'Gypsy'},
                                 {'attribute': 'Name', 'operator': '!=', 'value': 'Copia'},
                                 {'attribute': 'read_count_max', 'operator': '>=', 'value': '31'},
                                 {'attribute': 'read_count_max', 'operator': '<', 'value': '32'}],
@@ -206,7 +202,7 @@ class TestGffFilterDB:
                               # '0_Copia_chr11_+_126915' is a child of 'bin_Copia_chr11_+_126799'
                               # neither of which matches all filters
                               ('0_Copia_chr11_+_126915',
-                               [{'attribute': 'Name', 'operator': '=', 'value': 'Gypsy'},
+                               [{'attribute': 'Name', 'operator': '==', 'value': 'Gypsy'},
                                 {'attribute': 'Name', 'operator': '!=', 'value': 'Copia'},
                                 {'attribute': 'read_count_max', 'operator': '>=', 'value': '31'},
                                 {'attribute': 'read_count_max', 'operator': '<', 'value': '32'}],
@@ -214,7 +210,7 @@ class TestGffFilterDB:
                               # 'bin_Gypsy_chr11_-_10275156' is a parent of '0_Gypsy_chr11_-_10276179'
                               # '0_Gypsy_chr11_-_10276179' matches all filters
                               ('bin_Gypsy_chr11_-_10275156',
-                               [{'attribute': 'Name', 'operator': '=', 'value': 'Gypsy'},
+                               [{'attribute': 'Name', 'operator': '==', 'value': 'Gypsy'},
                                 {'attribute': 'sample', 'operator': '!=',
                                  'value': 'Regen_49_danglers.vitis.bwa_mem.bam'}],
                                True)],
@@ -253,7 +249,7 @@ class TestGffFilterDB:
                                                    from_string=True,
                                                    merge_strategy='merge',
                                                    sort_attribute_values=True))
-        filters = [{'attribute': 'cluster_presence', 'operator': '=', 'value': '1'},
+        filters = [{'attribute': 'cluster_presence', 'operator': '==', 'value': '1'},
                    {'attribute': 'read_count_max', 'operator': '>=', 'value': '20'}]
         filter_db.filter_by_attributes(filters)
         assert str(filter_db) == GFF_SINGLE_CLUSTERS_WITH_20_READS

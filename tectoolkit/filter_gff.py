@@ -1,6 +1,7 @@
 #! /usr/bin/env python
 
 import sys
+import re
 import argparse
 import gffutils
 
@@ -32,13 +33,14 @@ class FilterGffProgram(object):
                             help=("List of filters to apply.\n"
                                   "A valid filter takes the form '<attribute><operator><value>'"
                                   "where <attribute> is the name of a GFF attribute, "
-                                  "<operator> is one of '=', '!=', '==', '>=', '<=', '>' or '<' "
+                                  "<operator> is one of '=', '==', '!=', '>=', '<=', '>' or '<' "
                                   "and the value of the GFF attribute is compared to <value> using the operator\n"
                                   "The list of filters is applied additively (i.e. a feature must meet all filters) "
                                   "and, if a feature is selected, all of it's ancestors and descendants "
                                   "will also be included in the output.\n"
-                                  "Operators '=' and '!=' will compare values as strings where "
-                                  "Operators '==', '>=', '<=', '>' and '<' will try to coerce values "
+                                  "Operators '=', '==' and '!=' will attempt to compare values as floating point "
+                                  "numbers if possible and otherwise compare values as strings. "
+                                  "Operators '>=', '<=', '>' and '<' will coerce values "
                                   "to floating point numbers before comparison."))
         try:
             arguments = parser.parse_args(args)
@@ -58,23 +60,17 @@ class FilterGffProgram(object):
         :return: A dictionary with the keys 'attribute', 'operator' and 'value'
         :rtype: dict[str, str]
         """
-        filt = {}
-        if '>=' in string:
-            filt['operator'] = '>='
-        elif '<=' in string:
-            filt['operator'] = '<='
-        elif '==' in string:
-            filt['operator'] = '=='
-        elif '!=' in string:
-            filt['operator'] = '!='
-        elif '>' in string:
-            filt['operator'] = '>'
-        elif '<' in string:
-            filt['operator'] = '<'
-        elif '=' in string:
-            filt['operator'] = '='
-        filt['attribute'], filt['value'] = string.split(filt['operator'])
-        return filt
+        operator = re.findall(">=|<=|==|!=|>|<|=", string)
+        if len(operator) > 1:
+            raise ValueError('There is more than one operator in filter: "{0}"'.format(string))
+        elif len(operator) < 1:
+            raise ValueError('Could not find a valid operator in filter: "{0}"'.format(string))
+        else:
+            filt = {}
+            operator = operator[0]
+            filt['operator'] = operator
+            filt['attribute'], filt['value'] = string.split(filt['operator'])
+            return filt
 
     def run(self):
         """
@@ -145,8 +141,9 @@ class GffFilterDB(object):
         A filter is a dictionary with the keys 'attribute', 'operator' and 'value' and values are strings.
         The 'value' of 'attribute' will be compared against the value of the gff features attribute of the same name.
         The 'operator' determines the manor of comparison.
-        Operators '=' and '!=' will compare values as strings.
-        Operators '==', '>=', '<=', '>' and '<' will coerce values to floats before comparison.
+        Operators '=', '==' and '!=' will attempt to coerce values to floats before comparison and fall back to
+        comparing values as strings.
+        Operators '>=', '<=', '>' and '<' will coerce values to floats before comparison.
 
         :param feature: the feature to be tested
         :type feature: :class:`gffutils.feature.Feature`
@@ -156,10 +153,16 @@ class GffFilterDB(object):
         :return: Boolean value indicating whether the feature meets the filter criteria
         :rtype: bool
         """
-        if filt['operator'] == '=':
-            return feature.attributes[filt['attribute']][0] == filt['value']
+        if filt['operator'] == '==' or filt['operator'] == '=':
+            try:
+                return float(feature.attributes[filt['attribute']][0]) == float(filt['value'])
+            except ValueError:
+                return feature.attributes[filt['attribute']][0] == filt['value']
         elif filt['operator'] == '!=':
-            return feature.attributes[filt['attribute']][0] != filt['value']
+            try:
+                return float(feature.attributes[filt['attribute']][0]) != float(filt['value'])
+            except ValueError:
+                return feature.attributes[filt['attribute']][0] != filt['value']
         elif filt['operator'] == '==':
             return float(feature.attributes[filt['attribute']][0]) == float(filt['value'])
         elif filt['operator'] == '>=':
