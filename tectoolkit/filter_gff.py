@@ -77,149 +77,142 @@ class FilterGffProgram(object):
         Run the filter_gff program with parameters specified in an instance of :class:`FilterGffProgram`.
         Imports the target gff file, subsets it by specified filters, and prints subset to stdout.
         """
-        db = GffFilterDB(gffutils.create_db(self.args.input_gff[0],
-                                            dbfn=':memory:',
-                                            keep_order=True,
-                                            merge_strategy='merge',
-                                            sort_attribute_values=True))
+        db = gffutils.create_db(self.args.input_gff[0],
+                                dbfn=':memory:',
+                                keep_order=True,
+                                merge_strategy='merge',
+                                sort_attribute_values=True)
         filters = [self._parse_filter(string) for string in self.args.filters]
-        db.filter_by_attributes(filters)
-        print(db)
+        filter_by_attributes(db, filters)
+        print('\n'.join([str(feature) for feature in db.all_features()]))
 
 
-class GffFilterDB(object):
-    """Subset a gff file using a list of filters."""
-    def __init__(self, db):
-        """
-        Init method for :class:`GffFilterDB`.
+def descendants(feature, db):
+    """
+    Recursively find all descendants of a feature.
 
-        :param db: GFF db to be filtered.
-        :type db: :class:`gffutils.FeatureDB`
-        """
-        self.db = db
+    :param feature: Feature to find descendants of
+    :type feature: :class:`gffutils.feature.Feature`
+    :param db: Feature database to search
+    :type db: :class:`gffutils.interface.FeatureDB`
 
-    def __str__(self):
-        """
-        String method for :class:`GffFilterDB`.
+    :return: A generator of descendant features
+    :rtype: generator[:class:`gffutils.feature.Feature`]
+    """
+    for child in db.children(feature):
+        yield child
+        descendants(child, db)
 
-        :return: String of every :class:`gffutils.feature.Feature` in the :class:`GffFilterDB`
-        :rtype: str
-        """
-        return '\n'.join([str(feature) for feature in self.db.all_features()])
 
-    def descendants(self, feature):
-        """
-        Recursively find all descendants of a feature.
+def ancestors(feature, db):
+    """
+    Recursively find all ancestors of a feature.
 
-        :param feature: Feature to find descendants of
-        :type feature: :class:`gffutils.feature.Feature`
+    :param feature: Feature to find ancestors of
+    :type feature: :class:`gffutils.feature.Feature`
+    :param db: Feature database to search
+    :type db: :class:`gffutils.interface.FeatureDB`
 
-        :return: A generator of descendant features
-        :rtype: generator[:class:`gffutils.feature.Feature`]
-        """
-        for child in self.db.children(feature):
-            yield child
-            self.descendants(child)
+    :return: A generator of ancestors features
+    :rtype: generator[:class:`gffutils.feature.Feature`]
+    """
+    for child in db.parents(feature):
+        yield child
+        ancestors(child, db)
 
-    def ancestors(self, feature):
-        """
-        Recursively find all ancestors of a feature.
 
-        :param feature: Feature to find ancestors of
-        :type feature: :class:`gffutils.feature.Feature`
+def matches_filter(feature, filt):
+    """
+    Ascertains whether a feature meets the requirements of a single filter.
+    A filter is a dictionary with the keys 'attribute', 'operator' and 'value' and values are strings.
+    The 'value' of 'attribute' will be compared against the value of the gff features attribute of the same name.
+    The 'operator' determines the manor of comparison.
+    Operators '=', '==' and '!=' will attempt to coerce values to floats before comparison and fall back to
+    comparing values as strings.
+    Operators '>=', '<=', '>' and '<' will coerce values to floats before comparison.
 
-        :return: A generator of ancestors features
-        :rtype: generator[:class:`gffutils.feature.Feature`]
-        """
-        for child in self.db.parents(feature):
-            yield child
-            self.ancestors(child)
+    :param feature: the feature to be tested
+    :type feature: :class:`gffutils.feature.Feature`
+    :param filt: A dictionary with the keys 'attribute', 'operator' and 'value'
+    :type filt: dict[str, str]
 
-    def matches_filter(self, feature, filt):
-        """
-        Ascertains whether a feature meets the requirements of a single filter.
-        A filter is a dictionary with the keys 'attribute', 'operator' and 'value' and values are strings.
-        The 'value' of 'attribute' will be compared against the value of the gff features attribute of the same name.
-        The 'operator' determines the manor of comparison.
-        Operators '=', '==' and '!=' will attempt to coerce values to floats before comparison and fall back to
-        comparing values as strings.
-        Operators '>=', '<=', '>' and '<' will coerce values to floats before comparison.
-
-        :param feature: the feature to be tested
-        :type feature: :class:`gffutils.feature.Feature`
-        :param filt: A dictionary with the keys 'attribute', 'operator' and 'value'
-        :type filt: dict[str, str]
-
-        :return: Boolean value indicating whether the feature meets the filter criteria
-        :rtype: bool
-        """
-        if filt['operator'] == '==' or filt['operator'] == '=':
-            try:
-                return float(feature.attributes[filt['attribute']][0]) == float(filt['value'])
-            except ValueError:
-                return feature.attributes[filt['attribute']][0] == filt['value']
-        elif filt['operator'] == '!=':
-            try:
-                return float(feature.attributes[filt['attribute']][0]) != float(filt['value'])
-            except ValueError:
-                return feature.attributes[filt['attribute']][0] != filt['value']
-        elif filt['operator'] == '==':
+    :return: Boolean value indicating whether the feature meets the filter criteria
+    :rtype: bool
+    """
+    if filt['operator'] == '==' or filt['operator'] == '=':
+        try:
             return float(feature.attributes[filt['attribute']][0]) == float(filt['value'])
-        elif filt['operator'] == '>=':
-            return float(feature.attributes[filt['attribute']][0]) >= float(filt['value'])
-        elif filt['operator'] == '<=':
-            return float(feature.attributes[filt['attribute']][0]) <= float(filt['value'])
-        elif filt['operator'] == '>':
-            return float(feature.attributes[filt['attribute']][0]) > float(filt['value'])
-        elif filt['operator'] == '<':
-            return float(feature.attributes[filt['attribute']][0]) < float(filt['value'])
+        except ValueError:
+            return feature.attributes[filt['attribute']][0] == filt['value']
+    elif filt['operator'] == '!=':
+        try:
+            return float(feature.attributes[filt['attribute']][0]) != float(filt['value'])
+        except ValueError:
+            return feature.attributes[filt['attribute']][0] != filt['value']
+    elif filt['operator'] == '==':
+        return float(feature.attributes[filt['attribute']][0]) == float(filt['value'])
+    elif filt['operator'] == '>=':
+        return float(feature.attributes[filt['attribute']][0]) >= float(filt['value'])
+    elif filt['operator'] == '<=':
+        return float(feature.attributes[filt['attribute']][0]) <= float(filt['value'])
+    elif filt['operator'] == '>':
+        return float(feature.attributes[filt['attribute']][0]) > float(filt['value'])
+    elif filt['operator'] == '<':
+        return float(feature.attributes[filt['attribute']][0]) < float(filt['value'])
 
-    def matches_filters(self, feature, filters):
-        """
-        Ascertains whether a feature meets the requirements of each of a list of filters.
 
-        :param feature: the feature to be tested
-        :type feature: :class:`gffutils.feature.Feature`
-        :param filters: A list of dictionaries with the keys 'attribute', 'operator' and 'value'
-        :type filters: list[dict[str, str]]
+def matches_filters(feature, filters):
+    """
+    Ascertains whether a feature meets the requirements of each of a list of filters.
 
-        :return: Boolean value indicating whether the feature meets all of the filter criteria
-        :rtype: bool
-        """
-        if {filt['attribute'] for filt in filters}.issubset(feature.attributes.keys()):
-            return all([self.matches_filter(feature, filt) for filt in filters])
+    :param feature: the feature to be tested
+    :type feature: :class:`gffutils.feature.Feature`
+    :param filters: A list of dictionaries with the keys 'attribute', 'operator' and 'value'
+    :type filters: list[dict[str, str]]
+
+    :return: Boolean value indicating whether the feature meets all of the filter criteria
+    :rtype: bool
+    """
+    if {filt['attribute'] for filt in filters}.issubset(feature.attributes.keys()):
+        return all([matches_filter(feature, filt) for filt in filters])
+    else:
+        return False
+
+
+def relative_matches_filters(feature, filters, db):
+    """
+    Ascertains whether a feature or any of its relatives meets the requirements of each of a list of filters.
+
+    :param feature: the feature to have itself and all ancestors and descendants tested
+    :type feature: :class:`gffutils.feature.Feature`
+    :param filters: A list of dictionaries with the keys 'attribute', 'operator' and 'value'
+    :type filters: list[dict[str, str]]
+    :param db: Feature database
+    :type db: :class:`gffutils.interface.FeatureDB`
+
+    :return: Boolean value indicating whether the feature or any relative meets all of the filter criteria
+    :rtype: bool
+    """
+    return any([matches_filters(feature, filters),
+                any([matches_filters(f, filters) for f in descendants(feature, db)]),
+                any([matches_filters(f, filters) for f in ancestors(feature, db)])])
+
+
+def filter_by_attributes(db, filters):
+    """
+    For every feature in the database of :class:`GffFilterDB`, checks if the feature or any of its relatives meets
+    the requirements of each of a list of filters. If not, the feature is dropped from the database.
+
+    :param db: Feature database
+    :type db: :class:`gffutils.interface.FeatureDB`
+    :param filters: A list of dictionaries with the keys 'attribute', 'operator' and 'value'
+    :type filters: list[dict[str, str]]
+    """
+    for feature in db.all_features():
+        if relative_matches_filters(feature, filters, db):
+            pass
         else:
-            return False
-
-    def relative_matches_filters(self, feature, filters):
-        """
-        Ascertains whether a feature or any of its relatives meets the requirements of each of a list of filters.
-
-        :param feature: the feature to have itself and all ancestors and descendants tested
-        :type feature: :class:`gffutils.feature.Feature`
-        :param filters: A list of dictionaries with the keys 'attribute', 'operator' and 'value'
-        :type filters: list[dict[str, str]]
-
-        :return: Boolean value indicating whether the feature or any relative meets all of the filter criteria
-        :rtype: bool
-        """
-        return any([self.matches_filters(feature, filters),
-                    any([self.matches_filters(f, filters) for f in self.descendants(feature)]),
-                    any([self.matches_filters(f, filters) for f in self.ancestors(feature)])])
-
-    def filter_by_attributes(self, filters):
-        """
-        For every feature in the database of :class:`GffFilterDB`, checks if the feature or any of its relatives meets
-        the requirements of each of a list of filters. If not, the feature is dropped from the database.
-
-        :param filters: A list of dictionaries with the keys 'attribute', 'operator' and 'value'
-        :type filters: list[dict[str, str]]
-        """
-        for feature in self.db.all_features():
-            if self.relative_matches_filters(feature, filters):
-                pass
-            else:
-                self.db.delete(feature)
+            db.delete(feature)
 
 if __name__ == '__main__':
     pass
