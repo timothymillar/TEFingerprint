@@ -121,6 +121,30 @@ def parse_filter_string(string):
         filt['attribute'], filt['value'] = string.split(filt['operator'])
         return filt
 
+
+def _equivalence_filter(x, y):
+    try:
+        return float(x) == float(y)
+    except ValueError:
+        return x == y
+
+
+def _non_equivalence_filter(x, y):
+    try:
+        return float(x) != float(y)
+    except ValueError:
+        return x != y
+
+
+_FILTER_DISPATCH = {'==': _equivalence_filter,
+                    '=': _equivalence_filter,
+                    '!=': _non_equivalence_filter,
+                    '>=': lambda x, y: float(x) >= float(y),
+                    '>': lambda x, y: float(x) > float(y),
+                    '<=': lambda x, y: float(x) <= float(y),
+                    '<': lambda x, y: float(x) < float(y)}
+
+
 def matches_filter(feature, filt):
     """
     Ascertains whether a feature meets the requirements of a single filter.
@@ -139,26 +163,7 @@ def matches_filter(feature, filt):
     :return: Boolean value indicating whether the feature meets the filter criteria
     :rtype: bool
     """
-    if filt['operator'] == '==' or filt['operator'] == '=':
-        try:
-            return float(feature.attributes[filt['attribute']][0]) == float(filt['value'])
-        except ValueError:
-            return feature.attributes[filt['attribute']][0] == filt['value']
-    elif filt['operator'] == '!=':
-        try:
-            return float(feature.attributes[filt['attribute']][0]) != float(filt['value'])
-        except ValueError:
-            return feature.attributes[filt['attribute']][0] != filt['value']
-    elif filt['operator'] == '==':
-        return float(feature.attributes[filt['attribute']][0]) == float(filt['value'])
-    elif filt['operator'] == '>=':
-        return float(feature.attributes[filt['attribute']][0]) >= float(filt['value'])
-    elif filt['operator'] == '<=':
-        return float(feature.attributes[filt['attribute']][0]) <= float(filt['value'])
-    elif filt['operator'] == '>':
-        return float(feature.attributes[filt['attribute']][0]) > float(filt['value'])
-    elif filt['operator'] == '<':
-        return float(feature.attributes[filt['attribute']][0]) < float(filt['value'])
+    return _FILTER_DISPATCH[filt['operator']](feature.attributes[filt['attribute']][0], filt['value'])
 
 
 def matches_filters(feature, filters):
