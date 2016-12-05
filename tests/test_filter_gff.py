@@ -79,6 +79,26 @@ def test_ancestors():
     assert [ancestor.id for ancestor in tectoolkit.filter_gff.ancestors(feature, db)] == answer
 
 
+@pytest.mark.parametrize('string,answer',
+                         [('a=v', {'attribute': 'a', 'operator': '=', 'value': 'v'}),
+                          ('a==v', {'attribute': 'a', 'operator': '==', 'value': 'v'}),
+                          ('a>v', {'attribute': 'a', 'operator': '>', 'value': 'v'}),
+                          ('a>=v', {'attribute': 'a', 'operator': '>=', 'value': 'v'}),
+                          ('$#?!=9392', {'attribute': '$#?', 'operator': '!=', 'value': '9392'})],
+                         ids=['=', '==', '>', '>=', '!='])
+def test_parse_filter_string(string, answer):
+    """
+    Test factory for function parse_filter_string.
+    Primarily checks that operators are recognised correctly.
+
+    :param string: a filter string in the format '<attribute><operator><value>'
+    :type string: str
+    :param answer: a dict in the format {'attribute': '<attribute>', 'operator': '<operator>', 'value': '<value>'}
+    :type answer: dict[str, str]
+    """
+    assert tectoolkit.filter_gff.parse_filter_string(string) == answer
+
+
 @pytest.mark.parametrize('feature,filt,answer',
                          # Check if string values are equivalent they are ('Gypsy'=='Gypsy')
                          [('bin_Gypsy_chr11_-_10275156',

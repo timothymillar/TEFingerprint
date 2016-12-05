@@ -50,28 +50,6 @@ class FilterGffProgram(object):
         else:
             return arguments
 
-    def _parse_filter(self, string):
-        """
-        Parse a filter string to identify the attribute, operator and value
-
-        :param string: A valid filter string in the form '<attribute><operator><value>'
-        :type string: str
-
-        :return: A dictionary with the keys 'attribute', 'operator' and 'value'
-        :rtype: dict[str, str]
-        """
-        operator = re.findall(">=|<=|==|!=|>|<|=", string)
-        if len(operator) > 1:
-            raise ValueError('There is more than one operator in filter: "{0}"'.format(string))
-        elif len(operator) < 1:
-            raise ValueError('Could not find a valid operator in filter: "{0}"'.format(string))
-        else:
-            filt = {}
-            operator = operator[0]
-            filt['operator'] = operator
-            filt['attribute'], filt['value'] = string.split(filt['operator'])
-            return filt
-
     def run(self):
         """
         Run the filter_gff program with parameters specified in an instance of :class:`FilterGffProgram`.
@@ -82,7 +60,7 @@ class FilterGffProgram(object):
                                 keep_order=True,
                                 merge_strategy='merge',
                                 sort_attribute_values=True)
-        filters = [self._parse_filter(string) for string in self.args.filters]
+        filters = [parse_filter_string(string) for string in self.args.filters]
         filter_by_attributes(db, filters)
         print('\n'.join([str(feature) for feature in db.all_features()]))
 
@@ -120,6 +98,28 @@ def ancestors(feature, db):
         yield child
         ancestors(child, db)
 
+
+def parse_filter_string(string):
+    """
+    Parse a filter string to identify the attribute, operator and value
+
+    :param string: A valid filter string in the form '<attribute><operator><value>'
+    :type string: str
+
+    :return: A dictionary with the keys 'attribute', 'operator' and 'value'
+    :rtype: dict[str, str]
+    """
+    operator = re.findall(">=|<=|==|!=|>|<|=", string)
+    if len(operator) > 1:
+        raise ValueError('There is more than one operator in filter: "{0}"'.format(string))
+    elif len(operator) < 1:
+        raise ValueError('Could not find a valid operator in filter: "{0}"'.format(string))
+    else:
+        filt = {}
+        operator = operator[0]
+        filt['operator'] = operator
+        filt['attribute'], filt['value'] = string.split(filt['operator'])
+        return filt
 
 def matches_filter(feature, filt):
     """
