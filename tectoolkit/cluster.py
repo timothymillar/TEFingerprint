@@ -157,8 +157,144 @@ class UnivariateLoci(object):
         return loci
 
 
+class UDC(object):
+    """Univariate Density Clusters"""
+    _DTYPE_UGRAD = np.dtype([('index', np.int64), ('grad', np.int64)])
+    _DTYPE_UPEAK = np.dtype([('left', np.int64), ('right', np.int64), ('eps', np.int64)])
+    _DTYPE_UPOOL = np.dtype([('left', np.int64), ('right', np.int64)])
+    _DTYPE_UPOINT_EPS = np.dtype([('point', np.int64), ('eps', np.int64)])
+
+    def __init__(self, min_points, max_eps=None, min_eps=None):
+        """"""
+        self.min_pts = min_points
+        self.max_eps = max_eps
+        self.min_eps = min_eps
+        self.clusters = UnivariateLoci()
+        self.points = np.empty_like
+        self.labels = np.array([])
+
+    @staticmethod
+    def univariate_eps(points, n):
+        assert n > 1  # groups must contain atleast two points
+        offset = n - 1  # offset for indexing
+        length = len(points)
+        lower = points[0:length - offset]
+        upper = points[offset:length]
+        eps_groups = upper - lower
+        eps_2d = np.full((n, length), np.max(eps_groups), dtype=int)
+        for i in range(n):
+            eps_2d[i, i:length - (offset - i)] = eps_groups
+        return np.min(eps_2d, axis=0)
+
+    @staticmethod
+    def _univariate_gradient(array):
+        length = len(array)
+        gradients = np.empty(length - 1, dtype=UDC._DTYPE_UGRAD)
+        gradients['grad'] = array[1:] - array[:-1]  # calculate gradients
+        gradients['index'] = np.arange(1, length, dtype=np.int)  # store index between compared values
+        return gradients
+
+    @staticmethod
+    def _find_univariate_peaks(gradients):
+        gradients = gradients[gradients['grad'] != 0]  # drop plateaus
+        gradients['grad'] = np.array(gradients['grad']>0, dtype=np.int)  # convert to boolean like
+        is_peak = np.where(gradients['grad'][1:] < gradients['grad'][:-1])[0]
+        peaks = np.empty(len(is_peak), dtype=UDC._DTYPE_UPEAK)
+        peaks['left'] = gradients['index'][is_peak]
+        peaks['right'] = gradients['index'][is_peak + 1]
+        return peaks
+
+    @staticmethod
+    def univariate_peaks(array):
+        gradients = UDC._univariate_gradient(array)
+        peaks = UDC._find_univariate_peaks(gradients)
+        peaks['eps'] = array[peaks['left']]  # recover initial values from array
+        return peaks
+
+    @staticmethod
+    def _flatten_list(item):
+        if isinstance(item, list):
+            for element in item:
+                for item in UDC._flatten_list(element):
+                    yield item
+        else:
+            yield item
+
+    @staticmethod
+    def _hudc_tree(points, base_eps):
+        peaks = UDC.univariate_peaks(points['eps'])
+
+        if len(peaks) == 0:
+            # there are no children so return coordinates
+            return points['point'][0], points['point'][-1]
+        
+        threshold_eps = np.max(peaks['eps'])  # compare based on largest peak (least dense point)
+        total_area = np.sum(base_eps - points['eps'])
+        child_area = np.sum(threshold_eps - points['eps'])  # area above threshold
+        parent_area = total_area - child_area  # area bellow threshold
+
+        if parent_area > child_area:
+            # parent is lager so return coordinates
+            return points['point'][0], points['point'][-1]
+
+        else:
+            # combined area of children is larger so divide and repeat
+            # identify peaks with eps == threshold
+            threshold_peaks = peaks[np.where(peaks['eps'] == threshold_eps)[0]]
+
+            # organise split indices for pools.
+            # A pool is the inverse of a peak.
+            # There is one more pool than there are peaks
+            # The right bound of a peak becomes the left bound of a pool and vice versa
+            pools = np.empty(len(threshold_peaks) + 1, dtype=UDC._DTYPE_UPOOL)
+            pools[0]['left'] = 0  # first index of first pool
+            pools[-1]['right'] = len(points)  # second index of last pool
+            pools['left'][1:] = threshold_peaks['right']  # first index of remaining pools
+            pools['right'][:-1] = threshold_peaks['left']  # second index of remaining pools
+
+            # split up remaining points and peaks into their pools and run each pool
+            pool_points = [points[left:right] for left, right in pools]
+
+            # remove points with eps above threshold (must be done after split)
+            pool_points = [points[points['eps'] < threshold_eps] for points in pool_points]
+
+            # recursion with subsets of points and threshold_eps as new base_eps
+            return [UDC._hudc_tree(points, threshold_eps) for points in pool_points]
+
+    @staticmethod
+    def hudc(array, n, max_eps=None, min_eps=None):
+        points = np.empty(len(array), dtype=UDC._DTYPE_UPOINT_EPS)
+        points['point'] = array
+        points['eps'] = UDC.univariate_eps(array, n)
+        if max_eps:
+            # remove points with greater eps
+            points = points[points['eps'] <= max_eps]
+            # initial base_eps
+            base_eps = max_eps
+        else:
+            # base_eps is set to range of values in points
+            base_eps = np.max(points['point']) - np.min(points['point'])
+        if min_eps:
+            # overwrite lower eps
+            points['eps'][points['eps'] < min_eps] = min_eps
+        return UnivariateLoci.from_iter(UDC._flatten_list(UDC._hudc_tree(points, base_eps)))
+
+    def fit(self, points):
+        """
+
+        :param points:
+        :return:
+        """
+        self.points = np.array(points, copy=True)
+        self.points.sort()
+        self.clusters = UDC.hudc(self.points, self.min_pts, max_eps=self.max_eps, min_eps=self.min_eps)
+
+
 class FUDC(object):
     """Flat Univariate Density Cluster"""
+
+    DTYPE_SUBCLUSTER = np.dtype([('locus', UnivariateLoci.DTYPE_ULOCUS), ('eps', np.int64)])
+
     def __init__(self, min_points, eps):
         """"""
         self.min_pts = min_points
@@ -168,7 +304,15 @@ class FUDC(object):
         self.labels = np.array([])
 
     @staticmethod
-    def _flat_subcluster(points, min_pts, eps):
+    def _subclusters(points, min_pts):
+        points.sort()
+        offset = min_pts - 1
+        upper = points[offset:]
+        lower = points[:-offset]
+        return np.fromiter(zip(zip(lower, upper), upper - lower), dtype=FUDC.DTYPE_SUBCLUSTER)
+
+    @staticmethod
+    def _flat_subcluster( points, min_pts, eps):
         """
 
         :param points:
@@ -176,16 +320,8 @@ class FUDC(object):
         :param eps:
         :return:
         """
-        points.sort()
-        offset = min_pts - 1
-        upper = points[offset:]
-        lower = points[:-offset]
-        diff = upper - lower
-        dense = diff <= eps
-        lower = lower[dense]
-        upper = upper[dense]
-        loci = ((lower[i], upper[i]) for i in range(len(lower)))
-        return UnivariateLoci.from_iter(loci)
+        subs = FUDC._subclusters(points, min_pts)
+        return UnivariateLoci(subs['locus'][subs['eps'] <= eps])
 
     @staticmethod
     def flat_cluster(points, min_pts, eps):
