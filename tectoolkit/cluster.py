@@ -212,6 +212,43 @@ class UDC(object):
         return peaks
 
     @staticmethod
+    def univariate_split_peaks(points):
+        splits = np.empty(len(points) - 1, dtype=UDC._DTYPE_UPEAK)
+        splits['eps'] = points[1:] - points[:-1]
+        splits['left'] = np.arange(1, 1 + len(splits))
+
+        # Merge platues
+        gradients = splits['eps'][1:] - splits['eps'][:-1]
+        splits = splits[np.append(True, gradients != 0)]  # remove indices following platue
+        splits['right'][-1] = len(points) - 1  # Will always be last index
+        splits['right'][:-1] = splits['left'][1:] - 1  # right index based on neighbour to left
+
+        # Remove non-peaks
+        is_peak = np.logical_and(np.append(False, splits['eps'][1:] > splits['eps'][:-1]),
+                                 np.append(splits['eps'][:-1] > splits['eps'][1:], False))
+        return splits[is_peak]
+
+    @staticmethod
+    def _split_pools(points, peaks):
+        # organise split indices for pools.
+        # A pool is the inverse of a peak.
+        # There is one more pool than there are peaks
+        # The right bound of a peak becomes the left bound of a pool and vice versa
+        pools = np.empty(len(peaks) + 1, dtype=UDC._DTYPE_UPOOL)
+        pools[0]['left'] = 0  # first index of first pool
+        pools[-1]['right'] = len(points)  # second index of last pool
+        pools['left'][1:] = peaks['right']  # first index of remaining pools
+        pools['right'][:-1] = peaks['left']  # second index of remaining pools
+
+        # split up points into their pools
+        pool_points = [points[left:right] for left, right in pools]
+
+        # remove points with eps above that of lowest peak (must be done after split)
+        pool_points = [points[points['eps'] < np.min(peaks['eps'])] for points in pool_points]
+
+        return pool_points
+
+    @staticmethod
     def _flatten_list(item):
         if isinstance(item, list):
             for element in item:
@@ -222,12 +259,15 @@ class UDC(object):
 
     @staticmethod
     def _hudc_tree(points, base_eps):
-        peaks = UDC.univariate_peaks(points['eps'])
+        peaks = UDC.univariate_split_peaks(points['point'])
 
         if len(peaks) == 0:
             # there are no children so return coordinates
             return points['point'][0], points['point'][-1]
-        
+
+        # Flatten over high peaks
+        peaks['eps'][peaks['eps'] > base_eps] = base_eps
+
         threshold_eps = np.max(peaks['eps'])  # compare based on largest peak (least dense point)
         total_area = np.sum(base_eps - points['eps'])
         child_area = np.sum(threshold_eps - points['eps'])  # area above threshold
@@ -242,21 +282,8 @@ class UDC(object):
             # identify peaks with eps == threshold
             threshold_peaks = peaks[np.where(peaks['eps'] == threshold_eps)[0]]
 
-            # organise split indices for pools.
-            # A pool is the inverse of a peak.
-            # There is one more pool than there are peaks
-            # The right bound of a peak becomes the left bound of a pool and vice versa
-            pools = np.empty(len(threshold_peaks) + 1, dtype=UDC._DTYPE_UPOOL)
-            pools[0]['left'] = 0  # first index of first pool
-            pools[-1]['right'] = len(points)  # second index of last pool
-            pools['left'][1:] = threshold_peaks['right']  # first index of remaining pools
-            pools['right'][:-1] = threshold_peaks['left']  # second index of remaining pools
-
-            # split up remaining points and peaks into their pools and run each pool
-            pool_points = [points[left:right] for left, right in pools]
-
             # remove points with eps above threshold (must be done after split)
-            pool_points = [points[points['eps'] < threshold_eps] for points in pool_points]
+            pool_points = UDC._split_pools(points, threshold_peaks)
 
             # recursion with subsets of points and threshold_eps as new base_eps
             return [UDC._hudc_tree(points, threshold_eps) for points in pool_points]
@@ -277,7 +304,10 @@ class UDC(object):
         if min_eps:
             # overwrite lower eps
             points['eps'][points['eps'] < min_eps] = min_eps
-        return UnivariateLoci.from_iter(UDC._flatten_list(UDC._hudc_tree(points, base_eps)))
+
+        # run
+        clusters = UDC._hudc_tree(points, base_eps)
+        return UnivariateLoci.from_iter(UDC._flatten_list(clusters))
 
     def fit(self, points):
         """
