@@ -174,7 +174,7 @@ class UDC(object):
         self.labels = np.array([])
 
     @staticmethod
-    def univariate_eps(points, n):
+    def point_eps(points, n):
         assert n > 1  # groups must contain atleast two points
         offset = n - 1  # offset for indexing
         length = len(points)
@@ -195,7 +195,7 @@ class UDC(object):
         return gradients
 
     @staticmethod
-    def _find_univariate_peaks(gradients):
+    def _find_peaks(gradients):
         gradients = gradients[gradients['grad'] != 0]  # drop plateaus
         gradients['grad'] = np.array(gradients['grad']>0, dtype=np.int)  # convert to boolean like
         is_peak = np.where(gradients['grad'][1:] < gradients['grad'][:-1])[0]
@@ -207,15 +207,31 @@ class UDC(object):
     @staticmethod
     def univariate_peaks(array):
         gradients = UDC._univariate_gradient(array)
-        peaks = UDC._find_univariate_peaks(gradients)
+        peaks = UDC._find_peaks(gradients)
         peaks['eps'] = array[peaks['left']]  # recover initial values from array
         return peaks
 
     @staticmethod
-    def univariate_split_peaks(points):
+    def eps_splits(points, n):
+
+        if len(points) <= n:
+            # no peaks possible
+            return np.array([], dtype=UDC._DTYPE_UPEAK)
+
         splits = np.empty(len(points) - 1, dtype=UDC._DTYPE_UPEAK)
-        splits['eps'] = points[1:] - points[:-1]
+
+        # remember the indice represented by each split
         splits['left'] = np.arange(1, 1 + len(splits))
+
+        # calculate split eps using the 2d method
+        length = len(points)
+        eps_values = points[n:length] - points[0:length - n]
+
+        # n - 1 because calculating for indices not points
+        eps_2d = np.full((n - 1, length - 1), np.max(eps_values), dtype=int)
+        for i in range(n - 1):
+            eps_2d[i, i:length - (n - i)] = eps_values
+        splits['eps'] = np.min(eps_2d, axis=0)
 
         # Merge platues
         gradients = splits['eps'][1:] - splits['eps'][:-1]
@@ -241,10 +257,15 @@ class UDC(object):
         pools['right'][:-1] = peaks['left']  # second index of remaining pools
 
         # split up points into their pools
-        pool_points = [points[left:right] for left, right in pools]
+        pool_points = (points[left:right] for left, right in pools)
 
         # remove points with eps above that of lowest peak (must be done after split)
-        pool_points = [points[points['eps'] < np.min(peaks['eps'])] for points in pool_points]
+        pool_points = np.array([points[points['eps'] <= np.min(peaks['eps'])] for points in pool_points])
+
+        ## drop pools with 0 remaining points (should no longer be needed)
+        #populated = np.array([len(p) != 0 for p in pool_points])
+        #if any(populated):
+        #    pool_points = pool_points[populated]
 
         return pool_points
 
@@ -258,20 +279,27 @@ class UDC(object):
             yield item
 
     @staticmethod
-    def _hudc_tree(points, base_eps):
-        peaks = UDC.univariate_split_peaks(points['point'])
+    def _hudc_tree(points, base_eps, n):
+
+        peaks = UDC.eps_splits(points['point'], n)
+
+        print('peaks: ', peaks)
 
         if len(peaks) == 0:
             # there are no children so return coordinates
             return points['point'][0], points['point'][-1]
 
-        # Flatten over high peaks
-        peaks['eps'][peaks['eps'] > base_eps] = base_eps
+        print(peaks)
 
-        threshold_eps = np.max(peaks['eps'])  # compare based on largest peak (least dense point)
-        total_area = np.sum(base_eps - points['eps'])
-        child_area = np.sum(threshold_eps - points['eps'])  # area above threshold
-        parent_area = total_area - child_area  # area bellow threshold
+        # compare based on largest peak (least dense point)
+        threshold_eps = min(np.max(peaks['eps']), base_eps)
+
+        # eps values are inclusive thus + 1 used in comparisons
+        total_area = np.sum((base_eps + 1) - points['eps'])
+        child_area = np.sum((threshold_eps + 1) - points['eps'])
+        parent_area = total_area - child_area
+
+        print(total_area,parent_area,child_area)
 
         if parent_area > child_area:
             # parent is lager so return coordinates
@@ -280,19 +308,23 @@ class UDC(object):
         else:
             # combined area of children is larger so divide and repeat
             # identify peaks with eps == threshold
-            threshold_peaks = peaks[np.where(peaks['eps'] == threshold_eps)[0]]
+            threshold_peaks = peaks[np.where(peaks['eps'] >= threshold_eps)[0]]
+
+            print('threshold_peaks: ', threshold_peaks)
 
             # remove points with eps above threshold (must be done after split)
             pool_points = UDC._split_pools(points, threshold_peaks)
 
+            print(pool_points)
+
             # recursion with subsets of points and threshold_eps as new base_eps
-            return [UDC._hudc_tree(points, threshold_eps) for points in pool_points]
+            return [UDC._hudc_tree(points, threshold_eps, n) for points in pool_points]
 
     @staticmethod
     def hudc(array, n, max_eps=None, min_eps=None):
         points = np.empty(len(array), dtype=UDC._DTYPE_UPOINT_EPS)
         points['point'] = array
-        points['eps'] = UDC.univariate_eps(array, n)
+        points['eps'] = UDC.point_eps(array, n)
         if max_eps:
             # remove points with greater eps
             points = points[points['eps'] <= max_eps]
@@ -300,13 +332,13 @@ class UDC(object):
             base_eps = max_eps
         else:
             # base_eps is set to range of values in points
-            base_eps = np.max(points['point']) - np.min(points['point'])
+            base_eps = np.max(points['eps'])  # start at highest observed eps
         if min_eps:
             # overwrite lower eps
             points['eps'][points['eps'] < min_eps] = min_eps
 
         # run
-        clusters = UDC._hudc_tree(points, base_eps)
+        clusters = UDC._hudc_tree(points, base_eps, n)
         return UnivariateLoci.from_iter(UDC._flatten_list(clusters))
 
     def fit(self, points):
