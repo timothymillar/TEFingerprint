@@ -163,6 +163,7 @@ class UDC(object):
     _DTYPE_UPEAK = np.dtype([('left', np.int64), ('right', np.int64), ('eps', np.int64)])
     _DTYPE_UPOOL = np.dtype([('left', np.int64), ('right', np.int64)])
     _DTYPE_UPOINT_EPS = np.dtype([('point', np.int64), ('eps', np.int64)])
+    _DTYPE_SLICE = np.dtype([('start', np.int64), ('stop', np.int64)])
 
     def __init__(self, min_points, max_eps=None, min_eps=None):
         """"""
@@ -175,15 +176,15 @@ class UDC(object):
 
     @staticmethod
     def point_eps(points, n):
-        assert n > 1  # groups must contain atleast two points
+        assert n > 1  # groups must contain at least two points
         offset = n - 1  # offset for indexing
         length = len(points)
         lower = points[0:length - offset]
         upper = points[offset:length]
-        eps_groups = upper - lower
-        eps_2d = np.full((n, length), np.max(eps_groups), dtype=int)
+        eps_values = upper - lower
+        eps_2d = np.full((n, length), np.max(eps_values), dtype=int)
         for i in range(n):
-            eps_2d[i, i:length - (offset - i)] = eps_groups
+            eps_2d[i, i:length - (offset - i)] = eps_values
         return np.min(eps_2d, axis=0)
 
     @staticmethod
@@ -197,7 +198,7 @@ class UDC(object):
     @staticmethod
     def _find_peaks(gradients):
         gradients = gradients[gradients['grad'] != 0]  # drop plateaus
-        gradients['grad'] = np.array(gradients['grad']>0, dtype=np.int)  # convert to boolean like
+        gradients['grad'] = np.array(gradients['grad'] > 0, dtype=np.int)  # convert to boolean like
         is_peak = np.where(gradients['grad'][1:] < gradients['grad'][:-1])[0]
         peaks = np.empty(len(is_peak), dtype=UDC._DTYPE_UPEAK)
         peaks['left'] = gradients['index'][is_peak]
@@ -211,63 +212,74 @@ class UDC(object):
         peaks['eps'] = array[peaks['left']]  # recover initial values from array
         return peaks
 
+    ############ Round2 ##########################
+
     @staticmethod
-    def eps_splits(points, n):
+    def _melt_slices(slices):
+        def _melter(slices):
+            start = slices['start'][0]
+            stop = slices['stop'][0]
+            for i in range(1, len(slices)):
+                if slices['start'][i] < stop:
+                    if slices['stop'][i] > stop:
+                        stop = slices['stop'][i]
+                    else:
+                        pass
+                else:
+                    yield start, stop
+                    start = slices['start'][i]
+                    stop = slices['stop'][i]
+            yield start, stop
+        slices.sort()
+        return np.fromiter(_melter(slices), dtype=UDC._DTYPE_SLICE)
 
+
+    @staticmethod
+    def _subcluster(points, eps, n):
+        points.sort()
+        offset = n - 1
+        upper = points[offset:]
+        lower = points[:-offset]
+        selected = upper - lower <= eps
+        lower_index = np.arange(0, len(lower))[selected]
+        upper_index = np.arange(offset, len(points))[selected] + 1
+        return np.fromiter(zip(lower_index, upper_index), dtype=UDC._DTYPE_SLICE)
+
+    @staticmethod
+    def _cluster(points, eps, n):
+        slices = UDC._subcluster(points, eps, n)
+        if len(slices) > 1:
+            slices = UDC._melt_slices(slices)
+        return slices
+
+    @staticmethod
+    def _subset_buy_slices(array, slices):
+        return [array[left:right] for left, right in slices]
+
+    @staticmethod
+    def _eps_splits(points, n):
         if len(points) <= n:
-            # no peaks possible
-            return np.array([], dtype=UDC._DTYPE_UPEAK)
+            # no peaks possible because all points must have the same eps
+            return np.array([], dtype=np.int)
 
-        splits = np.empty(len(points) - 1, dtype=UDC._DTYPE_UPEAK)
-
-        # remember the indice represented by each split
-        splits['left'] = np.arange(1, 1 + len(splits))
+        offset = n - 1
 
         # calculate split eps using the 2d method
-        length = len(points)
-        eps_values = points[n:length] - points[0:length - n]
+        eps_values = points[offset:] - points[:-offset]
+        eps_2d = np.full((offset, len(eps_values) + offset - 1), np.max(eps_values), dtype=int)
+        for i in range(offset):
+            eps_2d[i, i:len(eps_values) + i] = eps_values
+        splits = np.min(eps_2d, axis=0)
+        splits -= 1  # Convert values to thresholds
 
-        # n - 1 because calculating for indices not points
-        eps_2d = np.full((n - 1, length - 1), np.max(eps_values), dtype=int)
-        for i in range(n - 1):
-            eps_2d[i, i:length - (n - i)] = eps_values
-        splits['eps'] = np.min(eps_2d, axis=0)
-
-        # Merge platues
-        gradients = splits['eps'][1:] - splits['eps'][:-1]
-        splits = splits[np.append(True, gradients != 0)]  # remove indices following platue
-        splits['right'][-1] = len(points) - 1  # Will always be last index
-        splits['right'][:-1] = splits['left'][1:] - 1  # right index based on neighbour to left
+        # Remove plateaus
+        gradients = splits[1:] - splits[:-1]
+        splits = splits[np.append(np.array([True]), gradients != 0)]
 
         # Remove non-peaks
-        is_peak = np.logical_and(np.append(False, splits['eps'][1:] > splits['eps'][:-1]),
-                                 np.append(splits['eps'][:-1] > splits['eps'][1:], False))
+        is_peak = np.logical_and(np.append(np.array([False]), splits[1:] > splits[:-1]),
+                                 np.append(splits[:-1] > splits[1:], np.array([False])))
         return splits[is_peak]
-
-    @staticmethod
-    def _split_pools(points, peaks):
-        # organise split indices for pools.
-        # A pool is the inverse of a peak.
-        # There is one more pool than there are peaks
-        # The right bound of a peak becomes the left bound of a pool and vice versa
-        pools = np.empty(len(peaks) + 1, dtype=UDC._DTYPE_UPOOL)
-        pools[0]['left'] = 0  # first index of first pool
-        pools[-1]['right'] = len(points)  # second index of last pool
-        pools['left'][1:] = peaks['right']  # first index of remaining pools
-        pools['right'][:-1] = peaks['left']  # second index of remaining pools
-
-        # split up points into their pools
-        pool_points = (points[left:right] for left, right in pools)
-
-        # remove points with eps above that of lowest peak (must be done after split)
-        pool_points = np.array([points[points['eps'] <= np.min(peaks['eps'])] for points in pool_points])
-
-        ## drop pools with 0 remaining points (should no longer be needed)
-        #populated = np.array([len(p) != 0 for p in pool_points])
-        #if any(populated):
-        #    pool_points = pool_points[populated]
-
-        return pool_points
 
     @staticmethod
     def _flatten_list(item):
@@ -281,25 +293,19 @@ class UDC(object):
     @staticmethod
     def _hudc_tree(points, base_eps, n):
 
-        peaks = UDC.eps_splits(points['point'], n)
-
-        print('peaks: ', peaks)
+        peaks = UDC._eps_splits(points['point'], n)
 
         if len(peaks) == 0:
             # there are no children so return coordinates
             return points['point'][0], points['point'][-1]
 
-        print(peaks)
+        # compare based on largest peak (least dense place)
+        threshold_eps = np.max(peaks)
 
-        # compare based on largest peak (least dense point)
-        threshold_eps = min(np.max(peaks['eps']), base_eps)
-
-        # eps values are inclusive thus + 1 used in comparisons
-        total_area = np.sum((base_eps + 1) - points['eps'])
-        child_area = np.sum((threshold_eps + 1) - points['eps'])
+        # compare areas
+        total_area = np.sum(base_eps - points['eps'])
+        child_area = np.sum(threshold_eps - points['eps'])
         parent_area = total_area - child_area
-
-        print(total_area,parent_area,child_area)
 
         if parent_area > child_area:
             # parent is lager so return coordinates
@@ -307,38 +313,26 @@ class UDC(object):
 
         else:
             # combined area of children is larger so divide and repeat
-            # identify peaks with eps == threshold
-            threshold_peaks = peaks[np.where(peaks['eps'] >= threshold_eps)[0]]
-
-            print('threshold_peaks: ', threshold_peaks)
-
-            # remove points with eps above threshold (must be done after split)
-            pool_points = UDC._split_pools(points, threshold_peaks)
-
-            print(pool_points)
-
-            # recursion with subsets of points and threshold_eps as new base_eps
-            return [UDC._hudc_tree(points, threshold_eps, n) for points in pool_points]
+            child_points = UDC._subset_buy_slices(points, UDC._cluster(points['point'], threshold_eps, n))
+            return [UDC._hudc_tree(points, threshold_eps, n) for points in child_points]
 
     @staticmethod
     def hudc(array, n, max_eps=None, min_eps=None):
         points = np.empty(len(array), dtype=UDC._DTYPE_UPOINT_EPS)
         points['point'] = array
         points['eps'] = UDC.point_eps(array, n)
-        if max_eps:
-            # remove points with greater eps
-            points = points[points['eps'] <= max_eps]
-            # initial base_eps
-            base_eps = max_eps
-        else:
-            # base_eps is set to range of values in points
-            base_eps = np.max(points['eps'])  # start at highest observed eps
+        if not max_eps:
+            # start at highest observed eps
+            max_eps = np.max(points['eps'])
         if min_eps:
             # overwrite lower eps
             points['eps'][points['eps'] < min_eps] = min_eps
 
+        # initial splits
+        child_points = UDC._subset_buy_slices(points, UDC._cluster(points['point'], max_eps, n))
+
         # run
-        clusters = UDC._hudc_tree(points, base_eps, n)
+        clusters = [UDC._hudc_tree(points, max_eps, n) for points in child_points]
         return UnivariateLoci.from_iter(UDC._flatten_list(clusters))
 
     def fit(self, points):
