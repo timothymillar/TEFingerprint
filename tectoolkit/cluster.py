@@ -186,22 +186,24 @@ class UDC(object):
 
     @staticmethod
     def _melt_slices(slices):
-        def _melter(slices):
-            start = slices['start'][0]
-            stop = slices['stop'][0]
-            for i in range(1, len(slices)):
-                if slices['start'][i] < stop:
-                    if slices['stop'][i] > stop:
-                        stop = slices['stop'][i]
-                    else:
-                        pass
-                else:
+        starts, stops = slices['start'], slices['stop']
+        starts.sort()
+        stops.sort()
+        splits = np.append(np.array([False]), stops[:-1] <= starts[1:])  # True means gap between
+        def _melter(starts, stops, splits):
+            start = starts[0]
+            stop = stops[0]
+            for i in range(1, len(starts)):
+                if splits[i]:
+                    # there is a gap so yield slice and start new one
                     yield start, stop
-                    start = slices['start'][i]
-                    stop = slices['stop'][i]
+                    start, stop = slices['start'][i], slices['stop'][i]
+                else:
+                    # no gap so merge slices
+                    stop = stops[i]
+            # yield final slice
             yield start, stop
-        slices.sort()
-        return np.fromiter(_melter(slices), dtype=UDC._DTYPE_SLICE)
+        return np.fromiter(_melter(starts, stops, splits), dtype=UDC._DTYPE_SLICE)
 
 
     @staticmethod
