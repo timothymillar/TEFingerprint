@@ -167,16 +167,19 @@ class UDC(object):
         self.max_eps = max_eps
         self.min_eps = min_eps
         self.slices = np.array([], dtype=UDC._DTYPE_SLICE)
-        self.points = np.empty_like
-        self.labels = np.array([])
+        self.input_array = np.array([], dtype=int)
 
     @staticmethod
-    def _point_eps(points, n):
+    def _sorted_ascending(array):
+        return np.sum(array[1:] - array[:-1] < 0) == 0
+
+    @staticmethod
+    def _point_eps(array, n):
         assert n > 1  # groups must contain at least two points
         offset = n - 1  # offset for indexing
-        length = len(points)
-        lower = points[0:length - offset]
-        upper = points[offset:length]
+        length = len(array)
+        lower = array[0:length - offset]
+        upper = array[offset:length]
         eps_values = upper - lower
         eps_2d = np.full((n, length), np.max(eps_values), dtype=int)
         for i in range(n):
@@ -206,19 +209,19 @@ class UDC(object):
 
 
     @staticmethod
-    def _subcluster(points, eps, n):
-        points.sort()
+    def _subcluster(array, eps, n):
+        array.sort()
         offset = n - 1
-        upper = points[offset:]
-        lower = points[:-offset]
+        upper = array[offset:]
+        lower = array[:-offset]
         selected = upper - lower <= eps
         lower_index = np.arange(0, len(lower))[selected]
-        upper_index = np.arange(offset, len(points))[selected] + 1
+        upper_index = np.arange(offset, len(array))[selected] + 1
         return np.fromiter(zip(lower_index, upper_index), dtype=UDC._DTYPE_SLICE)
 
     @staticmethod
-    def _cluster(points, eps, n):
-        slices = UDC._subcluster(points, eps, n)
+    def _cluster(array, eps, n):
+        slices = UDC._subcluster(array, eps, n)
         if len(slices) > 1:
             slices = UDC._melt_slices(slices)
         return slices
@@ -228,15 +231,15 @@ class UDC(object):
         return [array[left:right] for left, right in slices]
 
     @staticmethod
-    def _eps_splits(points, n):
-        if len(points) <= n:
+    def _eps_splits(array, n):
+        if len(array) <= n:
             # no peaks possible because all points must have the same eps
             return np.array([], dtype=np.int)
 
         offset = n - 1
 
         # calculate split eps using the 2d method
-        eps_values = points[offset:] - points[:-offset]
+        eps_values = array[offset:] - array[:-offset]
         eps_2d = np.full((offset, len(eps_values) + offset - 1), np.max(eps_values), dtype=int)
         for i in range(offset):
             eps_2d[i, i:len(eps_values) + i] = eps_values
@@ -289,6 +292,7 @@ class UDC(object):
 
     @staticmethod
     def hudc(array, n, max_eps=None, min_eps=None):
+        assert UDC._sorted_ascending(array)
         points = np.empty(len(array), dtype=np.dtype([('value', np.int64),
                                                       ('index', np.int64),
                                                       ('eps', np.int64)]))
@@ -309,15 +313,34 @@ class UDC(object):
         clusters = [UDC._grow_hudc_tree(points, max_eps, n) for points in child_points]
         return UnivariateLoci.from_iter(UDC._flatten_list(clusters))
 
-    def fit(self, points):
+    def fit(self, array):
         """
 
-        :param points:
+        :param array:
         :return:
         """
-        self.points = np.array(points, copy=True)
-        self.points.sort()
-        self.slices = UDC.hudc(self.points, self.min_pts, max_eps=self.max_eps, min_eps=self.min_eps)
+        self.input_array = np.array(array, copy=True)
+        self.slices = UDC.hudc(self.input_array, self.min_pts, max_eps=self.max_eps, min_eps=self.min_eps)
+
+    def clusters(self):
+        """
+        Return values from the input array grouped into clusters
+
+        :return:
+        """
+        return (self.input_array[lower:upper] for lower, upper in self.slices)
+
+    def labels(self):
+        """
+        Return cluster labels for input values
+
+        :return:
+        """
+        labels = np.full(len(self.input_array), -1, int)
+        for i, (lower, upper) in enumerate(self.slices):
+            labels[lower:upper] += (i + 1)
+        return labels
+
 
 
 class FUDC(object):
