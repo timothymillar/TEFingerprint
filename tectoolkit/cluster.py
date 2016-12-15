@@ -330,6 +330,14 @@ class UDC(object):
         """
         return (self.input_array[lower:upper] for lower, upper in self.slices)
 
+    def cluster_extremities(self):
+        """
+        Return minimum and maximum values from the input array found in each cluster
+
+        :return:
+        """
+        return ((self.input_array[lower], self.input_array[upper - 1]) for lower, upper in self.slices)
+
     def labels(self):
         """
         Return cluster labels for input values
