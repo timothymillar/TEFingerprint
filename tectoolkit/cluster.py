@@ -159,7 +159,6 @@ class UnivariateLoci(object):
 
 class UDC(object):
     """Univariate Density Clusters"""
-    _DTYPE_UPOINT_EPS = np.dtype([('value', np.int64), ('index', np.int64), ('eps', np.int64)])
     _DTYPE_SLICE = np.dtype([('start', np.int64), ('stop', np.int64)])
 
     def __init__(self, min_points, max_eps=None, min_eps=None):
@@ -290,7 +289,9 @@ class UDC(object):
 
     @staticmethod
     def hudc(array, n, max_eps=None, min_eps=None):
-        points = np.empty(len(array), dtype=UDC._DTYPE_UPOINT_EPS)
+        points = np.empty(len(array), dtype=np.dtype([('value', np.int64),
+                                                      ('index', np.int64),
+                                                      ('eps', np.int64)]))
         points['value'] = array
         points['index'] = np.arange(len(array), dtype=int)
         points['eps'] = UDC._point_eps(array, n)
