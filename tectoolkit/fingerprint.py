@@ -6,9 +6,9 @@ import argparse
 from itertools import product
 from multiprocessing import Pool
 from tectoolkit import bam_io
-from tectoolkit.reads import ReadGroup
+from tectoolkit.reads import ReadGroup, UnivariateLoci
 from tectoolkit.gff_io import NestedFeature
-from tectoolkit.cluster import UnivariateLoci, UDC, HUDC2
+from tectoolkit.cluster import UDC, HUDC2
 
 
 class FingerprintProgram(object):
