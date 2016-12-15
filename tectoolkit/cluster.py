@@ -24,6 +24,7 @@ class UDC(object):
         starts.sort()
         stops.sort()
         splits = np.append(np.array([False]), stops[:-1] <= starts[1:])  # True means gap between
+
         def _melter(starts, stops, splits):
             start = starts[0]
             stop = stops[0]
@@ -37,12 +38,21 @@ class UDC(object):
                     stop = stops[i]
             # yield final slice
             yield start, stop
+
         return np.fromiter(_melter(starts, stops, splits), dtype=UDC._DTYPE_SLICE)
 
 
     @staticmethod
     def _subcluster(array, eps, n):
-        array.sort()
+        """
+        The input array must be sorted in ascending order
+
+        :param array: a sorted array of ints
+        :param eps:
+        :param n:
+        :return:
+        """
+        assert UDC._sorted_ascending(array)
         offset = n - 1
         upper = array[offset:]
         lower = array[:-offset]
@@ -53,9 +63,18 @@ class UDC(object):
 
     @staticmethod
     def _cluster(array, eps, n):
-        slices = HUDC2._subcluster(array, eps, n)
+        """
+        The input array must be sorted in ascending order
+
+        :param array: a sorted array of ints
+        :param eps:
+        :param n:
+        :return:
+        """
+        # sorted-ascending checked in method _subcluster
+        slices = UDC._subcluster(array, eps, n)
         if len(slices) > 1:
-            slices = HUDC2._melt_slices(slices)
+            slices = UDC._melt_slices(slices)
         return slices
 
     @staticmethod
@@ -105,7 +124,7 @@ class UDC(object):
         return labels
 
 
-class HUDC2(UDC):
+class HUDC(UDC):
     """Univariate Density Clusters"""
 
     def __init__(self, min_points, max_eps=None, min_eps=None):
@@ -158,7 +177,7 @@ class HUDC2(UDC):
     def _flatten_list(item):
         if isinstance(item, list):
             for element in item:
-                for item in HUDC2._flatten_list(element):
+                for item in HUDC._flatten_list(element):
                     yield item
         else:
             yield item
@@ -166,13 +185,10 @@ class HUDC2(UDC):
     @staticmethod
     def _grow_hudc_tree(points, base_eps, n):
 
-        splits = HUDC2._eps_splits(points['value'], n)
+        splits = HUDC._eps_splits(points['value'], n)
 
         if len(splits) == 0:
             # there are no children so return slice indices
-
-            print(base_eps)
-
             return points['index'][0], points['index'][-1] + 1
 
         # compare based on largest peak (least dense place)
@@ -185,26 +201,22 @@ class HUDC2(UDC):
 
         if parent_area > child_area:
             # parent is lager so return slice indices
-
-            print(total_area, parent_area, child_area)
-            print(base_eps)
-
             return points['index'][0], points['index'][-1] + 1
 
         else:
             # combined area of children is larger so divide and repeat
-            child_points = HUDC2._subset_buy_slices(points, HUDC2._cluster(points['value'], threshold_eps, n))
-            return [HUDC2._grow_hudc_tree(points, threshold_eps, n) for points in child_points]
+            child_points = HUDC._subset_buy_slices(points, HUDC._cluster(points['value'], threshold_eps, n))
+            return [HUDC._grow_hudc_tree(points, threshold_eps, n) for points in child_points]
 
     @staticmethod
     def hudc(array, n, max_eps=None, min_eps=None):
-        assert HUDC2._sorted_ascending(array)
+        assert HUDC._sorted_ascending(array)
         points = np.empty(len(array), dtype=np.dtype([('value', np.int64),
                                                       ('index', np.int64),
                                                       ('eps', np.int64)]))
         points['value'] = array
         points['index'] = np.arange(len(array), dtype=int)
-        points['eps'] = HUDC2._point_eps(array, n)
+        points['eps'] = HUDC._point_eps(array, n)
         if not max_eps:
             # start at highest observed eps
             max_eps = np.max(points['eps'])
@@ -213,11 +225,11 @@ class HUDC2(UDC):
             points['eps'][points['eps'] < min_eps] = min_eps
 
         # initial splits
-        child_points = HUDC2._subset_buy_slices(points, HUDC2._cluster(points['value'], max_eps, n))
+        child_points = HUDC._subset_buy_slices(points, HUDC._cluster(points['value'], max_eps, n))
 
         # run
-        clusters = [HUDC2._grow_hudc_tree(points, max_eps, n) for points in child_points]
-        return np.fromiter(HUDC2._flatten_list(clusters), dtype=UDC._DTYPE_SLICE)
+        clusters = [HUDC._grow_hudc_tree(points, max_eps, n) for points in child_points]
+        return np.fromiter(HUDC._flatten_list(clusters), dtype=UDC._DTYPE_SLICE)
 
     def fit(self, array):
         """
@@ -226,7 +238,7 @@ class HUDC2(UDC):
         :return:
         """
         self.input_array = np.array(array, copy=True)
-        self.slices = HUDC2.hudc(self.input_array, self.min_pts, max_eps=self.max_eps, min_eps=self.min_eps)
+        self.slices = HUDC.hudc(self.input_array, self.min_pts, max_eps=self.max_eps, min_eps=self.min_eps)
 
 
 if __name__ == '__main__':

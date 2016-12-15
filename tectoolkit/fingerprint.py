@@ -8,7 +8,7 @@ from multiprocessing import Pool
 from tectoolkit import bam_io
 from tectoolkit.reads import ReadGroup, UnivariateLoci
 from tectoolkit.gff_io import NestedFeature
-from tectoolkit.cluster import UDC, HUDC2
+from tectoolkit.cluster import UDC, HUDC
 
 
 class FingerprintProgram(object):
@@ -168,7 +168,7 @@ class Fingerprint(object):
         if len(self.eps) == 2:
             # use hierarchical clustering method
             max_eps, min_eps = max(self.eps), min(self.eps)
-            hudc = HUDC2(self.min_reads, max_eps, min_eps)
+            hudc = HUDC(self.min_reads, max_eps, min_eps)
             hudc.fit(self.reads['tip'])
             return UnivariateLoci.from_iter(hudc.cluster_extremities())
         elif len(self.eps) == 1:
