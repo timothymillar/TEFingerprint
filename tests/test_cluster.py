@@ -94,16 +94,62 @@ class TestUDC:
         npt.assert_array_equal(udc_object.input_array, answer_array)
         npt.assert_array_equal(udc_object.slices, answer_slices)
 
+    def test_clusters(self):
+        pass
+
+    def test_cluster_extremities(self):
+        pass
+
+    def test_labels(self):
+        pass
+
 
 class TestHUDC:
     """
     Tests for class HierarchicalUnivariateDensityCluster.
     """
-    def test_point_eps(selfs):
-        pass
+    def test_point_eps(self):
+        input_array = np.array([   0,    0,   60,   61,   61,   61,   76,   78,  122,  122,  141,
+                                 183,  251,  260,  260,  263,  263,  267,  267,  288,  288,  295,
+                                 300,  310,  310,  317,  317,  334,  334,  335,  338,  338,  338,
+                                 338,  340,  342,  342,  344,  344,  358,  367,  370,  370,  377,
+                                 387,  402,  403,  410,  410,  410,  418,  418,  424,  424,  577,
+                                 857,  879,  921,  921, 1007, 1031, 1051, 1051, 1059, 1071, 1071,
+                                1080, 1094, 1094, 1110, 1110, 1113, 1113, 1183, 1189, 1200, 1200,
+                                1217, 1234, 1234, 1591, 1620, 1620, 1662, 1686, 1707, 1755, 1828,
+                                1828, 1848, 1848, 1848, 1848, 1851, 1851, 1852, 1917], dtype=int)
+        point_eps = np.array([122, 122, 122, 122, 122, 122, 122, 122, 122, 122, 123, 105,  44,
+                               40,  40,  40,  40,  40,  40,  40,  40,  40,  38,  28,  28,  23,
+                               23,   8,   8,   8,   8,   8,   8,   8,   8,   8,   8,   9,   9,
+                               20,  29,  32,  32,  37,  37,  37,  37,  37,  37,  37,  37,  37,
+                               37,  37, 175, 214, 192, 159, 159,  87,  79,  59,  59,  54,  54,
+                               54,  54,  54,  54,  54,  54,  54,  54, 106, 106, 106, 106, 123,
+                              124, 124, 257, 228, 228, 186, 165, 144,  97,  89,  89,  89,  89,
+                               89,  89,  89,  89,  89,  89], dtype=int)
+        npt.assert_array_equal(HUDC._point_eps(input_array, 10), point_eps)
 
-    def test__eps_splits(self):
-        pass
+    def test_point_eps_hidden_peak(self):
+        input_array = np.array([0, 0, 3, 4, 4, 6, 26, 28, 28, 29, 32, 32], dtype=int)
+        point_eps = np.array([3, 3, 1, 1, 1, 2, 2, 1, 1, 1, 3, 3], dtype=int)
+        npt.assert_array_equal(HUDC._point_eps(input_array, 3), point_eps)
+
+    def test_eps_splits(self):
+        input_array = np.array([   0,    0,   60,   61,   61,   61,   76,   78,  122,  122,  141,
+                                 183,  251,  260,  260,  263,  263,  267,  267,  288,  288,  295,
+                                 300,  310,  310,  317,  317,  334,  334,  335,  338,  338,  338,
+                                 338,  340,  342,  342,  344,  344,  358,  367,  370,  370,  377,
+                                 387,  402,  403,  410,  410,  410,  418,  418,  424,  424,  577,
+                                 857,  879,  921,  921, 1007, 1031, 1051, 1051, 1059, 1071, 1071,
+                                1080, 1094, 1094, 1110, 1110, 1113, 1113, 1183, 1189, 1200, 1200,
+                                1217, 1234, 1234, 1591, 1620, 1620, 1662, 1686, 1707, 1755, 1828,
+                                1828, 1848, 1848, 1848, 1848, 1851, 1851, 1852, 1917], dtype=int)
+        split_eps = np.array([122,  42, 453, 436], dtype=int)
+        npt.assert_array_equal(HUDC._eps_splits(input_array, 10), split_eps)
+
+    def test_eps_splits_hidden_peak(self):
+        input_array = np.array([0, 0, 3, 4, 4, 6, 26, 28, 28, 29, 32, 32], dtype=int)
+        split_eps = np.array([21], dtype=int)
+        npt.assert_array_equal(HUDC._eps_splits(input_array, 3), split_eps)
 
     @pytest.mark.parametrize("nested,flat",
                              [([(1, 3), [(6, 9), (11, 11)]],
@@ -120,11 +166,18 @@ class TestHUDC:
         """
         assert list(HUDC._flatten_list(nested)) == flat
 
-    def test_grow_hudc_tree(self):
-        pass
-
     def test_hudc(self):
-        pass
+        input_array = np.array([   0,    0,   60,   61,   61,   61,   76,   78,  122,  122,  141,
+                                 183,  251,  260,  260,  263,  263,  267,  267,  288,  288,  295,
+                                 300,  310,  310,  317,  317,  334,  334,  335,  338,  338,  338,
+                                 338,  340,  342,  342,  344,  344,  358,  367,  370,  370,  377,
+                                 387,  402,  403,  410,  410,  410,  418,  418,  424,  424,  577,
+                                 857,  879,  921,  921, 1007, 1031, 1051, 1051, 1059, 1071, 1071,
+                                1080, 1094, 1094, 1110, 1110, 1113, 1113, 1183, 1189, 1200, 1200,
+                                1217, 1234, 1234, 1591, 1620, 1620, 1662, 1686, 1707, 1755, 1828,
+                                1828, 1848, 1848, 1848, 1848, 1851, 1851, 1852, 1917], dtype=int)
+        answer_slices = np.fromiter([(0, 55), (56, 80), (83, 97)], dtype=HUDC._DTYPE_SLICE)
+        npt.assert_array_equal(HUDC.hudc(input_array, 10, max_eps=200, min_eps=10), answer_slices)
 
     def test_fit(self):
         """
