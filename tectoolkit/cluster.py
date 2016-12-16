@@ -4,62 +4,89 @@ import numpy as np
 
 
 class UDC(object):
-    """Univariate Density Clusters"""
-    _DTYPE_SLICE = np.dtype([('start', np.int64), ('stop', np.int64)])
+    """
+    Univariate Density Cluster analysis: Create a model to calculate density clusters for a univariate array.
 
-    def __init__(self, min_points, eps):
-        """
+    Clusters are identified as suitably dense, continuous regions in the data where the threshold density
+    is specified by parameters n (minimum points) and eps (epsilon).
+    The range in values among every set of n points in the array is calculated and compared to epsilon.
+    Sets of n points with a range equal to, or less than epsilon are classified as subclusters.
+    Overlapping subclusters are then merged together to form clusters.
+    Points in the array that do not fall inside a cluster are regarded as noise.
 
-        :param min_points:
-        :param eps:
-        """
-        self.min_pts = min_points
+    :param n: The minimum number of points allowed in each (sub)cluster
+    :type n: int
+    :param eps: The maximum distance allowed among each set of n points
+    :type eps: int
+    """
+
+    _DTYPE_SLICE = np.dtype([('lower', np.int64), ('upper', np.int64)])
+
+    def __init__(self, n, eps):
+        self.n = n
         self.eps = eps
         self.slices = np.array([], dtype=UDC._DTYPE_SLICE)
         self.input_array = np.array([], dtype=int)
 
     @staticmethod
     def _sorted_ascending(array):
+        """
+        Checks if an array is sorted in ascending order.
+
+        :param array: a 1 dimensional array of numeric values
+        :type array: :class:`numpy.ndarray`[int]
+
+        :return: True if array is sorted in ascending order
+        :rtype: bool
+        """
         return np.sum(array[1:] - array[:-1] < 0) == 0
 
     @staticmethod
     def _melt_slices(slices):
         """
+        Combines overlapping slices assuming half-open intervals.
 
-        :param slices:
-        :return:
+        :param slices: An array of paired integers representing the lower and upper values of a slice
+        :type slices: :class:`numpy.ndarray`[int, int]
+
+        :return: An array of paired integers representing the lower and upper values of a slice
+        :rtype: :class:`numpy.ndarray`[int, int]
         """
-        starts, stops = slices['start'], slices['stop']
-        starts.sort()
-        stops.sort()
-        splits = np.append(np.array([False]), stops[:-1] <= starts[1:])  # True means gap between
+        lowers, uppers = slices['lower'], slices['upper']
+        lowers.sort()
+        uppers.sort()
+        splits = np.append(np.array([False]), uppers[:-1] <= lowers[1:])  # True means gap between
 
-        def _melter(starts, stops, splits):
-            start = starts[0]
-            stop = stops[0]
-            for i in range(1, len(starts)):
+        def _melter(lowers, uppers, splits):
+            l = lowers[0]
+            u = uppers[0]
+            for i in range(1, len(lowers)):
                 if splits[i]:
                     # there is a gap so yield slice and start new one
-                    yield start, stop
-                    start, stop = slices['start'][i], slices['stop'][i]
+                    yield l, u
+                    l, u = slices['lower'][i], slices['upper'][i]
                 else:
                     # no gap so merge slices
-                    stop = stops[i]
+                    u = uppers[i]
             # yield final slice
-            yield start, stop
+            yield l, u
 
-        return np.fromiter(_melter(starts, stops, splits), dtype=UDC._DTYPE_SLICE)
+        # return slices formatted as a numpy array
+        return np.fromiter(_melter(lowers, uppers, splits), dtype=UDC._DTYPE_SLICE)
 
 
     @staticmethod
     def _subcluster(array, eps, n):
         """
-        The input array must be sorted in ascending order
+        Calculate subclusters of an array and return their slice indices.
+        The input array must be sorted in ascending order.
 
-        :param array: a sorted array of ints
-        :param eps:
-        :param n:
-        :return:
+        :param array: An array of ints sorted in ascending order
+        :param eps: The number of points in each subcluster
+        :param n: The maximum distance allowed in among points of each subcluster
+
+        :return: An array of paired lower and upper indices for each subcluster found in the array
+        :rtype: :class:`numpy.ndarray`[int, int]
         """
         assert UDC._sorted_ascending(array)
         offset = n - 1
@@ -73,12 +100,15 @@ class UDC(object):
     @staticmethod
     def _cluster(array, eps, n):
         """
-        The input array must be sorted in ascending order
+        Calculate clusters of an array and return their slice indices.
+        The input array must be sorted in ascending order.
 
-        :param array: a sorted array of ints
-        :param eps:
-        :param n:
-        :return:
+        :param array: An array of ints sorted in ascending order
+        :param eps: The minimum number of points in each (sub)cluster
+        :param n: The maximum distance allowed in among each set of n points
+
+        :return: An array of paired lower and upper indices for each cluster found in the array
+        :rtype: :class:`numpy.ndarray`[int, int]
         """
         # sorted-ascending checked in method _subcluster
         slices = UDC._subcluster(array, eps, n)
@@ -88,40 +118,71 @@ class UDC(object):
 
     @staticmethod
     def udc(array, n, eps):
+        """
+        Calculate Density Clusters for a Univariate Array.
+
+        Clusters are identified as suitably dense, continuous regions in the data where the threshold density
+        is specified by parameters n (minimum points) and eps (epsilon).
+        The range in values among every set of n points in the array is calculated and compared to epsilon.
+        Sets of n points with a range equal to, or less than epsilon are classified as subclusters.
+        Overlapping subclusters are then merged together to form clusters.
+        Points in the array that do not fall inside a cluster are regarded as noise.
+
+        The input array must be sorted in ascending order.
+        This method returns pairs of indices representing the (half open) upper and lower bounds of each cluster.
+
+        :param array: An array of ints sorted in ascending order
+        :type array: :class:`numpy.ndarray`[int]
+        :param n: The minimum number of points in each (sub)cluster
+        :type n: int
+        :param eps: The maximum distance allowed in among each set of n points
+        :type eps: int
+
+        :return: An array of paired lower and upper indices for each cluster found in the array
+        :rtype: :class:`numpy.ndarray`[int, int]
+        """
         assert UDC._sorted_ascending(array)
         slices = UDC._cluster(array, eps, n)
         return slices
 
     def fit(self, array):
         """
+        Fit an array to a Univariate Density Cluster model.
+        The input array must be sorted in ascending order.
 
-        :param array:
-        :return:
+        :param array: An array of integers sorted in ascending order
+        :type array: :class:`numpy.ndarray`[int]
         """
         self.input_array = np.array(array, copy=True)
-        self.slices = UDC.udc(self.input_array, self.min_pts, self.eps)
+        self.slices = UDC.udc(self.input_array, self.n, self.eps)
 
     def clusters(self):
         """
-        Return values from the input array grouped into clusters
+        Return values from the input array grouped into clusters.
+        Points classified as noise are not returned.
 
-        :return:
+        :return: A generator object of subset of the input array
+        :rtype: generator[:class:`numpy.ndarray`[int]]
         """
         return (self.input_array[lower:upper] for lower, upper in self.slices)
 
     def cluster_extremities(self):
         """
-        Return minimum and maximum values from the input array found in each cluster
+        Return minimum and maximum values from the input array found in each cluster.
 
-        :return:
+        :return: A generator object of pairs of lower and upper values found in each cluster
+        :rtype: generator[(int, int)]
         """
         return ((self.input_array[lower], self.input_array[upper - 1]) for lower, upper in self.slices)
 
     def labels(self):
         """
-        Return cluster labels for input values
+        Return cluster labels for all input values.
+        Clusters are labeled in ascending order starting from 0
+        Points classified as noise are labeled as -1
 
-        :return:
+        :return: An array of integer labels
+        :rtype: :class:`numpy.ndarray`[int]
         """
         labels = np.full(len(self.input_array), -1, int)
         for i, (lower, upper) in enumerate(self.slices):
@@ -130,11 +191,34 @@ class UDC(object):
 
 
 class HUDC(UDC):
-    """Univariate Density Clusters"""
+    """
+    Hierarchical Univariate Density Cluster analysis: A model to calculate density clusters for a univariate array.
 
-    def __init__(self, min_points, max_eps=None, min_eps=None):
-        """"""
-        self.min_pts = min_points
+    Clusters are identified as suitably dense, continuous regions in the data where the threshold density
+    is specified by parameters n (minimum points) and eps (epsilon).
+    The range in values among every set of n points in the array is calculated and compared to epsilon.
+    Sets of n points with a range equal to, or less than epsilon are classified as subclusters.
+    Overlapping subclusters are then merged together to form clusters.
+    Points in the array that do not fall inside a cluster are regarded as noise.
+
+    This HUDC algorithm identifies values of epsilon below the initial value, at which previously identified clusters
+    are separated into smaller 'child' clusters. At each of these splits the 'area' of each parent cluster is compared
+    to the combined 'area' of it's descendant clusters where a clusters 'area' is the sum total of data points found
+    within that cluster at each value of eps for which that cluster persists (i.e. is not split). If the area of the
+    parent is larger than that of its combined descendants then it is selected. If the area of combined descendants is
+    larger than the parents area then the algorithm is re-run for each of the immediate child clusters. This process
+    continues until a parent cluster is selected or a cluster has no children and is selected.
+
+    :param n: The minimum number of points allowed in each (sub)cluster
+    :type n: int
+    :param max_eps: An optional value for maximum distance allowed among each set of n points
+    :type max_eps: int
+    :param min_eps: An optional value for the minimum value of eps to be used when calculating cluster depth
+    :type min_eps: int
+    """
+
+    def __init__(self, n, max_eps=None, min_eps=None):
+        self.min_pts = n
         self.max_eps = max_eps
         self.min_eps = min_eps
         self.slices = np.array([], dtype=UDC._DTYPE_SLICE)
@@ -142,6 +226,18 @@ class HUDC(UDC):
 
     @staticmethod
     def _point_eps(array, n):
+        """
+        Identify the minimum value of eps for every point in an array of integers.
+        For point, the minimum eps is calculated for each subcluster that point falls within.
+
+        :param array: An array of integers sorted in ascending order
+        :type array: :class:`numpy.ndarray`[int]
+        :param n: number of points used to form a subcluster
+        :type n: int
+
+        :return: An array of minimum eps values
+        :rtype: :class:`numpy.ndarray`[int]
+        """
         assert n > 1  # groups must contain at least two points
         offset = n - 1  # offset for indexing
         length = len(array)
@@ -155,6 +251,31 @@ class HUDC(UDC):
 
     @staticmethod
     def _eps_splits(array, n):
+        """
+        Identify eps 'splits' in an array by calculating eps of the gaps between values in the array.
+
+        Eps between values must be calculated as eps of the values either side of a gap may be significantly lower.
+        For example when clustering the array of vales:
+            [0, 0, 3, 4, 4, 6, 26, 28, 28, 29, 32, 32]
+        with n = 3 (subclusters of 3 points). The eps calculated for values 6 and 26 is 2 and 2 respectively.
+        However the minimum eps value calculated for subclusters that include both values is 21. Therefore, the eps
+        split is 'hidden' if eps is only calculated on a per point basis.
+
+        Once eps is calculated for all gaps between values in an array, peaks are identified and classified as 'splits'.
+        Splits are points at which a parent clusters are split into child clusters.
+
+        Eps of splits is reduced by a constant of 1 in order to be used as a threshold value. This is because an eps
+        value of 21 implies that at eps = 21 a valid subcluster is formed. Therefore eps = 20 is the value at which
+        a subcluster cannot be formed ad there is a split.
+
+        :param array: An array of integers sorted in ascending order
+        :type array: :class:`numpy.ndarray`[int]
+        :param n: number of points used to form a subcluster
+        :type n: int
+
+        :return: An array of eps split values
+        :rtype: :class:`numpy.ndarray`[int]
+        """
         if len(array) <= n:
             # no peaks possible because all points must have the same eps
             return np.array([], dtype=np.int)
@@ -180,6 +301,16 @@ class HUDC(UDC):
 
     @staticmethod
     def _flatten_list(item):
+        """
+        Flatten a nested list.
+        If item is not a list it will be returned inside a list of length one
+
+        :param item: a list or any other object
+        :type item: list[any] | any
+
+        :return: A flat list
+        :rtype: list[any]
+        """
         if isinstance(item, list):
             for element in item:
                 for item in HUDC._flatten_list(element):
@@ -188,8 +319,21 @@ class HUDC(UDC):
             yield item
 
     @staticmethod
-    def _grow_hudc_tree(points, base_eps, n):
+    def _traverse_hudc_tree(points, base_eps, n):
+        """
+        Traverse a tree of nested density clusters and recursively identify clusters based on their area.
+        This method is intimately tied to method 'hudc'.
 
+        :param points: An array of points with the slots 'value', 'index' and 'eps
+        :type points: :class:`numpy.ndarray`[int, int, int]
+        :param base_eps: The maximum distance allowed in among each set of n points
+        :type base_eps: int
+        :param n: The minimum number of points allowed in each (sub)cluster
+        :type n: int
+
+        :return: A nested list of upper and (half-open) indices of selected clusters
+        :rtype: list[list[]]
+        """
         splits = HUDC._eps_splits(points['value'], n)
 
         if len(splits) == 0:
@@ -211,10 +355,44 @@ class HUDC(UDC):
         else:
             # combined area of children is larger so divide and repeat
             child_points = (points[left:right] for left, right in HUDC._cluster(points['value'], threshold_eps, n))
-            return [HUDC._grow_hudc_tree(points, threshold_eps, n) for points in child_points]
+            return [HUDC._traverse_hudc_tree(points, threshold_eps, n) for points in child_points]
 
     @staticmethod
     def hudc(array, n, max_eps=None, min_eps=None):
+        """
+        Calculate Hierarchical Density Clusters for a Univariate Array.
+
+        Clusters are identified as suitably dense, continuous regions in the data where the threshold density
+        is specified by parameters n (minimum points) and eps (epsilon).
+        The range in values among every set of n points in the array is calculated and compared to epsilon.
+        Sets of n points with a range equal to, or less than epsilon are classified as subclusters.
+        Overlapping subclusters are then merged together to form clusters.
+        Points in the array that do not fall inside a cluster are regarded as noise.
+
+        The HUDC algorithm identifies values of epsilon below the initial value, at which previously identified clusters
+        are separated into smaller 'child' clusters. At each of these splits the 'area' of each parent cluster is
+        compared to the combined 'area' of it's descendant clusters where a clusters 'area' is the sum total of data
+        points found within that cluster at each value of eps for which that cluster persists (i.e. is not split). If
+        the area of the parent is larger than that of its combined descendants then it is selected. If the area of
+        combined descendants is larger than the parents area then the algorithm is re-run for each of the immediate
+        child clusters. This process continues until a parent cluster is selected or a cluster has no children and is
+        selected.
+
+        The HUDC algorithm is primarily based on HDBSCAN, see: https://hdbscan.readthedocs.io/en/latest/index.html
+
+        The input array must be sorted in ascending order.
+        This method returns pairs of indices representing the (half open) upper and lower bounds of each cluster
+
+        :param n: The minimum number of points allowed in each (sub)cluster
+        :type n: int
+        :param max_eps: An optional value for maximum distance allowed among each set of n points
+        :type max_eps: int
+        :param min_eps: An optional value for the minimum value of eps to be used when calculating cluster depth
+        :type min_eps: int
+
+        :return: An array of paired lower and upper indices for each cluster found in the array
+        :rtype: :class:`numpy.ndarray`[int, int]
+        """
         assert HUDC._sorted_ascending(array)
         points = np.empty(len(array), dtype=np.dtype([('value', np.int64),
                                                       ('index', np.int64),
@@ -233,14 +411,16 @@ class HUDC(UDC):
         child_points = (points[left:right] for left, right in HUDC._cluster(points['value'], max_eps, n))
 
         # run
-        clusters = [HUDC._grow_hudc_tree(points, max_eps, n) for points in child_points]
+        clusters = [HUDC._traverse_hudc_tree(points, max_eps, n) for points in child_points]
         return np.fromiter(HUDC._flatten_list(clusters), dtype=UDC._DTYPE_SLICE)
 
     def fit(self, array):
         """
+        Fit an array to a Hierarchical Univariate Density Cluster model.
+        The input array must be sorted in ascending order.
 
-        :param array:
-        :return:
+        :param array: An array of integers sorted in ascending order
+        :type array: :class:`numpy.ndarray`[int]
         """
         self.input_array = np.array(array, copy=True)
         self.slices = HUDC.hudc(self.input_array, self.min_pts, max_eps=self.max_eps, min_eps=self.min_eps)

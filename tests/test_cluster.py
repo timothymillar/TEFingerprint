@@ -56,7 +56,7 @@ class TestUDC:
         """
         npt.assert_array_equal(UDC._melt_slices(slices), melted_slices)
 
-    def test__subcluster(self):
+    def test_subcluster(self):
         """
         Test for hidden method _subcluster.
         """
