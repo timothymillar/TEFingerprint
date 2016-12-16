@@ -18,13 +18,16 @@ class TestUDC:
                                False)],
                              ids=['ascending', 'non-ascending', 'descending'])
     def test_sorted_ascending(self, array, answer):
+        """
+        Test for hidden method _sorted_ascending.
+        """
         assert UDC._sorted_ascending(array) == answer
 
     @pytest.mark.parametrize("slices,melted_slices",
                              # single slice spanning single base
-                             [(np.array([(13, 13)],
+                             [(np.array([(13, 14)],
                                         dtype=UDC._DTYPE_SLICE),
-                               np.array([(13, 13)],
+                               np.array([(13, 14)],
                                         dtype=UDC._DTYPE_SLICE)),
                               # nested slices (this shouldn't happen in practice but is handled correctly)
                               (np.array([(15, 25), (16, 17), (19, 20)],
@@ -37,9 +40,9 @@ class TestUDC:
                                np.array([(7, 9), (9, 12)],
                                         dtype=UDC._DTYPE_SLICE)),
                               # combined
-                              (np.array([(3, 6), (6, 8), (7, 9), (10, 12), (13, 13), (15, 25), (16, 17), (19, 20)],
+                              (np.array([(3, 6), (6, 8), (7, 9), (10, 12), (12, 13), (15, 25), (16, 17), (19, 20)],
                                         dtype=UDC._DTYPE_SLICE),
-                               np.array([(3, 6), (6, 9), (10, 12), (13, 13), (15, 25)],
+                               np.array([(3, 6), (6, 9), (10, 12), (12, 13), (15, 25)],
                                         dtype=UDC._DTYPE_SLICE))
                               ],
                              ids=['single', 'nested', 'adjacent', 'combined'])
@@ -47,12 +50,11 @@ class TestUDC:
         """
         Test for hidden method _melt_slices.
         Test includes following edge cases:
-         * Long locus completely overlaps short loci: (15, 25) & (16, 17) & (19, 20) --> (15, 25)
-         * Adjacent loci do not get merged: (7, 9) & (9, 12) -->  (*, 9) & (9, *)
-         * Locus may span a single base: (13, 13) --> (13, 13)
+         * Long slice completely overlaps short loci: (15, 25) & (16, 17) & (19, 20) --> (15, 25)
+         * Adjacent slices do not get merged: (7, 9) & (9, 12) -->  (*, 9) & (9, *)
+         * Slice may span a single value: (13, 14) --> (13, 14)
         """
         npt.assert_array_equal(UDC._melt_slices(slices), melted_slices)
-
 
     def test__subcluster(self):
         """
@@ -95,13 +97,34 @@ class TestUDC:
         npt.assert_array_equal(udc_object.slices, answer_slices)
 
     def test_clusters(self):
-        pass
+        """
+        Test for method clusters.
+        """
+        udc_object = UDC(4, 5)
+        input_array = np.array([1, 2, 21, 22, 22, 22, 24, 38, 54, 54, 55, 56, 65, 65, 66, 67, 68, 90], dtype=int)
+        cluster_arrays = [np.array([21, 22, 22, 22, 24], dtype=int),
+                          np.array([54, 54, 55, 56], dtype=int),
+                          np.array([65, 65, 66, 67, 68], dtype=int)]
+        udc_object.fit(input_array)
+        for result, answer in zip(udc_object.clusters(), cluster_arrays):
+            npt.assert_array_equal(result, answer)
 
     def test_cluster_extremities(self):
-        pass
+        """Test for method cluster_extremities"""
+        udc_object = UDC(4, 5)
+        input_array = np.array([1, 2, 21, 22, 22, 22, 24, 38, 54, 54, 55, 56, 65, 65, 66, 67, 68, 90], dtype=int)
+        cluster_extremities = [(21, 24), (54, 56), (65, 68)]
+        udc_object.fit(input_array)
+        for result, answer in zip(udc_object.cluster_extremities(), cluster_extremities):
+            assert result == answer
 
     def test_labels(self):
-        pass
+        """Test for method labels"""
+        udc_object = UDC(4, 5)
+        input_array = np.array([1, 2, 21, 22, 22, 22, 24, 38, 54, 54, 55, 56, 65, 65, 66, 67, 68, 90], dtype=int)
+        labels = np.array([-1, -1, 0, 0, 0, 0, 0, -1, 1, 1, 1, 1, 2, 2, 2, 2, 2, -1], dtype=int)
+        udc_object.fit(input_array)
+        npt.assert_array_equal(udc_object.labels(), labels)
 
 
 class TestHUDC:
@@ -109,6 +132,10 @@ class TestHUDC:
     Tests for class HierarchicalUnivariateDensityCluster.
     """
     def test_point_eps(self):
+        """
+        Test for hidden method _point_eps.
+        Data is derived from real edge case containing "hidden" eps peaks.
+        """
         input_array = np.array([   0,    0,   60,   61,   61,   61,   76,   78,  122,  122,  141,
                                  183,  251,  260,  260,  263,  263,  267,  267,  288,  288,  295,
                                  300,  310,  310,  317,  317,  334,  334,  335,  338,  338,  338,
@@ -129,11 +156,20 @@ class TestHUDC:
         npt.assert_array_equal(HUDC._point_eps(input_array, 10), point_eps)
 
     def test_point_eps_hidden_peak(self):
+        """
+        Test for hidden method _point_eps.
+        Data contains a single "hidden" eps peak between values 6 and 26
+        (values themselves have low eps but a large gap between them).
+        """
         input_array = np.array([0, 0, 3, 4, 4, 6, 26, 28, 28, 29, 32, 32], dtype=int)
         point_eps = np.array([3, 3, 1, 1, 1, 2, 2, 1, 1, 1, 3, 3], dtype=int)
         npt.assert_array_equal(HUDC._point_eps(input_array, 3), point_eps)
 
     def test_eps_splits(self):
+        """
+        Test for hidden method _eps_splits.
+        Data is derived from real edge case containing "hidden" eps peaks.
+        """
         input_array = np.array([   0,    0,   60,   61,   61,   61,   76,   78,  122,  122,  141,
                                  183,  251,  260,  260,  263,  263,  267,  267,  288,  288,  295,
                                  300,  310,  310,  317,  317,  334,  334,  335,  338,  338,  338,
@@ -147,6 +183,11 @@ class TestHUDC:
         npt.assert_array_equal(HUDC._eps_splits(input_array, 10), split_eps)
 
     def test_eps_splits_hidden_peak(self):
+        """
+        Test for hidden method _eps_splits.
+        Data contains a single "hidden" eps peak between values 6 and 26
+        (values themselves have low eps but a large gap between them).
+        """
         input_array = np.array([0, 0, 3, 4, 4, 6, 26, 28, 28, 29, 32, 32], dtype=int)
         split_eps = np.array([21], dtype=int)
         npt.assert_array_equal(HUDC._eps_splits(input_array, 3), split_eps)
@@ -161,12 +202,13 @@ class TestHUDC:
                              ids=['nested', 'flat', 'tuple'])
     def test_flatten_list(self, nested, flat):
         """
-        Test for hidden method _flatten_list using a nested data set.
+        Tests for hidden method _flatten_list.
         Method _flatten_list returns a generator which should be coerced to a list.
         """
         assert list(HUDC._flatten_list(nested)) == flat
 
     def test_hudc(self):
+        """Test for method hudc"""
         input_array = np.array([   0,    0,   60,   61,   61,   61,   76,   78,  122,  122,  141,
                                  183,  251,  260,  260,  263,  263,  267,  267,  288,  288,  295,
                                  300,  310,  310,  317,  317,  334,  334,  335,  338,  338,  338,
