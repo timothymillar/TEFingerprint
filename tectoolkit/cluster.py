@@ -8,7 +8,11 @@ class UDC(object):
     _DTYPE_SLICE = np.dtype([('start', np.int64), ('stop', np.int64)])
 
     def __init__(self, min_points, eps):
-        """"""
+        """
+
+        :param min_points:
+        :param eps:
+        """
         self.min_pts = min_points
         self.eps = eps
         self.slices = np.array([], dtype=UDC._DTYPE_SLICE)
@@ -20,6 +24,11 @@ class UDC(object):
 
     @staticmethod
     def _melt_slices(slices):
+        """
+
+        :param slices:
+        :return:
+        """
         starts, stops = slices['start'], slices['stop']
         starts.sort()
         stops.sort()
@@ -76,10 +85,6 @@ class UDC(object):
         if len(slices) > 1:
             slices = UDC._melt_slices(slices)
         return slices
-
-    @staticmethod
-    def _subset_buy_slices(array, slices):
-        return [array[left:right] for left, right in slices]
 
     @staticmethod
     def udc(array, n, eps):
@@ -205,7 +210,7 @@ class HUDC(UDC):
 
         else:
             # combined area of children is larger so divide and repeat
-            child_points = HUDC._subset_buy_slices(points, HUDC._cluster(points['value'], threshold_eps, n))
+            child_points = (points[left:right] for left, right in HUDC._cluster(points['value'], threshold_eps, n))
             return [HUDC._grow_hudc_tree(points, threshold_eps, n) for points in child_points]
 
     @staticmethod
@@ -225,7 +230,7 @@ class HUDC(UDC):
             points['eps'][points['eps'] < min_eps] = min_eps
 
         # initial splits
-        child_points = HUDC._subset_buy_slices(points, HUDC._cluster(points['value'], max_eps, n))
+        child_points = (points[left:right] for left, right in HUDC._cluster(points['value'], max_eps, n))
 
         # run
         clusters = [HUDC._grow_hudc_tree(points, max_eps, n) for points in child_points]
