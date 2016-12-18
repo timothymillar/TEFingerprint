@@ -201,13 +201,14 @@ class HUDC(UDC):
     Overlapping subclusters are then merged together to form clusters.
     Points in the array that do not fall inside a cluster are regarded as noise.
 
-    This HUDC algorithm identifies values of epsilon below the initial value, at which previously identified clusters
-    are separated into smaller 'child' clusters. At each of these splits the 'area' of each parent cluster is compared
-    to the combined 'area' of it's descendant clusters where a clusters 'area' is the sum total of data points found
-    within that cluster at each value of eps for which that cluster persists (i.e. is not split). If the area of the
-    parent is larger than that of its combined descendants then it is selected. If the area of combined descendants is
-    larger than the parents area then the algorithm is re-run for each of the immediate child clusters. This process
-    continues until a parent cluster is selected or a cluster has no children and is selected.
+    The HUDC algorithm identifies values of epsilon lower than the initial value, at which previously identified
+    clusters are separated into smaller 'child' clusters. At each of these splits the 'area' of each parent cluster
+    is compared to the combined 'area' of it's descendant clusters where a clusters 'area' is the sum total of data
+    points found within that cluster at each value of epsilon for which that cluster persists (i.e. is not split).
+    If the area of the parent is larger than that of its combined descendants, then it is selected. If the area of
+    combined descendants is larger than the parents area, the algorithm is re-run for each of the immediate
+    child clusters. This process continues until a parent cluster is selected or a terminal cluster (a cluster with
+    no children) is reached and automatically selected.
 
     :param n: The minimum number of points allowed in each (sub)cluster
     :type n: int
@@ -228,7 +229,7 @@ class HUDC(UDC):
     def _point_eps(array, n):
         """
         Identify the minimum value of eps for every point in an array of integers.
-        For point, the minimum eps is calculated for each subcluster that point falls within.
+        For each point, the minimum eps is calculated among all subclusters containing that point.
 
         :param array: An array of integers sorted in ascending order
         :type array: :class:`numpy.ndarray`[int]
@@ -369,20 +370,22 @@ class HUDC(UDC):
         Overlapping subclusters are then merged together to form clusters.
         Points in the array that do not fall inside a cluster are regarded as noise.
 
-        The HUDC algorithm identifies values of epsilon below the initial value, at which previously identified clusters
-        are separated into smaller 'child' clusters. At each of these splits the 'area' of each parent cluster is
-        compared to the combined 'area' of it's descendant clusters where a clusters 'area' is the sum total of data
-        points found within that cluster at each value of eps for which that cluster persists (i.e. is not split). If
-        the area of the parent is larger than that of its combined descendants then it is selected. If the area of
-        combined descendants is larger than the parents area then the algorithm is re-run for each of the immediate
-        child clusters. This process continues until a parent cluster is selected or a cluster has no children and is
-        selected.
+        The HUDC algorithm identifies values of epsilon lower than the initial value, at which previously identified
+        clusters are separated into smaller 'child' clusters. At each of these splits the 'area' of each parent cluster
+        is compared to the combined 'area' of it's descendant clusters where a clusters 'area' is the sum total of data
+        points found within that cluster at each value of epsilon for which that cluster persists (i.e. is not split).
+        If the area of the parent is larger than that of its combined descendants, then it is selected. If the area of
+        combined descendants is larger than the parents area, the algorithm is re-run for each of the immediate
+        child clusters. This process continues until a parent cluster is selected or a terminal cluster (a cluster with
+        no children) is reached and automatically selected.
 
         The HUDC algorithm is primarily based on HDBSCAN, see: https://hdbscan.readthedocs.io/en/latest/index.html
 
         The input array must be sorted in ascending order.
         This method returns pairs of indices representing the (half open) upper and lower bounds of each cluster
 
+        :param array: An array of ints sorted in ascending order
+        :type array: :class:`numpy.ndarray`[int]
         :param n: The minimum number of points allowed in each (sub)cluster
         :type n: int
         :param max_eps: An optional value for maximum distance allowed among each set of n points
