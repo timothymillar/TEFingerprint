@@ -6,9 +6,9 @@ import argparse
 from itertools import product
 from multiprocessing import Pool
 from tectoolkit import bam_io
-from tectoolkit.reads import ReadGroup
+from tectoolkit.reads import ReadGroup, UnivariateLoci
 from tectoolkit.gff_io import NestedFeature
-from tectoolkit.cluster import FUDC, HUDC
+from tectoolkit.cluster import UDC, HUDC
 
 
 class FingerprintProgram(object):
@@ -170,13 +170,13 @@ class Fingerprint(object):
             max_eps, min_eps = max(self.eps), min(self.eps)
             hudc = HUDC(self.min_reads, max_eps, min_eps)
             hudc.fit(self.reads['tip'])
-            return hudc.clusters
+            return UnivariateLoci.from_iter(hudc.cluster_extremities())
         elif len(self.eps) == 1:
             # use flat clustering method
             eps = max(self.eps)
-            fudc = FUDC(self.min_reads, eps)
+            fudc = UDC(self.min_reads, eps)
             fudc.fit(self.reads['tip'])
-            return fudc.clusters
+            return UnivariateLoci.from_iter(fudc.cluster_extremities())
         else:
             pass
 

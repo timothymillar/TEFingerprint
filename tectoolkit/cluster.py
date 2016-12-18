@@ -1,339 +1,316 @@
 #! /usr/bin/env python
 
 import numpy as np
-from functools import reduce
 
 
-class UnivariateLoci(object):
+class UDC(object):
     """
-    A collection of univariate loci that relate to reads mapped to a reference genome.
+    Univariate Density Cluster analysis: Create a model to calculate density clusters for a univariate array.
 
-    Each locus is represented as a single element in a numpy array with the following slots:
-     - start: np.int64
-     - stop: np.int64
-    Where 'start' and 'stop' are respectively the lower and upper coordinates that define a segment of the reference.
-    These coordinates are inclusive, 1 based integers (i.e, use the SAM coordinate system).
+    Clusters are identified as suitably dense, continuous regions in the data where the threshold density
+    is specified by parameters n (minimum points) and eps (epsilon).
+    The range in values among every set of n points in the array is calculated and compared to epsilon.
+    Sets of n points with a range equal to, or less than epsilon are classified as subclusters.
+    Overlapping subclusters are then merged together to form clusters.
+    Points in the array that do not fall inside a cluster are regarded as noise.
+
+    :param n: The minimum number of points allowed in each (sub)cluster
+    :type n: int
+    :param eps: The maximum distance allowed among each set of n points
+    :type eps: int
     """
-    DTYPE_ULOCUS = np.dtype([('start', np.int64),
-                             ('stop', np.int64)])
 
-    def __init__(self, loci=None):
+    _DTYPE_SLICE = np.dtype([('lower', np.int64), ('upper', np.int64)])
+
+    def __init__(self, n, eps):
+        self.n = n
+        self.eps = eps
+        self.slices = np.array([], dtype=UDC._DTYPE_SLICE)
+        self.input_array = np.array([], dtype=int)
+
+    @staticmethod
+    def _sorted_ascending(array):
         """
-        Init method for :class:`ReadLoci`.
+        Checks if an array is sorted in ascending order.
 
-        :param loci: A numpy array.
-        :type loci: :class:`numpy.ndarray`[(int, int)]
+        :param array: a 1 dimensional array of numeric values
+        :type array: :class:`numpy.ndarray`[int]
+
+        :return: True if array is sorted in ascending order
+        :rtype: bool
         """
-        if loci is None:
-            loci = []
-        self.loci = np.array(loci, dtype=UnivariateLoci.DTYPE_ULOCUS, copy=True)
+        return np.sum(array[1:] - array[:-1] < 0) == 0
 
-    def __iter__(self):
+    @staticmethod
+    def _melt_slices(slices):
         """
-        Iter method for :class:`ReadLoci`.
-        Passes through to wrapped numpy array.
+        Combines overlapping slices assuming half-open intervals.
 
-        :return: an iterator of loci
+        :param slices: An array of paired integers representing the lower and upper values of a slice
+        :type slices: :class:`numpy.ndarray`[int, int]
+
+        :return: An array of paired integers representing the lower and upper values of a slice
+        :rtype: :class:`numpy.ndarray`[int, int]
+        """
+        lowers, uppers = slices['lower'], slices['upper']
+        lowers.sort()
+        uppers.sort()
+        splits = np.append(np.array([False]), uppers[:-1] <= lowers[1:])  # True means gap between
+
+        def _melter(lowers, uppers, splits):
+            l = lowers[0]
+            u = uppers[0]
+            for i in range(1, len(lowers)):
+                if splits[i]:
+                    # there is a gap so yield slice and start new one
+                    yield l, u
+                    l, u = slices['lower'][i], slices['upper'][i]
+                else:
+                    # no gap so merge slices
+                    u = uppers[i]
+            # yield final slice
+            yield l, u
+
+        # return slices formatted as a numpy array
+        return np.fromiter(_melter(lowers, uppers, splits), dtype=UDC._DTYPE_SLICE)
+
+
+    @staticmethod
+    def _subcluster(array, eps, n):
+        """
+        Calculate subclusters of an array and return their slice indices.
+        The input array must be sorted in ascending order.
+
+        :param array: An array of ints sorted in ascending order
+        :param eps: The number of points in each subcluster
+        :param n: The maximum distance allowed in among points of each subcluster
+
+        :return: An array of paired lower and upper indices for each subcluster found in the array
+        :rtype: :class:`numpy.ndarray`[int, int]
+        """
+        assert UDC._sorted_ascending(array)
+        offset = n - 1
+        upper = array[offset:]
+        lower = array[:-offset]
+        selected = upper - lower <= eps
+        lower_index = np.arange(0, len(lower))[selected]
+        upper_index = np.arange(offset, len(array))[selected] + 1
+        return np.fromiter(zip(lower_index, upper_index), dtype=UDC._DTYPE_SLICE)
+
+    @staticmethod
+    def _cluster(array, eps, n):
+        """
+        Calculate clusters of an array and return their slice indices.
+        The input array must be sorted in ascending order.
+
+        :param array: An array of ints sorted in ascending order
+        :param eps: The minimum number of points in each (sub)cluster
+        :param n: The maximum distance allowed in among each set of n points
+
+        :return: An array of paired lower and upper indices for each cluster found in the array
+        :rtype: :class:`numpy.ndarray`[int, int]
+        """
+        # sorted-ascending checked in method _subcluster
+        slices = UDC._subcluster(array, eps, n)
+        if len(slices) > 1:
+            slices = UDC._melt_slices(slices)
+        return slices
+
+    @staticmethod
+    def udc(array, n, eps):
+        """
+        Calculate Density Clusters for a Univariate Array.
+
+        Clusters are identified as suitably dense, continuous regions in the data where the threshold density
+        is specified by parameters n (minimum points) and eps (epsilon).
+        The range in values among every set of n points in the array is calculated and compared to epsilon.
+        Sets of n points with a range equal to, or less than epsilon are classified as subclusters.
+        Overlapping subclusters are then merged together to form clusters.
+        Points in the array that do not fall inside a cluster are regarded as noise.
+
+        The input array must be sorted in ascending order.
+        This method returns pairs of indices representing the (half open) upper and lower bounds of each cluster.
+
+        :param array: An array of ints sorted in ascending order
+        :type array: :class:`numpy.ndarray`[int]
+        :param n: The minimum number of points in each (sub)cluster
+        :type n: int
+        :param eps: The maximum distance allowed in among each set of n points
+        :type eps: int
+
+        :return: An array of paired lower and upper indices for each cluster found in the array
+        :rtype: :class:`numpy.ndarray`[int, int]
+        """
+        assert UDC._sorted_ascending(array)
+        slices = UDC._cluster(array, eps, n)
+        return slices
+
+    def fit(self, array):
+        """
+        Fit an array to a Univariate Density Cluster model.
+        The input array must be sorted in ascending order.
+
+        :param array: An array of integers sorted in ascending order
+        :type array: :class:`numpy.ndarray`[int]
+        """
+        self.input_array = np.array(array, copy=True)
+        self.slices = UDC.udc(self.input_array, self.n, self.eps)
+
+    def clusters(self):
+        """
+        Return values from the input array grouped into clusters.
+        Points classified as noise are not returned.
+
+        :return: A generator object of subset of the input array
+        :rtype: generator[:class:`numpy.ndarray`[int]]
+        """
+        return (self.input_array[lower:upper] for lower, upper in self.slices)
+
+    def cluster_extremities(self):
+        """
+        Return minimum and maximum values from the input array found in each cluster.
+
+        :return: A generator object of pairs of lower and upper values found in each cluster
         :rtype: generator[(int, int)]
         """
-        for locus in self.loci:
-            yield locus
+        return ((self.input_array[lower], self.input_array[upper - 1]) for lower, upper in self.slices)
 
-    def __getitem__(self, item):
+    def labels(self):
         """
-        Getitem method for :class:`ReadLoci`.
-        Passes through to wrapped numpy array.
+        Return cluster labels for all input values.
+        Clusters are labeled in ascending order starting from 0
+        Points classified as noise are labeled as -1
 
-        :param item: Index
-        :type item: int | slice | str | numpy.ndarray[int] | numpy.ndarray[bool]
-
-        :return: An numpy array with dtype = :class:`ReadLoci`.DTYPE_ULOCUS
-        :rtype: :class:`numpy.ndarray`[(int, int)]
+        :return: An array of integer labels
+        :rtype: :class:`numpy.ndarray`[int]
         """
-        return self.loci[item]
-
-    def __len__(self):
-        """
-        Len method for :class:`ReadLoci`.
-
-        :return: The number of loci in the collection
-        :rtype: int
-        """
-        return len(self.loci)
-
-    def sort(self, order=('start', 'stop')):
-        """
-        Sort loci in place by field(s).
-
-        :param order: A valid field or list of fields in :class:`ReadLoci`, defaults to ['start', 'stop']
-        :type order: str | list[str]
-        """
-        self.loci.sort(order=order)
-
-    def melt(self):
-        """
-        Merge overlapping loci into a single loci.
-        Loci are sorted and modified in place.
-
-        Example::
-            loci = ReadLoci.from_iterable([(1, 4), (2, 6), (6, 7), (8, 10), (9, 12), (14, 15)])
-            list(loci)
-            [(1, 4), (2, 6), (6, 7), (8, 10), (9, 12), (14, 15)]
-            loci.melt()
-            list(loci)
-            [(1, 7), (8, 12), (14, 15)]
-        """
-        def _melter(loci):
-            start = loci['start'][0]
-            stop = loci['stop'][0]
-            for i in range(1, len(loci)):
-                if loci['start'][i] <= stop:
-                    if loci['stop'][i] > stop:
-                        stop = loci['stop'][i]
-                    else:
-                        pass
-                else:
-                    yield start, stop
-                    start = loci['start'][i]
-                    stop = loci['stop'][i]
-            yield start, stop
-        self.sort()
-        self.loci = np.fromiter(_melter(self.loci), dtype=UnivariateLoci.DTYPE_ULOCUS)
-
-    def subset_by_locus(self, start, stop, margin=0, end='both'):
-        """
-        Returns a new ReadGroup object containing (the specified end of) all reads within specified (inclusive) bounds.
-
-        :param start: Lower bound
-        :type start: int
-        :param stop: Upper bound
-        :type stop: int
-        :param margin: A value to extend both bounds by, defaults to 0
-        :param end: The read end that must fall within the bounds, must be 'tip' or 'tail', defaults to 'tip'
-        :type end: str
-
-        :return: The subset of reads that fall within the specified bounds
-        :rtype: :class:`ReadGroup`
-        """
-        assert end in {'start', 'stop', 'both'}
-        start -= margin
-        stop += margin
-        if end == 'both':
-            loci = self.loci[np.logical_and(self.loci['start'] >= start, self.loci['stop'] <= stop)]
-        else:
-            loci = self.loci[np.logical_and(self.loci[end] >= start, self.loci[end] <= stop)]
-        return UnivariateLoci(loci)
-
-    @classmethod
-    def from_iter(cls, iterable):
-        """
-        Construct an instance of :class:`ReadLoci` form an iterable.
-
-        :param iterable: Iterable of tuples containing loci bounds
-        :type iterable: iterable[(int, int)]
-
-        :return: Instance of :class:`ReadLoci`
-        :rtype: :class:`UnivariateLoci`
-        """
-        loci = UnivariateLoci(np.fromiter(iterable, dtype=UnivariateLoci.DTYPE_ULOCUS))
-        loci.sort()
-        return loci
-
-    @classmethod
-    def append(cls, x, y):
-        """
-        Combine two :class:`ReadLoci` objects into a single object.
-
-        :param x: Instance of :class:`ReadLoci`
-        :typev x: :class:`ReadLoci`
-        :param y: Instance of :class:`ReadLoci`
-        :type y: :class:`UnivariateLoci`
-
-        :return: Instance of :class:`ReadLoci`
-        :rtype: :class:`UnivariateLoci`
-        """
-        loci = UnivariateLoci(np.append(x.loci, y.loci))
-        loci.sort()
-        return loci
+        labels = np.full(len(self.input_array), -1, int)
+        for i, (lower, upper) in enumerate(self.slices):
+            labels[lower:upper] += (i + 1)
+        return labels
 
 
-class FUDC(object):
-    """Flat Univariate Density Cluster"""
-    def __init__(self, min_points, eps):
-        """"""
-        self.min_pts = min_points
-        self.eps = eps
-        self.clusters = UnivariateLoci()
-        self.points = np.empty_like
-        self.labels = np.array([])
+class HUDC(UDC):
+    """
+    Hierarchical Univariate Density Cluster analysis: A model to calculate density clusters for a univariate array.
 
-    @staticmethod
-    def _flat_subcluster(points, min_pts, eps):
-        """
+    Clusters are identified as suitably dense, continuous regions in the data where the threshold density
+    is specified by parameters n (minimum points) and eps (epsilon).
+    The range in values among every set of n points in the array is calculated and compared to epsilon.
+    Sets of n points with a range equal to, or less than epsilon are classified as subclusters.
+    Overlapping subclusters are then merged together to form clusters.
+    Points in the array that do not fall inside a cluster are regarded as noise.
 
-        :param points:
-        :param min_pts:
-        :param eps:
-        :return:
-        """
-        points.sort()
-        offset = min_pts - 1
-        upper = points[offset:]
-        lower = points[:-offset]
-        diff = upper - lower
-        dense = diff <= eps
-        lower = lower[dense]
-        upper = upper[dense]
-        loci = ((lower[i], upper[i]) for i in range(len(lower)))
-        return UnivariateLoci.from_iter(loci)
+    The HUDC algorithm identifies values of epsilon lower than the initial value, at which previously identified
+    clusters are separated into smaller 'child' clusters. At each of these splits the 'area' of each parent cluster
+    is compared to the combined 'area' of it's descendant clusters where a clusters 'area' is the sum total of data
+    points found within that cluster at each value of epsilon for which that cluster persists (i.e. is not split).
+    If the area of the parent is larger than that of its combined descendants, then it is selected. If the area of
+    combined descendants is larger than the parents area, the algorithm is re-run for each of the immediate
+    child clusters. This process continues until a parent cluster is selected or a terminal cluster (a cluster with
+    no children) is reached and automatically selected.
 
-    @staticmethod
-    def flat_cluster(points, min_pts, eps):
-        """
+    :param n: The minimum number of points allowed in each (sub)cluster
+    :type n: int
+    :param max_eps: An optional value for maximum distance allowed among each set of n points
+    :type max_eps: int
+    :param min_eps: An optional value for the minimum value of eps to be used when calculating cluster depth
+    :type min_eps: int
+    """
 
-        :param points:
-        :param min_pts:
-        :param eps:
-        :return:
-        """
-        clusters = FUDC._flat_subcluster(points, min_pts, eps)
-        if len(clusters) > 1:
-            clusters.melt()
-        return clusters
-
-    def fit(self, points):
-        """
-
-        :param points:
-        :return:
-        """
-        self.points = np.array(points, copy=True)
-        self.points.sort()
-        self.clusters = FUDC.flat_cluster(self.points, self.min_pts, self.eps)
-
-
-class HUDC(FUDC):
-    """Hierarchical Univariate Density Cluster"""
-    _node_template = {'base_eps': None,
-                      'base_locus': (None, None),
-                      'area': 0,
-                      'child_area': 0,
-                      'selected': False,
-                      'children': None}
-
-    def __init__(self, min_points, max_eps, min_eps):
-        """"""
-        assert max_eps > min_eps > 1
-        self.min_pts = min_points
+    def __init__(self, n, max_eps=None, min_eps=None):
+        self.min_pts = n
         self.max_eps = max_eps
         self.min_eps = min_eps
-        self.clusters = UnivariateLoci()
-        self.points = np.empty_like
-        self.labels = np.array([])
+        self.slices = np.array([], dtype=UDC._DTYPE_SLICE)
+        self.input_array = np.array([], dtype=int)
 
     @staticmethod
-    def _locus_points(locus, points):
+    def _point_eps(array, n):
         """
+        Identify the minimum value of eps for every point in an array of integers.
+        For each point, the minimum eps is calculated among all subclusters containing that point.
 
-        :param locus:
-        :param points:
-        :return:
-        """
-        start, stop = locus
-        return points[np.logical_and(points >= start, points <= stop)]
+        :param array: An array of integers sorted in ascending order
+        :type array: :class:`numpy.ndarray`[int]
+        :param n: number of points used to form a subcluster
+        :type n: int
 
-    @staticmethod
-    def _grow_tree(points, min_pts, eps, min_eps, area=0, base_eps=None, base_locus=None):
+        :return: An array of minimum eps values
+        :rtype: :class:`numpy.ndarray`[int]
         """
-
-        :param points:
-        :param min_pts:
-        :param eps:
-        :param min_eps:
-        :param area:
-        :param base_eps:
-        :param base_locus:
-        :return:
-        """
-        if base_eps is None:
-            base_eps = eps
-        if base_locus is None:
-            base_locus = (min(points), max(points))
-        area += len(points)
-        child_clusters = HUDC.flat_cluster(points, min_pts, eps - 1)
-        if len(child_clusters) == 1:
-            # branch doesn't fork
-            if eps > min_eps:
-                # branch grows
-                return HUDC._grow_tree(points,
-                                       min_pts,
-                                       eps - 1,
-                                       min_eps=min_eps,
-                                       area=area,
-                                       base_eps=base_eps,
-                                       base_locus=base_locus)
-            else:
-                # branch terminates
-                node = HUDC._node_template.copy()
-                node['area'] = area
-                node['base_eps'] = base_eps
-                node['base_locus'] = base_locus
-                node['children'] = None
-                return node
-        else:
-            # branch forks
-            child_points = [HUDC._locus_points(loci, points) for loci in child_clusters]
-            node = HUDC._node_template.copy()
-            node['area'] = area
-            node['base_eps'] = base_eps
-            node['base_locus'] = base_locus
-            node['children'] = [HUDC._grow_tree(pts, min_pts, eps - 1, min_eps=min_eps) for pts in child_points]
-            return node
+        assert n > 1  # groups must contain at least two points
+        offset = n - 1  # offset for indexing
+        length = len(array)
+        lower = array[0:length - offset]
+        upper = array[offset:length]
+        eps_values = upper - lower
+        eps_2d = np.full((n, length), np.max(eps_values), dtype=int)
+        for i in range(n):
+            eps_2d[i, i:length - (offset - i)] = eps_values
+        return np.min(eps_2d, axis=0)
 
     @staticmethod
-    def _child_area(node):
+    def _eps_splits(array, n):
         """
+        Identify eps 'splits' in an array by calculating eps of the gaps between values in the array.
 
-        :param node:
-        :return:
-        """
-        if node['children']:
-            node['child_area'] = sum([HUDC._child_area(n) for n in node['children']])
-        else:
-            node['child_area'] = 0
-        return node['child_area'] + node['area']
+        Eps between values must be calculated as eps of the values either side of a gap may be significantly lower.
+        For example when clustering the array of vales:
+            [0, 0, 3, 4, 4, 6, 26, 28, 28, 29, 32, 32]
+        with n = 3 (subclusters of 3 points). The eps calculated for values 6 and 26 is 2 and 2 respectively.
+        However the minimum eps value calculated for subclusters that include both values is 21. Therefore, the eps
+        split is 'hidden' if eps is only calculated on a per point basis.
 
-    @staticmethod
-    def _select_nodes(node):
-        """
+        Once eps is calculated for all gaps between values in an array, peaks are identified and classified as 'splits'.
+        Splits are points at which a parent clusters are split into child clusters.
 
-        :param node:
-        :return:
-        """
-        if node['area'] > node['child_area']:
-            node['selected'] = True
-        else:
-            for node in node['children']:
-                HUDC._select_nodes(node)
+        Eps of splits is reduced by a constant of 1 in order to be used as a threshold value. This is because an eps
+        value of 21 implies that at eps = 21 a valid subcluster is formed. Therefore eps = 20 is the value at which
+        a subcluster cannot be formed ad there is a split.
 
-    @staticmethod
-    def _retrieve_selected_loci(node):
-        """
+        :param array: An array of integers sorted in ascending order
+        :type array: :class:`numpy.ndarray`[int]
+        :param n: number of points used to form a subcluster
+        :type n: int
 
-        :param node:
-        :return:
+        :return: An array of eps split values
+        :rtype: :class:`numpy.ndarray`[int]
         """
-        if node['selected']:
-            return node['base_locus']
-        elif node['children']:
-            return [HUDC._retrieve_selected_loci(node) for node in node['children']]
+        if len(array) <= n:
+            # no peaks possible because all points must have the same eps
+            return np.array([], dtype=np.int)
+
+        offset = n - 1
+
+        # calculate split eps using the 2d method
+        eps_values = array[offset:] - array[:-offset]
+        eps_2d = np.full((offset, len(eps_values) + offset - 1), np.max(eps_values), dtype=int)
+        for i in range(offset):
+            eps_2d[i, i:len(eps_values) + i] = eps_values
+        splits = np.min(eps_2d, axis=0)
+        splits -= 1  # Convert values to thresholds
+
+        # Remove plateaus
+        gradients = splits[1:] - splits[:-1]
+        splits = splits[np.append(np.array([True]), gradients != 0)]
+
+        # Remove non-peaks
+        is_peak = np.logical_and(np.append(np.array([False]), splits[1:] > splits[:-1]),
+                                 np.append(splits[:-1] > splits[1:], np.array([False])))
+        return splits[is_peak]
 
     @staticmethod
     def _flatten_list(item):
         """
+        Flatten a nested list.
+        If item is not a list it will be returned inside a list of length one
 
-        :param item:
-        :return:
+        :param item: a list or any other object
+        :type item: list[any] | any
+
+        :return: A flat list
+        :rtype: list[any]
         """
         if isinstance(item, list):
             for element in item:
@@ -343,46 +320,114 @@ class HUDC(FUDC):
             yield item
 
     @staticmethod
-    def _single_hierarchical_cluster(points, min_pts, max_eps, min_eps):
+    def _traverse_hudc_tree(points, base_eps, n):
         """
+        Traverse a tree of nested density clusters and recursively identify clusters based on their area.
+        This method is intimately tied to method 'hudc'.
 
-        :param points:
-        :param min_pts:
-        :param max_eps:
-        :param min_eps:
-        :return:
+        :param points: An array of points with the slots 'value', 'index' and 'eps
+        :type points: :class:`numpy.ndarray`[int, int, int]
+        :param base_eps: The maximum distance allowed in among each set of n points
+        :type base_eps: int
+        :param n: The minimum number of points allowed in each (sub)cluster
+        :type n: int
+
+        :return: A nested list of upper and (half-open) indices of selected clusters
+        :rtype: list[list[]]
         """
-        tree = HUDC._grow_tree(points, min_pts, max_eps, min_eps)
-        HUDC._child_area(tree)
-        HUDC._select_nodes(tree)
-        loci = HUDC._flatten_list(HUDC._retrieve_selected_loci(tree))
-        return UnivariateLoci.from_iter(loci)
+        splits = HUDC._eps_splits(points['value'], n)
+
+        if len(splits) == 0:
+            # there are no children so return slice indices
+            return points['index'][0], points['index'][-1] + 1
+
+        # compare based on largest peak (least dense place)
+        threshold_eps = np.max(splits)
+
+        # compare areas
+        total_area = np.sum(base_eps - points['eps'])
+        child_area = np.sum(threshold_eps - points['eps'])
+        parent_area = total_area - child_area
+
+        if parent_area > child_area:
+            # parent is lager so return slice indices
+            return points['index'][0], points['index'][-1] + 1
+
+        else:
+            # combined area of children is larger so divide and repeat
+            child_points = (points[left:right] for left, right in HUDC._cluster(points['value'], threshold_eps, n))
+            return [HUDC._traverse_hudc_tree(points, threshold_eps, n) for points in child_points]
 
     @staticmethod
-    def _hierarchical_cluster(points, min_pts, max_eps, min_eps):
+    def hudc(array, n, max_eps=None, min_eps=None):
         """
+        Calculate Hierarchical Density Clusters for a Univariate Array.
 
-        :param points:
-        :param min_pts:
-        :param max_eps:
-        :param min_eps:
-        :return:
-        """
-        base_loci = HUDC.flat_cluster(points, min_pts, max_eps)
-        base_points = (HUDC._locus_points(locus, points) for locus in base_loci)
-        loci_generator = (HUDC._single_hierarchical_cluster(points, min_pts, max_eps, min_eps) for points in base_points)
-        clusters = reduce(UnivariateLoci.append, loci_generator)
-        return clusters
+        Clusters are identified as suitably dense, continuous regions in the data where the threshold density
+        is specified by parameters n (minimum points) and eps (epsilon).
+        The range in values among every set of n points in the array is calculated and compared to epsilon.
+        Sets of n points with a range equal to, or less than epsilon are classified as subclusters.
+        Overlapping subclusters are then merged together to form clusters.
+        Points in the array that do not fall inside a cluster are regarded as noise.
 
-    def fit(self, points):
-        """
+        The HUDC algorithm identifies values of epsilon lower than the initial value, at which previously identified
+        clusters are separated into smaller 'child' clusters. At each of these splits the 'area' of each parent cluster
+        is compared to the combined 'area' of it's descendant clusters where a clusters 'area' is the sum total of data
+        points found within that cluster at each value of epsilon for which that cluster persists (i.e. is not split).
+        If the area of the parent is larger than that of its combined descendants, then it is selected. If the area of
+        combined descendants is larger than the parents area, the algorithm is re-run for each of the immediate
+        child clusters. This process continues until a parent cluster is selected or a terminal cluster (a cluster with
+        no children) is reached and automatically selected.
 
-        :param points:
-        :return:
+        The HUDC algorithm is primarily based on HDBSCAN, see: https://hdbscan.readthedocs.io/en/latest/index.html
+
+        The input array must be sorted in ascending order.
+        This method returns pairs of indices representing the (half open) upper and lower bounds of each cluster
+
+        :param array: An array of ints sorted in ascending order
+        :type array: :class:`numpy.ndarray`[int]
+        :param n: The minimum number of points allowed in each (sub)cluster
+        :type n: int
+        :param max_eps: An optional value for maximum distance allowed among each set of n points
+        :type max_eps: int
+        :param min_eps: An optional value for the minimum value of eps to be used when calculating cluster depth
+        :type min_eps: int
+
+        :return: An array of paired lower and upper indices for each cluster found in the array
+        :rtype: :class:`numpy.ndarray`[int, int]
         """
-        self.points = np.array(points, copy=True)
-        self.points.sort()
-        self.clusters = HUDC._hierarchical_cluster(self.points, self.min_pts, self.max_eps, self.min_eps)
+        assert HUDC._sorted_ascending(array)
+        points = np.empty(len(array), dtype=np.dtype([('value', np.int64),
+                                                      ('index', np.int64),
+                                                      ('eps', np.int64)]))
+        points['value'] = array
+        points['index'] = np.arange(len(array), dtype=int)
+        points['eps'] = HUDC._point_eps(array, n)
+        if not max_eps:
+            # start at highest observed eps
+            max_eps = np.max(points['eps'])
+        if min_eps:
+            # overwrite lower eps
+            points['eps'][points['eps'] < min_eps] = min_eps
+
+        # initial splits
+        child_points = (points[left:right] for left, right in HUDC._cluster(points['value'], max_eps, n))
+
+        # run
+        clusters = [HUDC._traverse_hudc_tree(points, max_eps, n) for points in child_points]
+        return np.fromiter(HUDC._flatten_list(clusters), dtype=UDC._DTYPE_SLICE)
+
+    def fit(self, array):
+        """
+        Fit an array to a Hierarchical Univariate Density Cluster model.
+        The input array must be sorted in ascending order.
+
+        :param array: An array of integers sorted in ascending order
+        :type array: :class:`numpy.ndarray`[int]
+        """
+        self.input_array = np.array(array, copy=True)
+        self.slices = HUDC.hudc(self.input_array, self.min_pts, max_eps=self.max_eps, min_eps=self.min_eps)
+
 
 if __name__ == '__main__':
     pass

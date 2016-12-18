@@ -3,7 +3,7 @@
 import pytest
 import numpy as np
 import numpy.testing as npt
-from tectoolkit.reads import ReadGroup
+from tectoolkit.reads import ReadGroup, UnivariateLoci
 
 
 class TestReadGroup:
@@ -150,4 +150,101 @@ class TestReadGroup:
         query = ReadGroup._from_sam_strings(strings)
         query.sort(order='name')
         answer.sort(order='name')
+        npt.assert_array_equal(query, answer)
+
+
+class TestUnivariateLoci:
+    """
+    Tests for class ReadLoci
+    """
+    def test_sort(self):
+        """
+        Test for method sort.
+        """
+        input_loci = np.array([(2, 4),
+                               (3, 4),
+                               (3, 3),
+                               (4, 4),
+                               (3, 99),
+                               (1, 1)], dtype=UnivariateLoci.DTYPE_ULOCUS)
+        query = UnivariateLoci(input_loci)
+        query.sort()
+        answer = np.array([(1, 1),
+                           (2, 4),
+                           (3, 3),
+                           (3, 4),
+                           (3, 99),
+                           (4, 4)], dtype=UnivariateLoci.DTYPE_ULOCUS)
+        npt.assert_array_equal(query.loci, answer)
+
+    def test_from_iter(self):
+        """
+        Test for method from_iter.
+        """
+        loci = [(3, 6), (6, 8), (7, 9), (10, 12), (13, 13), (15, 25), (16, 17), (19, 20)]
+        iterable = (locus for locus in loci)
+        query = UnivariateLoci.from_iter(iterable)
+        query.sort()
+        answer = UnivariateLoci(np.array(loci, dtype=UnivariateLoci.DTYPE_ULOCUS))
+        npt.assert_array_equal(query, answer)
+
+    @pytest.mark.parametrize("loci,melted_loci",
+                             # single locus spanning single base
+                             [([(13, 13)],
+                               [(13, 13)]),
+                              # nested loci
+                              ([(15, 25), (16, 17), (19, 20)],
+                               [(15, 25)]),
+                              # adjacent loci
+                              ([(7, 9), (10, 12)],
+                               [(7, 9), (10, 12)]),
+                              # combined
+                              ([(3, 6), (6, 8), (7, 9), (10, 12), (13, 13), (15, 25), (16, 17), (19, 20)],
+                               [(3, 9), (10, 12), (13, 13), (15, 25)])],
+                             ids=['single', 'nested', 'adjacent', 'combined'])
+    def test_melt(self, loci, melted_loci):
+        """
+        Test for method melt.
+        Method modifies loci in place.
+        Test includes following edge cases:
+         * Long locus completely overlaps short loci: (15, 25) & (16, 17) & (19, 20) --> (15, 25)
+         * Adjacent loci do not get merged: (7, 9) & (10, 12) -->  (*, 9) & (10, *)
+         * Locus may span a single base: (13, 13) --> (13, 13)
+        """
+        query = UnivariateLoci.from_iter(loci)
+        query.melt()  # melt should automatically sort loci
+        answer = UnivariateLoci.from_iter(melted_loci)
+        answer.sort()
+        npt.assert_array_equal(query.loci, answer)
+
+    @pytest.mark.parametrize("loci,subset,locus,end",
+                             # check if both 'start' and 'stop' ends are in locus
+                             [([(3, 6), (6, 8), (7, 9), (10, 12), (13, 13), (15, 25), (16, 17), (19, 20)],
+                               [(7, 9), (10, 12), (13, 13), (16, 17)],
+                               (7, 17),
+                               'both'),
+                              # check if only 'start' end is in locus
+                              ([(3, 6), (6, 8), (7, 9), (10, 12), (13, 13), (15, 25), (16, 17), (19, 20)],
+                               [(7, 9), (10, 12), (13, 13), (15, 25), (16, 17)],
+                               (7, 17),
+                               'start')],
+                             ids=['both', 'start'])
+    def test_subset_by_locus(self, loci, subset, locus, end):
+        """
+        Test factory for method subset_by_locus.
+        """
+        query = UnivariateLoci.from_iter(loci)
+        query.sort()
+        subset = UnivariateLoci.from_iter(subset)
+        subset.sort()
+        npt.assert_array_equal(query.subset_by_locus(*locus, end=end), subset)
+
+    def test_append(self):
+        """
+        Test for method append.
+        """
+        x = UnivariateLoci.from_iter([(3, 9), (10, 12), (13, 13), (15, 25)])
+        y = UnivariateLoci.from_iter([(4, 11), (7, 22), (23, 33), (25, 35)])
+        query = UnivariateLoci.append(x, y)
+        answer = UnivariateLoci.from_iter([(3, 9), (4, 11), (7, 22), (10, 12), (13, 13), (15, 25), (23, 33), (25, 35)])
         npt.assert_array_equal(query, answer)
