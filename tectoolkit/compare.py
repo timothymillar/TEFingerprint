@@ -7,7 +7,7 @@ from functools import reduce
 from itertools import product
 from multiprocessing import Pool
 from tectoolkit import bam_io
-from tectoolkit.cluster import UnivariateLoci
+from tectoolkit.reads import UnivariateLoci
 from tectoolkit.gff_io import NestedFeature
 from tectoolkit.fingerprint import Fingerprint
 

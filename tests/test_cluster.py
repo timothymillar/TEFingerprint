@@ -3,126 +3,79 @@
 import pytest
 import numpy as np
 import numpy.testing as npt
-from tectoolkit.cluster import UnivariateLoci, FUDC, HUDC
+from tectoolkit.cluster import UDC, HUDC
 
-
-class TestUnivariateLoci:
-    """
-    Tests for class ReadLoci
-    """
-    def test_sort(self):
-        """
-        Test for method sort.
-        """
-        input_loci = np.array([(2, 4),
-                               (3, 4),
-                               (3, 3),
-                               (4, 4),
-                               (3, 99),
-                               (1, 1)], dtype=UnivariateLoci.DTYPE_ULOCUS)
-        query = UnivariateLoci(input_loci)
-        query.sort()
-        answer = np.array([(1, 1),
-                           (2, 4),
-                           (3, 3),
-                           (3, 4),
-                           (3, 99),
-                           (4, 4)], dtype=UnivariateLoci.DTYPE_ULOCUS)
-        npt.assert_array_equal(query.loci, answer)
-
-    def test_from_iter(self):
-        """
-        Test for method from_iter.
-        """
-        loci = [(3, 6), (6, 8), (7, 9), (10, 12), (13, 13), (15, 25), (16, 17), (19, 20)]
-        iterable = (locus for locus in loci)
-        query = UnivariateLoci.from_iter(iterable)
-        query.sort()
-        answer = UnivariateLoci(np.array(loci, dtype=UnivariateLoci.DTYPE_ULOCUS))
-        npt.assert_array_equal(query, answer)
-
-    @pytest.mark.parametrize("loci,melted_loci",
-                             # single locus spanning single base
-                             [([(13, 13)],
-                               [(13, 13)]),
-                              # nested loci
-                              ([(15, 25), (16, 17), (19, 20)],
-                               [(15, 25)]),
-                              # adjacent loci
-                              ([(7, 9), (10, 12)],
-                               [(7, 9), (10, 12)]),
-                              # combined
-                              ([(3, 6), (6, 8), (7, 9), (10, 12), (13, 13), (15, 25), (16, 17), (19, 20)],
-                               [(3, 9), (10, 12), (13, 13), (15, 25)])],
-                             ids=['single', 'nested', 'adjacent', 'combined'])
-    def test_melt(self, loci, melted_loci):
-        """
-        Test for method melt.
-        Method modifies loci in place.
-        Test includes following edge cases:
-         * Long locus completely overlaps short loci: (15, 25) & (16, 17) & (19, 20) --> (15, 25)
-         * Adjacent loci do not get merged: (7, 9) & (10, 12) -->  (*, 9) & (10, *)
-         * Locus may span a single base: (13, 13) --> (13, 13)
-        """
-        query = UnivariateLoci.from_iter(loci)
-        query.melt()  # melt should automatically sort loci
-        answer = UnivariateLoci.from_iter(melted_loci)
-        answer.sort()
-        npt.assert_array_equal(query.loci, answer)
-
-    @pytest.mark.parametrize("loci,subset,locus,end",
-                             # check if both 'start' and 'stop' ends are in locus
-                             [([(3, 6), (6, 8), (7, 9), (10, 12), (13, 13), (15, 25), (16, 17), (19, 20)],
-                               [(7, 9), (10, 12), (13, 13), (16, 17)],
-                               (7, 17),
-                               'both'),
-                              # check if only 'start' end is in locus
-                              ([(3, 6), (6, 8), (7, 9), (10, 12), (13, 13), (15, 25), (16, 17), (19, 20)],
-                               [(7, 9), (10, 12), (13, 13), (15, 25), (16, 17)],
-                               (7, 17),
-                               'start')],
-                             ids=['both', 'start'])
-    def test_subset_by_locus(self, loci, subset, locus, end):
-        """
-        Test factory for method subset_by_locus.
-        """
-        query = UnivariateLoci.from_iter(loci)
-        query.sort()
-        subset = UnivariateLoci.from_iter(subset)
-        subset.sort()
-        npt.assert_array_equal(query.subset_by_locus(*locus, end=end), subset)
-
-    def test_append(self):
-        """
-        Test for method append.
-        """
-        x = UnivariateLoci.from_iter([(3, 9), (10, 12), (13, 13), (15, 25)])
-        y = UnivariateLoci.from_iter([(4, 11), (7, 22), (23, 33), (25, 35)])
-        query = UnivariateLoci.append(x, y)
-        answer = UnivariateLoci.from_iter([(3, 9), (4, 11), (7, 22), (10, 12), (13, 13), (15, 25), (23, 33), (25, 35)])
-        npt.assert_array_equal(query, answer)
-
-
-class TestFUDC:
+class TestUDC:
     """
     Tests for class FlatUnivariateDensityCluster.
     """
-    def test_flat_subcluster(self):
+    @pytest.mark.parametrize("array,answer",
+                             [(np.array([0, 0, 0, 3, 4, 7, 99], dtype=int),
+                               True),
+                              (np.array([99, 55, 55, 55, 2, 0], dtype=int),
+                               False),
+                              (np.array([0, 0, 4, 3, 4, 7, 99], dtype=int),
+                               False)],
+                             ids=['ascending', 'non-ascending', 'descending'])
+    def test_sorted_ascending(self, array, answer):
         """
-        Test for hidden method _flat_subcluster.
+        Test for hidden method _sorted_ascending.
         """
-        query = np.array([5, 2, 1, 5, 15, 1, 1, 6, 13, 5, 7, 14], dtype=int)
-        answer = UnivariateLoci.from_iter([(1, 2), (2, 5), (5, 6), (5, 7)])
-        npt.assert_array_equal(HUDC._flat_subcluster(query, 4, 3), answer)
+        assert UDC._sorted_ascending(array) == answer
+
+    @pytest.mark.parametrize("slices,melted_slices",
+                             # single slice spanning single base
+                             [(np.array([(13, 14)],
+                                        dtype=UDC._DTYPE_SLICE),
+                               np.array([(13, 14)],
+                                        dtype=UDC._DTYPE_SLICE)),
+                              # nested slices (this shouldn't happen in practice but is handled correctly)
+                              (np.array([(15, 25), (16, 17), (19, 20)],
+                                        dtype=UDC._DTYPE_SLICE),
+                               np.array([(15, 25)],
+                                        dtype=UDC._DTYPE_SLICE)),
+                              # adjacent loci (slices are half open intervals)
+                              (np.array([(7, 9), (9, 12)],
+                                        dtype=UDC._DTYPE_SLICE),
+                               np.array([(7, 9), (9, 12)],
+                                        dtype=UDC._DTYPE_SLICE)),
+                              # combined
+                              (np.array([(3, 6), (6, 8), (7, 9), (10, 12), (12, 13), (15, 25), (16, 17), (19, 20)],
+                                        dtype=UDC._DTYPE_SLICE),
+                               np.array([(3, 6), (6, 9), (10, 12), (12, 13), (15, 25)],
+                                        dtype=UDC._DTYPE_SLICE))
+                              ],
+                             ids=['single', 'nested', 'adjacent', 'combined'])
+    def test_melt_slices(self, slices, melted_slices):
+        """
+        Test for hidden method _melt_slices.
+        Test includes following edge cases:
+         * Long slice completely overlaps short loci: (15, 25) & (16, 17) & (19, 20) --> (15, 25)
+         * Adjacent slices do not get merged: (7, 9) & (9, 12) -->  (*, 9) & (9, *)
+         * Slice may span a single value: (13, 14) --> (13, 14)
+        """
+        npt.assert_array_equal(UDC._melt_slices(slices), melted_slices)
+
+    def test_subcluster(self):
+        """
+        Test for hidden method _subcluster.
+        """
+        array = np.array([1, 2, 21, 22, 22, 22, 24, 38, 54, 54, 55, 56, 65, 65, 66, 67, 68, 90],
+                         dtype=int)
+        slices = np.array([(2, 6), (3, 7), (8, 12), (12, 16), (13, 17)],
+                          dtype=UDC._DTYPE_SLICE)
+        npt.assert_array_equal(UDC._subcluster(array, 5, 4), slices)
 
     def test_flat_cluster(self):
         """
-        Test for hidden method _flat_cluster.
+        Test for hidden method _cluster.
         Most edge cases should be caught in tests for component methods.
         """
-        query = np.array([9, 2, 2, 1, 7, 19, 1, 1, 6, 13, 10, 7, 14, 11, 11], dtype=int)
-        answer = UnivariateLoci.from_iter([(1, 2), (6, 14)])
-        npt.assert_array_equal(FUDC.flat_cluster(query, 5, 4), answer)
+        sub_slices = np.array([1, 2, 21, 22, 22, 22, 24, 38, 54, 54, 55, 56, 65, 65, 66, 67, 68, 90],
+                              dtype=int)
+        slices = np.array([(2, 7), (8, 12), (12, 17)],
+                          dtype=UDC._DTYPE_SLICE)
+        npt.assert_array_equal(UDC._cluster(sub_slices, 5, 4), slices)
 
     def test_fit(self):
         """
@@ -131,285 +84,142 @@ class TestFUDC:
         New copy of points should be sorted.
         Most edge cases should be caught in tests for component methods.
         """
-        query = FUDC(5, 4)
-        input_points = np.array([9, 2, 2, 1, 7, 19, 1, 1, 6, 13, 10, 7, 14, 11, 11], dtype=int)
-        answer_points = np.array([1, 1, 1, 2, 2, 6, 7, 7, 9, 10, 11, 11, 13, 14, 19], dtype=int)
-        answer_clusters = UnivariateLoci.from_iter([(1, 2), (6, 14)])
-        query.fit(input_points)
-        assert query.points is not input_points
-        npt.assert_array_equal(query.points, answer_points)
-        npt.assert_array_equal(query.clusters, answer_clusters)
+        udc_object = UDC(4, 5)
+        input_array = np.array([1, 2, 21, 22, 22, 22, 24, 38, 54, 54, 55, 56, 65, 65, 66, 67, 68, 90],
+                                dtype=int)
+        answer_array = np.array([1, 2, 21, 22, 22, 22, 24, 38, 54, 54, 55, 56, 65, 65, 66, 67, 68, 90],
+                                 dtype=int)
+        answer_slices = np.array([(2, 7), (8, 12), (12, 17)],
+                                   dtype=UDC._DTYPE_SLICE)
+        udc_object.fit(input_array)
+        assert udc_object.input_array is not input_array
+        npt.assert_array_equal(udc_object.input_array, answer_array)
+        npt.assert_array_equal(udc_object.slices, answer_slices)
+
+    def test_clusters(self):
+        """
+        Test for method clusters.
+        """
+        udc_object = UDC(4, 5)
+        input_array = np.array([1, 2, 21, 22, 22, 22, 24, 38, 54, 54, 55, 56, 65, 65, 66, 67, 68, 90], dtype=int)
+        cluster_arrays = [np.array([21, 22, 22, 22, 24], dtype=int),
+                          np.array([54, 54, 55, 56], dtype=int),
+                          np.array([65, 65, 66, 67, 68], dtype=int)]
+        udc_object.fit(input_array)
+        for result, answer in zip(udc_object.clusters(), cluster_arrays):
+            npt.assert_array_equal(result, answer)
+
+    def test_cluster_extremities(self):
+        """Test for method cluster_extremities"""
+        udc_object = UDC(4, 5)
+        input_array = np.array([1, 2, 21, 22, 22, 22, 24, 38, 54, 54, 55, 56, 65, 65, 66, 67, 68, 90], dtype=int)
+        cluster_extremities = [(21, 24), (54, 56), (65, 68)]
+        udc_object.fit(input_array)
+        for result, answer in zip(udc_object.cluster_extremities(), cluster_extremities):
+            assert result == answer
+
+    def test_labels(self):
+        """Test for method labels"""
+        udc_object = UDC(4, 5)
+        input_array = np.array([1, 2, 21, 22, 22, 22, 24, 38, 54, 54, 55, 56, 65, 65, 66, 67, 68, 90], dtype=int)
+        labels = np.array([-1, -1, 0, 0, 0, 0, 0, -1, 1, 1, 1, 1, 2, 2, 2, 2, 2, -1], dtype=int)
+        udc_object.fit(input_array)
+        npt.assert_array_equal(udc_object.labels(), labels)
 
 
 class TestHUDC:
     """
     Tests for class HierarchicalUnivariateDensityCluster.
     """
-    def test_locus_points(self):
+    def test_point_eps(self):
         """
-        Test for hidden method _locus_points.
-        Points inside the inclusive boundary of the locus should be returned.
+        Test for hidden method _point_eps.
+        Data is derived from real edge case containing "hidden" eps peaks.
         """
-        query = np.array([5, 9, 4, 1, 6, 8, 6, 2], dtype=int)
-        locus = (5, 8)
-        answer = np.array([5, 6, 8, 6], dtype=int)
-        npt.assert_array_equal(HUDC._locus_points(locus, query), answer)
+        input_array = np.array([   0,    0,   60,   61,   61,   61,   76,   78,  122,  122,  141,
+                                 183,  251,  260,  260,  263,  263,  267,  267,  288,  288,  295,
+                                 300,  310,  310,  317,  317,  334,  334,  335,  338,  338,  338,
+                                 338,  340,  342,  342,  344,  344,  358,  367,  370,  370,  377,
+                                 387,  402,  403,  410,  410,  410,  418,  418,  424,  424,  577,
+                                 857,  879,  921,  921, 1007, 1031, 1051, 1051, 1059, 1071, 1071,
+                                1080, 1094, 1094, 1110, 1110, 1113, 1113, 1183, 1189, 1200, 1200,
+                                1217, 1234, 1234, 1591, 1620, 1620, 1662, 1686, 1707, 1755, 1828,
+                                1828, 1848, 1848, 1848, 1848, 1851, 1851, 1852, 1917], dtype=int)
+        point_eps = np.array([122, 122, 122, 122, 122, 122, 122, 122, 122, 122, 123, 105,  44,
+                               40,  40,  40,  40,  40,  40,  40,  40,  40,  38,  28,  28,  23,
+                               23,   8,   8,   8,   8,   8,   8,   8,   8,   8,   8,   9,   9,
+                               20,  29,  32,  32,  37,  37,  37,  37,  37,  37,  37,  37,  37,
+                               37,  37, 175, 214, 192, 159, 159,  87,  79,  59,  59,  54,  54,
+                               54,  54,  54,  54,  54,  54,  54,  54, 106, 106, 106, 106, 123,
+                              124, 124, 257, 228, 228, 186, 165, 144,  97,  89,  89,  89,  89,
+                               89,  89,  89,  89,  89,  89], dtype=int)
+        npt.assert_array_equal(HUDC._point_eps(input_array, 10), point_eps)
 
-    def test_grow_tree_single(self):
+    def test_point_eps_hidden_peak(self):
         """
-        Test for hidden method _grow_tree using data with simple densities cluster.
-        Produce a tree with one (root) node.
-        Minimum eps of 3 means point 5 is still within eps of 3 and 7
+        Test for hidden method _point_eps.
+        Data contains a single "hidden" eps peak between values 6 and 26
+        (values themselves have low eps but a large gap between them).
         """
-        query = np.array([1, 1, 2, 2, 2, 3, 3, 5, 7, 7, 8, 8, 9, 9, 9, 11])  # Point 5 within 3 of 3 and 7
-        answer = {'area': 48,
-                  'base_eps': 5,
-                  'base_locus': (1, 11),
-                  'child_area': 0,
-                  'children': None,
-                  'selected': False}
-        assert HUDC._grow_tree(query, 3, 5, 3) == answer  # Minimum eps of 3
+        input_array = np.array([0, 0, 3, 4, 4, 6, 26, 28, 28, 29, 32, 32], dtype=int)
+        point_eps = np.array([3, 3, 1, 1, 1, 2, 2, 1, 1, 1, 3, 3], dtype=int)
+        npt.assert_array_equal(HUDC._point_eps(input_array, 3), point_eps)
 
-    def test_grow_tree_nested(self):
+    def test_eps_splits(self):
         """
-        Test for hidden method _grow_tree using data with nested densities clusters.
-        Produce a tree with three nodes (root node and two child nodes).
-        Minimum eps of 2 allows cluster to be split when points are not adjacent.
+        Test for hidden method _eps_splits.
+        Data is derived from real edge case containing "hidden" eps peaks.
         """
-        query = np.array([1, 1, 2, 2, 2, 3, 3, 5, 7, 7, 8, 8, 9, 9, 9, 11])
-        answer = {'area': 64,
-                  'base_eps': 5,
-                  'base_locus': (1, 11),
-                  'child_area': 0,
-                  'children': [{'area': 7,
-                                'base_eps': 1,
-                                'base_locus': (1, 3),
-                                'child_area': 0,
-                                'children': None,
-                                'selected': False},
-                               {'area': 7,
-                                'base_eps': 1,
-                                'base_locus': (7, 9),
-                                'child_area': 0,
-                                'children': None,
-                                'selected': False}],
-                  'selected': False}
-        assert HUDC._grow_tree(query, 3, 5, 2) == answer  # Minimum eps of 2
+        input_array = np.array([   0,    0,   60,   61,   61,   61,   76,   78,  122,  122,  141,
+                                 183,  251,  260,  260,  263,  263,  267,  267,  288,  288,  295,
+                                 300,  310,  310,  317,  317,  334,  334,  335,  338,  338,  338,
+                                 338,  340,  342,  342,  344,  344,  358,  367,  370,  370,  377,
+                                 387,  402,  403,  410,  410,  410,  418,  418,  424,  424,  577,
+                                 857,  879,  921,  921, 1007, 1031, 1051, 1051, 1059, 1071, 1071,
+                                1080, 1094, 1094, 1110, 1110, 1113, 1113, 1183, 1189, 1200, 1200,
+                                1217, 1234, 1234, 1591, 1620, 1620, 1662, 1686, 1707, 1755, 1828,
+                                1828, 1848, 1848, 1848, 1848, 1851, 1851, 1852, 1917], dtype=int)
+        split_eps = np.array([122,  42, 453, 436], dtype=int)
+        npt.assert_array_equal(HUDC._eps_splits(input_array, 10), split_eps)
 
-    def test_child_area(self):
+    def test_eps_splits_hidden_peak(self):
         """
-        Test for hidden method _child_area.
-        Method modifies tree/node 'child_area' value in place.
+        Test for hidden method _eps_splits.
+        Data contains a single "hidden" eps peak between values 6 and 26
+        (values themselves have low eps but a large gap between them).
         """
-        query = {'area': 42,
-                 'base_eps': 5,
-                 'base_locus': (1, 11),
-                 'child_area': 0,
-                 'children': [{'area': 7,
-                               'base_eps': 2,
-                               'base_locus': (1, 3),
-                               'child_area': 0,
-                               'children': None,
-                               'selected': False},
-                              {'area': 7,
-                               'base_eps': 2,
-                               'base_locus': (6, 11),
-                               'child_area': 0,
-                               'children': [{'area': 3,
-                                             'base_eps': 1,
-                                             'base_locus': (6, 7),
-                                             'child_area': 0,
-                                             'children': [],
-                                             'selected': False},
-                                            {'area': 3,
-                                             'base_eps': 1,
-                                             'base_locus': (9, 9),
-                                             'child_area': 0,
-                                             'children': None,
-                                             'selected': False}],
-                               'selected': False}],
-                 'selected': False}
-        answer = {'area': 42,
-                  'base_eps': 5,
-                  'base_locus': (1, 11),
-                  'child_area': 20,
-                  'children': [{'area': 7,
-                                'base_eps': 2,
-                                'base_locus': (1, 3),
-                                'child_area': 0,
-                                'children': None,
-                                'selected': False},
-                               {'area': 7,
-                                'base_eps': 2,
-                                'base_locus': (6, 11),
-                                'child_area': 6,
-                                'children': [{'area': 3,
-                                              'base_eps': 1,
-                                              'base_locus': (6, 7),
-                                              'child_area': 0,
-                                              'children': [],
-                                              'selected': False},
-                                             {'area': 3,
-                                              'base_eps': 1,
-                                              'base_locus': (9, 9),
-                                              'child_area': 0,
-                                              'children': None,
-                                              'selected': False}],
-                                'selected': False}],
-                  'selected': False}
-        HUDC._child_area(query)
-        assert query == answer
+        input_array = np.array([0, 0, 3, 4, 4, 6, 26, 28, 28, 29, 32, 32], dtype=int)
+        split_eps = np.array([21], dtype=int)
+        npt.assert_array_equal(HUDC._eps_splits(input_array, 3), split_eps)
 
-    def test_select_nodes(self):
+    @pytest.mark.parametrize("nested,flat",
+                             [([(1, 3), [(6, 9), (11, 11)]],
+                               [(1, 3), (6, 9), (11, 11)]),
+                              ([(1, 3), (6, 9), (11, 11)],
+                               [(1, 3), (6, 9), (11, 11)]),
+                              ((1, 11),
+                               [(1, 11)])],
+                             ids=['nested', 'flat', 'tuple'])
+    def test_flatten_list(self, nested, flat):
         """
-        Test for hidden method _select_nodes.
-        Method modifies tree/node 'selected' value in place.
-        """
-        query = {'area': 19,
-                 'base_eps': 10,
-                 'base_locus': (1, 11),
-                 'child_area': 20,
-                 'children': [{'area': 5,
-                               'base_eps': 5,
-                               'base_locus': (1, 3),
-                               'child_area': 0,
-                               'children': None,
-                               'selected': False},
-                              {'area': 9,
-                               'base_eps': 5,
-                               'base_locus': (6, 11),
-                               'child_area': 6,
-                               'children': [{'area': 3,
-                                             'base_eps': 2,
-                                             'base_locus': (6, 7),
-                                             'child_area': 0,
-                                             'children': [],
-                                             'selected': False},
-                                            {'area': 3,
-                                             'base_eps': 2,
-                                             'base_locus': (9, 9),
-                                             'child_area': 0,
-                                             'children': None,
-                                             'selected': False}],
-                               'selected': False}],
-                 'selected': False}
-        answer = {'area': 19,
-                  'base_eps': 10,
-                  'base_locus': (1, 11),
-                  'child_area': 20,
-                  'children': [{'area': 5,
-                                'base_eps': 5,
-                                'base_locus': (1, 3),
-                                'child_area': 0,
-                                'children': None,
-                                'selected': True},
-                               {'area': 9,
-                                'base_eps': 5,
-                                'base_locus': (6, 11),
-                                'child_area': 6,
-                                'children': [{'area': 3,
-                                              'base_eps': 2,
-                                              'base_locus': (6, 7),
-                                              'child_area': 0,
-                                              'children': [],
-                                              'selected': False},
-                                             {'area': 3,
-                                              'base_eps': 2,
-                                              'base_locus': (9, 9),
-                                              'child_area': 0,
-                                              'children': None,
-                                              'selected': False}],
-                                'selected': True}],
-                  'selected': False}
-        HUDC._select_nodes(query)
-        assert query == answer
-
-    def test_retrieve_selected_loci_nested(self):
-        """
-        Test for hidden method _retrieve_selected_loci using a nested data set.
-        """
-        query = {'area': 19,
-                 'base_eps': 10,
-                 'base_locus': (1, 11),
-                 'child_area': 20,
-                 'children': [{'area': 5,
-                               'base_eps': 5,
-                               'base_locus': (1, 3),
-                               'child_area': 0,
-                               'children': None,
-                               'selected': True},
-                              {'area': 9,
-                               'base_eps': 5,
-                               'base_locus': (6, 11),
-                               'child_area': 6,
-                               'children': [{'area': 3,
-                                             'base_eps': 2,
-                                             'base_locus': (6, 9),
-                                             'child_area': 0,
-                                             'children': [{'area': 5,
-                                                           'base_eps': 5,
-                                                           'base_locus': (9, 9),
-                                                           'child_area': 0,
-                                                           'children': None,
-                                                           'selected': False}],
-                                             'selected': True},
-                                            {'area': 3,
-                                             'base_eps': 2,
-                                             'base_locus': (11, 11),
-                                             'child_area': 0,
-                                             'children': None,
-                                             'selected': True}],
-                               'selected': False}],
-                 'selected': False}
-        answer = [(1, 3), [(6, 9), (11, 11)]]
-        assert HUDC._retrieve_selected_loci(query) == answer
-
-    def test_retrieve_selected_loci_simple(self):
-        """
-        Test for hidden method _retrieve_selected_loci using a non-nested data set.
-        """
-        query = {'area': 19,
-                 'base_eps': 10,
-                 'base_locus': (1, 11),
-                 'child_area': 20,
-                 'children': None,
-                 'selected': True}
-        answer = (1, 11)
-        assert HUDC._retrieve_selected_loci(query) == answer
-
-    def test_flatten_list_nested(self):
-        """
-        Test for hidden method _flatten_list using a nested data set.
+        Tests for hidden method _flatten_list.
         Method _flatten_list returns a generator which should be coerced to a list.
         """
-        query = [(1, 3), [(6, 9), (11, 11)]]
-        answer = [(1, 3), (6, 9), (11, 11)]
-        assert list(HUDC._flatten_list(query)) == answer
+        assert list(HUDC._flatten_list(nested)) == flat
 
-    def test_flatten_list_tuple(self):
-        """
-        Test for hidden method _flatten_list using a tuple.
-        Method _flatten_list returns a generator which should be coerced to a list.
-        """
-        query = (1, 11)
-        answer = [(1, 11)]
-        assert list(HUDC._flatten_list(query)) == answer
-
-    def test_single_hierarchical_cluster(self):
-        """
-        Test for hidden method _single_hierarchical_cluster.
-        """
-        query = np.array([1, 1, 2, 2, 2, 2, 2, 3, 3, 4, 4, 4, 4, 13, 21, 21, 21, 22, 22, 22, 23, 31], dtype=int)
-        answer = UnivariateLoci.from_iter([(1, 4), (13, 23)])
-        npt.assert_array_equal(HUDC._single_hierarchical_cluster(query, 3, 10, 2), answer)
-
-    def test_hierarchical_cluster(self):
-        """
-        Test for hidden method _hierarchical_cluster.
-        """
-        query = np.array([1, 2, 21, 22, 22, 22, 24, 38, 54, 54, 55, 56, 65, 65, 66, 67, 68, 90], dtype=int)
-        answer = UnivariateLoci.from_iter([(21, 24), (54, 56), (65, 68)])
-        npt.assert_array_equal(HUDC._single_hierarchical_cluster(query, 3, 10, 2), answer)
+    def test_hudc(self):
+        """Test for method hudc"""
+        input_array = np.array([   0,    0,   60,   61,   61,   61,   76,   78,  122,  122,  141,
+                                 183,  251,  260,  260,  263,  263,  267,  267,  288,  288,  295,
+                                 300,  310,  310,  317,  317,  334,  334,  335,  338,  338,  338,
+                                 338,  340,  342,  342,  344,  344,  358,  367,  370,  370,  377,
+                                 387,  402,  403,  410,  410,  410,  418,  418,  424,  424,  577,
+                                 857,  879,  921,  921, 1007, 1031, 1051, 1051, 1059, 1071, 1071,
+                                1080, 1094, 1094, 1110, 1110, 1113, 1113, 1183, 1189, 1200, 1200,
+                                1217, 1234, 1234, 1591, 1620, 1620, 1662, 1686, 1707, 1755, 1828,
+                                1828, 1848, 1848, 1848, 1848, 1851, 1851, 1852, 1917], dtype=int)
+        answer_slices = np.fromiter([(0, 55), (56, 80), (83, 97)], dtype=HUDC._DTYPE_SLICE)
+        npt.assert_array_equal(HUDC.hudc(input_array, 10, max_eps=200, min_eps=10), answer_slices)
 
     def test_fit(self):
         """
@@ -418,11 +228,20 @@ class TestHUDC:
         New copy of points should be sorted.
         Most edge cases should be caught in tests for component methods.
         """
-        query = HUDC(3, 10, 2)
-        input_points = np.array([22, 54, 24, 22, 2, 21, 54, 22, 90, 38, 65, 67, 68, 56, 55, 65, 66, 1], dtype=int)
-        answer_points = np.array([1, 2, 21, 22, 22, 22, 24, 38, 54, 54, 55, 56, 65, 65, 66, 67, 68, 90], dtype=int)
-        answer_clusters = UnivariateLoci.from_iter([(21, 24), (54, 56), (65, 68)])
-        query.fit(input_points)
-        assert query.points is not input_points
-        npt.assert_array_equal(query.points, answer_points)
-        npt.assert_array_equal(query.clusters, answer_clusters)
+        hudc_object = HUDC(10, max_eps=200, min_eps=10)
+        input_array = np.array([   0,    0,   60,   61,   61,   61,   76,   78,  122,  122,  141,
+                                 183,  251,  260,  260,  263,  263,  267,  267,  288,  288,  295,
+                                 300,  310,  310,  317,  317,  334,  334,  335,  338,  338,  338,
+                                 338,  340,  342,  342,  344,  344,  358,  367,  370,  370,  377,
+                                 387,  402,  403,  410,  410,  410,  418,  418,  424,  424,  577,
+                                 857,  879,  921,  921, 1007, 1031, 1051, 1051, 1059, 1071, 1071,
+                                1080, 1094, 1094, 1110, 1110, 1113, 1113, 1183, 1189, 1200, 1200,
+                                1217, 1234, 1234, 1591, 1620, 1620, 1662, 1686, 1707, 1755, 1828,
+                                1828, 1848, 1848, 1848, 1848, 1851, 1851, 1852, 1917], dtype=int)
+        answer_array = np.array(input_array, copy=True)
+
+        answer_slices = np.fromiter([(0, 55), (56, 80), (83, 97)], dtype=HUDC._DTYPE_SLICE)
+        hudc_object.fit(input_array)
+        assert hudc_object.input_array is not input_array
+        npt.assert_array_equal(hudc_object.input_array, answer_array)
+        npt.assert_array_equal(hudc_object.slices, answer_slices)

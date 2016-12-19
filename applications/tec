@@ -4,6 +4,7 @@ import sys
 import argparse
 from tectoolkit.fingerprint import FingerprintProgram
 from tectoolkit.compare import CompareProgram
+from tectoolkit.filter_gff import FilterGffProgram
 
 
 def parse_program_arg(arg):
@@ -15,7 +16,7 @@ def parse_program_arg(arg):
     parser = argparse.ArgumentParser('Identify program to run')
     parser.add_argument('program',
                         type=str,
-                        choices=("fingerprint", "compare"))
+                        choices=("fingerprint", "compare", "filter_gff"))
     try:
         arguments = parser.parse_args(arg)
     except:
@@ -40,6 +41,8 @@ def main():
             job = FingerprintProgram(sys.argv[2:])
         elif program == "compare":
             job = CompareProgram(sys.argv[2:])
+        elif program == "filter_gff":
+            job = FilterGffProgram(sys.argv[2:])
         job.run()
 
 if __name__ == '__main__':
