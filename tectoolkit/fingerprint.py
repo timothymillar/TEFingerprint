@@ -47,23 +47,46 @@ class FingerprintProgram(object):
                             type=str,
                             nargs='*',
                             default=[''],
-                            help='TE grouping(s) to be used. Must be exact string match(s) to start of read name')
+                            help='TE grouping(s) to be used. '
+                                 'These must be exact string match\'s to start of read name and are used to split '
+                                 'reads into categories for analysis')
         parser.add_argument('-s', '--strands',
                             type=str,
                             nargs='+',
                             choices=set("+-"),
                             default=['+', '-'],
-                            help='Strand(s) to be analysed. Use + for forward or - for reverse')
-        parser.add_argument('-e', '--eps',
-                            type=int,
-                            default=[100],
-                            nargs='+',
-                            help='Maximum allowable distance among read tips to be considered a cluster')
+                            help='Strand(s) to be analysed. Use + for forward or - for reverse. Default is to analyse '
+                                 'both strands (separately).')
         parser.add_argument('-m', '--min_reads',
                             type=int,
                             default=[5],
                             nargs=1,
-                            help='Minimum allowable number of read tips to be considered a cluster')
+                            help='Minimum number of read tips required to be considered a cluster. '
+                                 'This values is used in combination with epsilon to describe the density of '
+                                 'read tips that is required for identification of a clusters. '
+                                 'For every set of <min_reads> reads tips, if those reads are within epsilon range of '
+                                 'one another, they are classified as a subcluster. '
+                                 'Overlapping sets of subclusters are then merged to form clusters.')
+        parser.add_argument('-e', '--eps',
+                            type=int,
+                            default=[100],
+                            nargs='+',
+                            help='Epsilon is the maximum allowable distance among a set of read tips to be '
+                                 'considered a (sub)cluster. '
+                                 'If a single value is given, the UDC algorithm will be used to identify all '
+                                 'clusters at the specified density (defined by epsilon and min_points). '
+                                 'If two values are given, they will be interpreted as maximum and minimum epsilon '
+                                 'values using the Hierarchical HUDC algorithm.'
+                                 'The maximum (or only) epsilon value given should be larger than the insert size, and '
+                                 'the minimum epsilon (if used) should be much smaller (often zero) in order to find '
+                                 'adequate support for child clusters. '
+                                 'HUDC identifies all clusters at the '
+                                 'maximum specified density and then attempts to split them into logical '
+                                 'child clusters at all values of epsilon between maximum and minimum. '
+                                 'The robustness of each parent cluster is compared to it\'s children. '
+                                 'If the parent is more robust it is selected, otherwise the process is repeated for '
+                                 'child cluster recursively until a parent or terminal (cluster with no children) '
+                                 'is selected. ')
         parser.add_argument('-t', '--threads',
                             type=int,
                             default=1,
