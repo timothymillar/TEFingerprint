@@ -69,7 +69,7 @@ class CompareProgram(object):
                                  'For every set of <min_reads> reads tips, if those reads are within epsilon range of '
                                  'one another, they are classified as a subcluster. '
                                  'Overlapping sets of subclusters are then merged to form clusters.')
-        parser.add_argument('-e', '--epsilon',
+        parser.add_argument('-e', '--eps',
                             type=int,
                             default=[100],
                             nargs='+',
