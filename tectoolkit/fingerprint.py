@@ -21,7 +21,7 @@ class FingerprintProgram(object):
         """
         self.args = self.parse_args(arguments)
         if self.args.references == ['']:
-            self.references = bam_io.read_bam_references(self.args.input_bam)
+            self.references = bam_io.read_bam_references(self.args.input_bam[0])
         else:
             self.references = self.args.references
 
