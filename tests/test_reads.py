@@ -189,8 +189,11 @@ class TestUnivariateLoci:
         npt.assert_array_equal(query, answer)
 
     @pytest.mark.parametrize("loci,melted_loci",
-                             # single locus spanning single base
-                             [([(13, 13)],
+                             # blank
+                             [([],
+                               []),
+                              # single locus spanning single base
+                              ([(13, 13)],
                                [(13, 13)]),
                               # nested loci
                               ([(15, 25), (16, 17), (19, 20)],
@@ -201,7 +204,7 @@ class TestUnivariateLoci:
                               # combined
                               ([(3, 6), (6, 8), (7, 9), (10, 12), (13, 13), (15, 25), (16, 17), (19, 20)],
                                [(3, 9), (10, 12), (13, 13), (15, 25)])],
-                             ids=['single', 'nested', 'adjacent', 'combined'])
+                             ids=['blank', 'single', 'nested', 'adjacent', 'combined'])
     def test_melt(self, loci, melted_loci):
         """
         Test for method melt.
@@ -215,7 +218,7 @@ class TestUnivariateLoci:
         query.melt()  # melt should automatically sort loci
         answer = UnivariateLoci.from_iter(melted_loci)
         answer.sort()
-        npt.assert_array_equal(query.loci, answer)
+        npt.assert_array_equal(query, answer)
 
     @pytest.mark.parametrize("loci,subset,locus,end",
                              # check if both 'start' and 'stop' ends are in locus
