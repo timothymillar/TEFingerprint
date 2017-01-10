@@ -24,33 +24,68 @@ class PreProcessProgram(object):
         temp_dir = mkdtemp()
 
         # map reads to repeats and store as temp file
-        temp_bam_1 = os.path.join(temp_dir, 'temp_bam_1')
+        temp_bam_1 = os.path.join(temp_dir, 'temp_1.bam')
         map_pairs_to_repeat_elements(self.fastq_1,
                                      self.fastq_2,
                                      self.repeats_fasta,
                                      temp_bam_1,
                                      self.threads)
 
+        # index bam
+        index_bam(temp_bam_1)
+
         # extract danglers from bam
         dangler_strings = extract_danglers(temp_bam_1)
 
         # convert dangler strings to temp fastq
-        temp_fastq_danglers = os.path.join(temp_dir, 'temp_fastq_danglers')
+        temp_fastq_danglers = os.path.join(temp_dir, 'temp_danglers.fastq')
         sam_strings_to_fastq(dangler_strings,
                              temp_fastq_danglers)
 
         # map danglers to reference
-        temp_bam_2 = os.path.join(temp_dir, 'temp_bam_2')
+        temp_bam_2 = os.path.join(temp_dir, 'temp_2.bam')
         map_danglers_to_reference(temp_fastq_danglers,
                                   self.reference_fasta,
                                   temp_bam_2,
                                   self.threads)
 
+        # index bam
+        index_bam(temp_bam_2)
+
         # tag danglers and write output file
         tag_danglers(temp_bam_2, dangler_strings, self.output_bam)
 
+        # index bam
+        index_bam(self.output_bam)
+
         # remove temp dir
         os.rmdir(temp_dir)
+
+
+def index_fasta(fasta):
+    """
+    Create index files for bwa mem
+
+    :param fasta: fasta file to index
+    :type fasta: str
+
+    :return: subprocess code
+    :rtype: int
+    """
+    return subprocess.call(['bwa index -a is ' + fasta], shell=True)
+
+
+def index_bam(bam):
+    """
+    Create index files for bwa mem
+
+    :param bam: bam file to index
+    :type bam: str
+
+    :return: subprocess code
+    :rtype: int
+    """
+    return subprocess.call(['samtools index ' + bam], shell=True)
 
 
 def map_pairs_to_repeat_elements(fastq_1, fastq_2, repeats_fasta, output_bam, threads=1):
@@ -67,10 +102,13 @@ def map_pairs_to_repeat_elements(fastq_1, fastq_2, repeats_fasta, output_bam, th
     :type output_bam: str
     :param threads: number of threads to use in bwa
     :type threads: int
+
+    :return: subprocess code
+    :rtype: int
     """
-    subprocess.call(['bwa', 'mem', '-t', threads, repeats_fasta, fastq_1, fastq_2,
-                     '| samtools view -Su - | samtools sort - -o', output_bam],
-                    shell=True)
+    command = ' '.join(['bwa', 'mem', '-t', threads, repeats_fasta, fastq_1, fastq_2,
+                        '| samtools view -Su - | samtools sort - -o', output_bam])
+    return subprocess.call([command], shell=True)
 
 
 def extract_danglers(bam):
@@ -114,10 +152,13 @@ def map_danglers_to_reference(fastq, reference_fasta, output_bam, threads):
     :type output_bam: str
     :param threads: number of threads to use in bwa
     :type threads: int
+
+    :return: subprocess code
+    :rtype: int
     """
-    subprocess.call(['bwa', 'mem', '-t', threads, reference_fasta, fastq,
-                     '| samtools view -Su - | samtools sort - -o', output_bam],
-                    shell=True)
+    command = ' '.join(['bwa', 'mem', '-t', threads, reference_fasta, fastq,
+                        '| samtools view -Su - | samtools sort - -o', output_bam])
+    return subprocess.call([command], shell=True)
 
 
 def tag_danglers(dangler_bam, dangler_strings, output_bam):
