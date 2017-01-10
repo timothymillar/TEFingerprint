@@ -80,6 +80,7 @@ class UDC(object):
         """
         Calculate subclusters of an array and return their slice indices.
         The input array must be sorted in ascending order.
+        If n is greater than the length of the array, an empty array is returned.
 
         :param array: An array of ints sorted in ascending order
         :param eps: The number of points in each subcluster
@@ -102,6 +103,7 @@ class UDC(object):
         """
         Calculate clusters of an array and return their slice indices.
         The input array must be sorted in ascending order.
+        If n is greater than the length of the array, an empty array is returned.
 
         :param array: An array of ints sorted in ascending order
         :param eps: The minimum number of points in each (sub)cluster
