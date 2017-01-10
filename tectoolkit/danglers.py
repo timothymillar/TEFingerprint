@@ -4,7 +4,7 @@ import pysam
 import subprocess
 
 
-def map_pairs_to_repeat_elements(fastq_1, fastq_2, reference_fasta, output_bam):
+def map_pairs_to_repeat_elements(fastq_1, fastq_2, repeats_fasta, output_bam, threads=1):
     """
     Maps paired end reads to repeat-element reference and writes bam file.
 
@@ -12,12 +12,16 @@ def map_pairs_to_repeat_elements(fastq_1, fastq_2, reference_fasta, output_bam):
     :type fastq_1: str
     :param fastq_2: paired end reads file 2
     :type fastq_2: str
-    :param reference_fasta: repeat-element reference
-    :type reference_fasta: str
+    :param repeats_fasta: repeat-element reference
+    :type repeats_fasta: str
     :param output_bam: bam file of paired end reads aligned to repeat-element reference
     :type output_bam: str
+    :param threads: number of threads to use in bwa
+    :type threads: int
     """
-    pass
+    subprocess.call(['bwa', 'mem', '-t', threads, repeats_fasta, fastq_1, fastq_2,
+                     '| samtools view -Su - | samtools sort - -o', output_bam],
+                    shell=True)
 
 
 def extract_danglers(bam):
@@ -49,16 +53,22 @@ def sam_strings_to_fastq(sam_strings, output_fastq):
             f.write(line)
 
 
-def map_danglers_to_reference(fastq, output_bam):
+def map_danglers_to_reference(fastq, reference_fasta, output_bam, threads):
     """
     Maps dangler reads (non-mapped reads with pair mapping to repeat-element) to reference genome and writes a bam file.
 
     :param fastq: fastq file of non-mapped reads with pair mapping to repeat-element
     :type fastq: str
+    :param reference_fasta: fasta file containing reference genome
+    :type reference_fasta: str
     :param output_bam: bam file of dangler reads aligned to reference genome
     :type output_bam: str
+    :param threads: number of threads to use in bwa
+    :type threads: int
     """
-    pass
+    subprocess.call(['bwa', 'mem', '-t', threads, reference_fasta, fastq,
+                     '| samtools view -Su - | samtools sort - -o', output_bam],
+                    shell=True)
 
 
 def tag_danglers(dangler_bam, dangler_strings, output_bam):
