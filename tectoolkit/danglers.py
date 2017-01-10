@@ -2,6 +2,55 @@
 
 import pysam
 import subprocess
+import os
+from tempfile import mkdtemp
+
+
+class PreProcessProgram(object):
+    """"""
+
+    def __init__(self, fastq_1, fastq_2, reference_fasta, repeats_fasta, output_bam, threads=1):
+        self.fastq_1 = fastq_1
+        self.fastq_2 = fastq_2
+        self.reference_fasta = reference_fasta
+        self.repeats_fasta = repeats_fasta
+        self.output_bam = output_bam
+        self.threads = threads
+
+    def run(self):
+        """"""
+
+        # create temp dir for intermediate files
+        temp_dir = mkdtemp()
+
+        # map reads to repeats and store as temp file
+        temp_bam_1 = os.path.join(temp_dir, 'temp_bam_1')
+        map_pairs_to_repeat_elements(self.fastq_1,
+                                     self.fastq_2,
+                                     self.repeats_fasta,
+                                     temp_bam_1,
+                                     self.threads)
+
+        # extract danglers from bam
+        dangler_strings = extract_danglers(temp_bam_1)
+
+        # convert dangler strings to temp fastq
+        temp_fastq_danglers = os.path.join(temp_dir, 'temp_fastq_danglers')
+        sam_strings_to_fastq(dangler_strings,
+                             temp_fastq_danglers)
+
+        # map danglers to reference
+        temp_bam_2 = os.path.join(temp_dir, 'temp_bam_2')
+        map_danglers_to_reference(temp_fastq_danglers,
+                                  self.reference_fasta,
+                                  temp_bam_2,
+                                  self.threads)
+
+        # tag danglers and write output file
+        tag_danglers(temp_bam_2, dangler_strings, self.output_bam)
+
+        # remove temp dir
+        os.rmdir(temp_dir)
 
 
 def map_pairs_to_repeat_elements(fastq_1, fastq_2, repeats_fasta, output_bam, threads=1):
