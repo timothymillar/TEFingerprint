@@ -76,17 +76,10 @@ class PreProcessProgram(object):
                                  temp_dir=arguments.tempdir[0],
                                  threads=arguments.threads[0])
 
-    def run(self):
+    def _run_pipeline(self, scratch_dir):
         """"""
-
-        # create temp dir for intermediate files unless one is suplied by user
-        if self.temp_dir:
-            temp_dir = self.temp_dir
-        else:
-            temp_dir = mkdtemp()
-
         # map reads to repeats and store as temp file
-        temp_bam_1 = os.path.join(temp_dir, '1_pairedReadsMappedToRepeats.bam')
+        temp_bam_1 = os.path.join(scratch_dir, '1_pairedReadsMappedToRepeats.bam')
         map_pairs_to_repeat_elements(self.fastq_1,
                                      self.fastq_2,
                                      self.repeats_fasta,
@@ -100,12 +93,12 @@ class PreProcessProgram(object):
         dangler_strings = extract_danglers(temp_bam_1)
 
         # convert dangler strings to temp fastq
-        temp_fastq_danglers = os.path.join(temp_dir, '2_danglerReads.fastq')
+        temp_fastq_danglers = os.path.join(scratch_dir, '2_danglerReads.fastq')
         sam_strings_to_fastq(dangler_strings,
                              temp_fastq_danglers)
 
         # map danglers to reference
-        temp_bam_2 = os.path.join(temp_dir, '3_danglerReadsMappedToReference.bam')
+        temp_bam_2 = os.path.join(scratch_dir, '3_danglerReadsMappedToReference.bam')
         map_danglers_to_reference(temp_fastq_danglers,
                                   self.reference_fasta,
                                   temp_bam_2,
@@ -120,11 +113,50 @@ class PreProcessProgram(object):
         # index bam
         index_bam(self.output_bam)
 
+    def run(self):
+        """"""
+        # check if samtools and bwa are available
+        _check_programs_installed('bwa', 'samtools')
+
+        # create temp dir for intermediate files unless one is suplied by user
+        if self.temp_dir:
+            temp_dir = self.temp_dir
+        else:
+            temp_dir = mkdtemp()
+
+        # attempt running pipeline
+        try:
+            self._run_pipeline(temp_dir)
+        except:
+            # remove temp dir unless it was supplied by user
+            if self.temp_dir:
+                pass
+            else:
+                shutil.rmtree(temp_dir)
+            # re-raise the error for debugging
+            raise
+
         # remove temp dir unless it was supplied by user
         if self.temp_dir:
             pass
         else:
             shutil.rmtree(temp_dir)
+
+
+def _check_programs_installed(*args):
+    """
+    Check if a program exists on the users path.
+
+    :param args: names of programs
+    :type args: str
+
+    :return: true if all of the program are on the users path
+    :rtype: bool
+    """
+    for program in args:
+        if shutil.which(program) is None:
+            raise EnvironmentError("could not find '{0}' in $PATH: {1}".format(program, os.environ['PATH']))
+    return True
 
 
 def index_fasta(fasta):
@@ -137,6 +169,7 @@ def index_fasta(fasta):
     :return: subprocess code
     :rtype: int
     """
+    _check_programs_installed('bwa')
     return subprocess.call(['bwa index -a is ' + fasta], shell=True)
 
 
@@ -150,6 +183,7 @@ def index_bam(bam):
     :return: subprocess code
     :rtype: int
     """
+    _check_programs_installed('samtools')
     return subprocess.call(['samtools index ' + bam], shell=True)
 
 
@@ -166,11 +200,12 @@ def map_pairs_to_repeat_elements(fastq_1, fastq_2, repeats_fasta, output_bam, th
     :param output_bam: bam file of paired end reads aligned to repeat-element reference
     :type output_bam: str
     :param threads: number of threads to use in bwa
-    :type threads: int
+    :type threads: str
 
     :return: subprocess code
     :rtype: int
     """
+    _check_programs_installed('bwa', 'samtools')
     command = ' '.join(['bwa', 'mem', '-t', threads, repeats_fasta, fastq_1, fastq_2,
                         '| samtools view -Su - | samtools sort - -o', output_bam])
     return subprocess.call([command], shell=True)
@@ -216,11 +251,12 @@ def map_danglers_to_reference(fastq, reference_fasta, output_bam, threads):
     :param output_bam: bam file of dangler reads aligned to reference genome
     :type output_bam: str
     :param threads: number of threads to use in bwa
-    :type threads: int
+    :type threads: str
 
     :return: subprocess code
     :rtype: int
     """
+    _check_programs_installed('bwa', 'samtools')
     command = ' '.join(['bwa', 'mem', '-t', threads, reference_fasta, fastq,
                         '| samtools view -Su - | samtools sort - -o', output_bam])
     return subprocess.call([command], shell=True)
