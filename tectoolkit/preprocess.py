@@ -1,22 +1,73 @@
 #! /usr/bin/env python
 
+import argparse
 import pysam
 import subprocess
 import os
 import shutil
+import sys
 from tempfile import mkdtemp
 
 
 class PreProcessProgram(object):
     """"""
-
     def __init__(self, fastq_1, fastq_2, reference_fasta, repeats_fasta, output_bam, threads=1):
         self.fastq_1 = fastq_1
         self.fastq_2 = fastq_2
         self.reference_fasta = reference_fasta
         self.repeats_fasta = repeats_fasta
         self.output_bam = output_bam
-        self.threads = threads
+        self.threads = str(threads)
+
+    @staticmethod
+    def _cli(args):
+        """
+        Argument parser to handle commandline inputs for the preprocessing program.
+
+        :param args: List of commandline arguments for the preprocess program
+        :type args: []
+
+        :return: Dictionary like object of arguments and values
+        """
+        parser = argparse.ArgumentParser('Identify potential TE flanking regions')
+        parser.add_argument('reads',
+                            type=str,
+                            nargs=2,
+                            help='A pair of fastq files containing paired end reads')
+        parser.add_argument('--reference',
+                            type=str,
+                            nargs=1,
+                            help="Reference genome in fasta format with bwa index")
+        parser.add_argument('--repeats',
+                            type=str,
+                            nargs=1,
+                            help="Library of repeat elements in fasta format with bwa index")
+        parser.add_argument('-o', '--output',
+                            type=str,
+                            nargs=1,
+                            help="Name of output bam file")
+        parser.add_argument('-t', '--threads',
+                            type=int,
+                            nargs=1,
+                            default=[1],
+                            help='Maximum number of cpu threads to be used')
+        try:
+            arguments = parser.parse_args(args)
+        except:
+            parser.print_help()
+            sys.exit(0)
+        else:
+            return arguments
+
+    @staticmethod
+    def from_cli(args):
+        arguments = PreProcessProgram._cli(args)
+        return PreProcessProgram(arguments.reads[0],
+                                 arguments.reads[1],
+                                 arguments.reference[0],
+                                 arguments.repeats[0],
+                                 arguments.output[0],
+                                 threads=arguments.threads[0])
 
     def run(self):
         """"""
