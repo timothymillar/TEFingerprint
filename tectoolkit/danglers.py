@@ -3,6 +3,7 @@
 import pysam
 import subprocess
 import os
+import shutil
 from tempfile import mkdtemp
 
 
@@ -59,7 +60,7 @@ class PreProcessProgram(object):
         index_bam(self.output_bam)
 
         # remove temp dir
-        os.rmdir(temp_dir)
+        shutil.rmtree(temp_dir)
 
 
 def index_fasta(fasta):
