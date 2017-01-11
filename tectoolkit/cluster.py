@@ -399,25 +399,31 @@ class HUDC(UDC):
         :rtype: :class:`numpy.ndarray`[int, int]
         """
         assert HUDC._sorted_ascending(array)
-        points = np.empty(len(array), dtype=np.dtype([('value', np.int64),
-                                                      ('index', np.int64),
-                                                      ('eps', np.int64)]))
-        points['value'] = array
-        points['index'] = np.arange(len(array), dtype=int)
-        points['eps'] = HUDC._point_eps(array, n)
-        if not max_eps:
-            # start at highest observed eps
-            max_eps = np.max(points['eps'])
-        if min_eps:
-            # overwrite lower eps
-            points['eps'][points['eps'] < min_eps] = min_eps
 
-        # initial splits
-        child_points = (points[left:right] for left, right in HUDC._cluster(points['value'], max_eps, n))
+        if len(array) < n:
+            # not enough points to form a cluster
+            return np.array([], dtype=UDC._DTYPE_SLICE)
 
-        # run
-        clusters = [HUDC._traverse_hudc_tree(points, max_eps, n) for points in child_points]
-        return np.fromiter(HUDC._flatten_list(clusters), dtype=UDC._DTYPE_SLICE)
+        else:
+            points = np.empty(len(array), dtype=np.dtype([('value', np.int64),
+                                                          ('index', np.int64),
+                                                          ('eps', np.int64)]))
+            points['value'] = array
+            points['index'] = np.arange(len(array), dtype=int)
+            points['eps'] = HUDC._point_eps(array, n)
+            if not max_eps:
+                # start at highest observed eps
+                max_eps = np.max(points['eps'])
+            if min_eps:
+                # overwrite lower eps
+                points['eps'][points['eps'] < min_eps] = min_eps
+
+            # initial splits
+            child_points = (points[left:right] for left, right in HUDC._cluster(points['value'], max_eps, n))
+
+            # run
+            clusters = [HUDC._traverse_hudc_tree(points, max_eps, n) for points in child_points]
+            return np.fromiter(HUDC._flatten_list(clusters), dtype=UDC._DTYPE_SLICE)
 
     def fit(self, array):
         """
