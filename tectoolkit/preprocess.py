@@ -11,12 +11,13 @@ from tempfile import mkdtemp
 
 class PreProcessProgram(object):
     """"""
-    def __init__(self, fastq_1, fastq_2, reference_fasta, repeats_fasta, output_bam, threads=1):
+    def __init__(self, fastq_1, fastq_2, reference_fasta, repeats_fasta, output_bam, temp_dir=False, threads=1):
         self.fastq_1 = fastq_1
         self.fastq_2 = fastq_2
         self.reference_fasta = reference_fasta
         self.repeats_fasta = repeats_fasta
         self.output_bam = output_bam
+        self.temp_dir = temp_dir
         self.threads = str(threads)
 
     @staticmethod
@@ -46,6 +47,11 @@ class PreProcessProgram(object):
                             type=str,
                             nargs=1,
                             help="Name of output bam file")
+        parser.add_argument('--tempdir',
+                            type=str,
+                            nargs=1,
+                            default=[False],
+                            help="Name of output bam file")
         parser.add_argument('-t', '--threads',
                             type=int,
                             nargs=1,
@@ -67,16 +73,20 @@ class PreProcessProgram(object):
                                  arguments.reference[0],
                                  arguments.repeats[0],
                                  arguments.output[0],
+                                 temp_dir=arguments.tempdir[0],
                                  threads=arguments.threads[0])
 
     def run(self):
         """"""
 
-        # create temp dir for intermediate files
-        temp_dir = mkdtemp()
+        # create temp dir for intermediate files unless one is suplied by user
+        if self.temp_dir:
+            temp_dir = self.temp_dir
+        else:
+            temp_dir = mkdtemp()
 
         # map reads to repeats and store as temp file
-        temp_bam_1 = os.path.join(temp_dir, 'temp_1.bam')
+        temp_bam_1 = os.path.join(temp_dir, '1_pairedReadsMappedToRepeats.bam')
         map_pairs_to_repeat_elements(self.fastq_1,
                                      self.fastq_2,
                                      self.repeats_fasta,
@@ -90,12 +100,12 @@ class PreProcessProgram(object):
         dangler_strings = extract_danglers(temp_bam_1)
 
         # convert dangler strings to temp fastq
-        temp_fastq_danglers = os.path.join(temp_dir, 'temp_danglers.fastq')
+        temp_fastq_danglers = os.path.join(temp_dir, '2_danglerReads.fastq')
         sam_strings_to_fastq(dangler_strings,
                              temp_fastq_danglers)
 
         # map danglers to reference
-        temp_bam_2 = os.path.join(temp_dir, 'temp_2.bam')
+        temp_bam_2 = os.path.join(temp_dir, '3_danglerReadsMappedToReference.bam')
         map_danglers_to_reference(temp_fastq_danglers,
                                   self.reference_fasta,
                                   temp_bam_2,
@@ -110,8 +120,11 @@ class PreProcessProgram(object):
         # index bam
         index_bam(self.output_bam)
 
-        # remove temp dir
-        shutil.rmtree(temp_dir)
+        # remove temp dir unless it was supplied by user
+        if self.temp_dir:
+            pass
+        else:
+            shutil.rmtree(temp_dir)
 
 
 def index_fasta(fasta):
