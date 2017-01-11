@@ -297,7 +297,11 @@ class UnivariateLoci(object):
                     stop = loci['stop'][i]
             yield start, stop
         self.sort()
-        self.loci = np.fromiter(_melter(self.loci), dtype=UnivariateLoci.DTYPE_ULOCUS)
+
+        if len(self.loci) == 0:
+            pass
+        else:
+            self.loci = np.fromiter(_melter(self.loci), dtype=UnivariateLoci.DTYPE_ULOCUS)
 
     def subset_by_locus(self, start, stop, margin=0, end='both'):
         """
