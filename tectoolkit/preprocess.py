@@ -141,7 +141,7 @@ class PreProcessProgram(object):
             if self.temp_dir:
                 pass
             else:
-                print('>>> Removing temporary directory at: {0}'.format(temp_dir))
+                print('>>> Error Encountered... Removing temporary directory at: {0}'.format(temp_dir))
                 shutil.rmtree(temp_dir)
             # re-raise the error for debugging
             raise
