@@ -80,10 +80,7 @@ class PreProcessProgram(object):
         """"""
         # map reads to repeats and store as temp file
         temp_bam_1 = os.path.join(scratch_dir, '1_pairedReadsMappedToRepeats.bam')
-        print('Mapping {0} {1} to {2} at: {3}'.format(self.fastq_1,
-                                                      self.fastq_2,
-                                                      self.repeats_fasta,
-                                                      temp_bam_1))
+        print('>>> Mapping paired reads to repeat library at: {0}'.format(temp_bam_1))
         map_pairs_to_repeat_elements(self.fastq_1,
                                      self.fastq_2,
                                      self.repeats_fasta,
@@ -91,40 +88,37 @@ class PreProcessProgram(object):
                                      self.threads)
 
         # index bam
-        print('indexing: {0}'.format(temp_bam_1))
+        print('>>> Indexing: {0}'.format(temp_bam_1))
         index_bam(temp_bam_1)
 
         # extract danglers from bam
-        print('Extracting dangler reads from: {0}'.format(temp_bam_1))
+        print('>>> Extracting dangler reads from: {0}'.format(temp_bam_1))
         dangler_strings = extract_danglers(temp_bam_1)
 
         # convert dangler strings to temp fastq
         temp_fastq_danglers = os.path.join(scratch_dir, '2_danglerReads.fastq')
-        print('Writing dangler reads to: {0}'.format(temp_fastq_danglers))
+        print('>>> Writing dangler reads to: {0}'.format(temp_fastq_danglers))
         sam_strings_to_fastq(dangler_strings,
                              temp_fastq_danglers)
 
         # map danglers to reference
         temp_bam_2 = os.path.join(scratch_dir, '3_danglerReadsMappedToReference.bam')
-        print('Mapping {0} to {1} at: {2}'.format(temp_fastq_danglers,
-                                                  self.reference_fasta,
-                                                  temp_bam_2))
+        print('>>> Mapping dangler reads to reference at: {0}'.format(temp_bam_2))
         map_danglers_to_reference(temp_fastq_danglers,
                                   self.reference_fasta,
                                   temp_bam_2,
                                   self.threads)
 
         # index bam
-        print('indexing: {0}'.format(temp_bam_2))
+        print('>>> Indexing: {0}'.format(temp_bam_2))
         index_bam(temp_bam_2)
 
         # tag danglers and write output file
-        print('Adding tags to {0} and writing to: {1}'.format(temp_bam_2,
-                                                              self.output_bam))
+        print('>>> Adding tags to mapped danglers at: {0}'.format(self.output_bam))
         tag_danglers(temp_bam_2, dangler_strings, self.output_bam)
 
         # index bam
-        print('indexing: {0}'.format(self.output_bam))
+        print('>>> Indexing: {0}'.format(self.output_bam))
         index_bam(self.output_bam)
 
     def run(self):
@@ -137,7 +131,7 @@ class PreProcessProgram(object):
             temp_dir = self.temp_dir
         else:
             temp_dir = mkdtemp()
-        print('Creating temporary directory at: {0}'.format(temp_dir))
+        print('>>> Creating temporary directory at: {0}'.format(temp_dir))
 
         # attempt running pipeline
         try:
@@ -147,7 +141,7 @@ class PreProcessProgram(object):
             if self.temp_dir:
                 pass
             else:
-                print('Removing temporary directory at: {0}'.format(temp_dir))
+                print('>>> Removing temporary directory at: {0}'.format(temp_dir))
                 shutil.rmtree(temp_dir)
             # re-raise the error for debugging
             raise
@@ -156,7 +150,7 @@ class PreProcessProgram(object):
         if self.temp_dir:
             pass
         else:
-            print('Removing temporary directory at: {0}'.format(temp_dir))
+            print('>>> Removing temporary directory at: {0}'.format(temp_dir))
             shutil.rmtree(temp_dir)
 
 
