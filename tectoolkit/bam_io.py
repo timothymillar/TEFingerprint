@@ -20,12 +20,11 @@ def read_bam_strings(input_bam, reference='', family='', strand='.'):
     :return: A list of Sam formatted strings
     :rtype: list[str]
     """
-    family = family.lower()
     SAM_FLAGS = {'+': ('-F', '20'),
                  '-': ('-f', '16', '-F', '4')}
     flag = SAM_FLAGS[strand]
     strings = np.array(pysam.view(*flag, input_bam, reference).splitlines())
-    in_family = np.fromiter((s.split('\tME:Z:')[1].split('\t')[0].lower().startswith(family) for s in strings),
+    in_family = np.fromiter((s.split('\tME:Z:')[1].split('\t')[0].startswith(family) for s in strings),
                             dtype=bool)
     return strings[in_family]
 
