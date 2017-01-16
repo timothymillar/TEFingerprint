@@ -77,6 +77,25 @@ class TestUDC:
                           dtype=UDC._DTYPE_SLICE)
         npt.assert_array_equal(UDC._cluster(sub_slices, 5, 4), slices)
 
+    @pytest.mark.parametrize("array,slices",
+                             [(np.array([], dtype=int),
+                               np.array([], dtype=UDC._DTYPE_SLICE)),
+                              (np.array([1], dtype=int),
+                               np.array([], dtype=UDC._DTYPE_SLICE)),
+                              (np.array([1, 2, 3, 4], dtype=int),
+                               np.array([], dtype=UDC._DTYPE_SLICE)),
+                              (np.array([1, 2, 3, 4, 5], dtype=int),
+                               np.array([(0, 5)], dtype=UDC._DTYPE_SLICE))
+                              ],
+                             ids=['0<n', '1<n', '4<n', '5==n'])
+    def test_udc_few_reads(self, array, slices):
+        """
+        Test for method udc with small arrays.
+        Method udc should correctly handle an array of length 0 or greater.
+        If the length of the array is less than 'n' then an empty array will always be returned.
+        """
+        npt.assert_array_equal(UDC.udc(array, 5, 5), slices)
+
     def test_fit(self):
         """
         Test to run class via the method fit.
@@ -86,11 +105,11 @@ class TestUDC:
         """
         udc_object = UDC(4, 5)
         input_array = np.array([1, 2, 21, 22, 22, 22, 24, 38, 54, 54, 55, 56, 65, 65, 66, 67, 68, 90],
-                                dtype=int)
+                               dtype=int)
         answer_array = np.array([1, 2, 21, 22, 22, 22, 24, 38, 54, 54, 55, 56, 65, 65, 66, 67, 68, 90],
-                                 dtype=int)
+                                dtype=int)
         answer_slices = np.array([(2, 7), (8, 12), (12, 17)],
-                                   dtype=UDC._DTYPE_SLICE)
+                                 dtype=UDC._DTYPE_SLICE)
         udc_object.fit(input_array)
         assert udc_object.input_array is not input_array
         npt.assert_array_equal(udc_object.input_array, answer_array)
@@ -220,6 +239,25 @@ class TestHUDC:
                                 1828, 1848, 1848, 1848, 1848, 1851, 1851, 1852, 1917], dtype=int)
         answer_slices = np.fromiter([(0, 55), (56, 80), (83, 97)], dtype=HUDC._DTYPE_SLICE)
         npt.assert_array_equal(HUDC.hudc(input_array, 10, max_eps=200, min_eps=10), answer_slices)
+
+    @pytest.mark.parametrize("array,slices",
+                             [(np.array([], dtype=int),
+                               np.array([], dtype=UDC._DTYPE_SLICE)),
+                              (np.array([1], dtype=int),
+                               np.array([], dtype=UDC._DTYPE_SLICE)),
+                              (np.array([1, 2, 3, 4], dtype=int),
+                               np.array([], dtype=UDC._DTYPE_SLICE)),
+                              (np.array([1, 2, 3, 4, 5], dtype=int),
+                               np.array([(0, 5)], dtype=UDC._DTYPE_SLICE))
+                              ],
+                             ids=['0<n', '1<n', '4<n', '5==n'])
+    def test_hudc_few_reads(self, array, slices):
+        """
+        Test for method hudc with small arrays.
+        Method hudc should correctly handle an array of length 0 or greater.
+        If the length of the array is less than 'n' then an empty array will always be returned.
+        """
+        npt.assert_array_equal(HUDC.hudc(array, 5, 5), slices)
 
     def test_fit(self):
         """
