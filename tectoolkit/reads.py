@@ -131,9 +131,7 @@ class ReadGroup(object):
         :return: length of the mapped section of read as it appears on the reference genome
         :rtype: int
         """
-        index = np.fromiter(((symbol in 'MDNP=X') for symbol in re.findall(r"[MIDNSHP=X]", cigar)), dtype=bool)
-        values = np.fromiter(map(int, re.split("[MIDNSHP=X]", cigar)[0:-1]), dtype=int)
-        return np.sum(values[index])
+        return sum([int(i[0:-1]) for i in re.findall(r"[0-9]+[MIDNSHP=X]", cigar) if (i[-1] in 'MDNP=X')])
 
     @classmethod
     def _parse_sam_strings(cls, strings, strand=None):
