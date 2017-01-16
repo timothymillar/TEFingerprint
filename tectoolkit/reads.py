@@ -1,5 +1,6 @@
 #! /usr/bin/env python
 
+import re
 import numpy as np
 from tectoolkit import bam_io
 
@@ -116,6 +117,24 @@ class ReadGroup(object):
             reads = self.reads[np.logical_and(self.reads[end] >= start, self.reads[end] <= stop)]
         return ReadGroup(reads)
 
+    @staticmethod
+    def _cigar_mapped_length(cigar):
+        """
+        Calculate length of the mapped section of a read from a sam CIGAR string.
+        This length is calculated based on the length of the section of reference genome which the
+        read is mapped to. Therefore, deletions are counted and insertions are not.
+        Values for the symbols 'M', 'D', 'N', 'P', 'X' and '=' count towards length.
+
+        :param cigar: A sam format CIGAR string thant may contain the symbols 'MIDNSHP=Q'
+        :type cigar: str
+
+        :return: length of the mapped section of read as it appears on the reference genome
+        :rtype: int
+        """
+        index = np.fromiter(((symbol in 'MDNP=X') for symbol in re.findall(r"[MIDNSHP=X]", cigar)), dtype=bool)
+        values = np.fromiter(map(int, re.split("[MIDNSHP=X]", cigar)[0:-1]), dtype=int)
+        return np.sum(values[index])
+
     @classmethod
     def _parse_sam_strings(cls, strings, strand=None):
         """
@@ -133,7 +152,7 @@ class ReadGroup(object):
             attr = string.split("\t")
             name = str(attr[0])
             start = int(attr[3])
-            length = len(attr[9])
+            length = ReadGroup._cigar_mapped_length(attr[5])
             end = start + length - 1  # 1 based indexing used in SAM format
             if strand is None:
                 strand = bam_io.flag_orientation(int(attr[1]))
