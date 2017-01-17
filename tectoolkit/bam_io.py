@@ -4,7 +4,27 @@ import pysam
 import numpy as np
 
 
-def read_bam_strings(input_bam, reference='', family='', strand='.'):
+def read_bam_strings(input_bam, reference='', strand='.'):
+    """
+    Read  strings from an indexed Bam file.
+
+    :param input_bam: The path to an indexed sorted Bam file
+    :type input_bam: str
+    :param reference: Select reads from a single reference or slice of reference
+    :type reference: str
+    :param strand: Select reads that are found on a specific strand, '+' or '-'
+    :type strand: str
+
+    :return: A list of Sam formatted strings
+    :rtype: list[str]
+    """
+    SAM_FLAGS = {'+': ('-F', '20'),
+                 '-': ('-f', '16', '-F', '4')}
+    flag = SAM_FLAGS[strand]
+    return np.array(pysam.view(*flag, input_bam, reference).splitlines())
+
+
+def read_bam_strings_family(input_bam, reference='', family='', strand='.'):
     """
     Read a subset of strings from an indexed Bam file.
 
@@ -20,10 +40,7 @@ def read_bam_strings(input_bam, reference='', family='', strand='.'):
     :return: A list of Sam formatted strings
     :rtype: list[str]
     """
-    SAM_FLAGS = {'+': ('-F', '20'),
-                 '-': ('-f', '16', '-F', '4')}
-    flag = SAM_FLAGS[strand]
-    strings = np.array(pysam.view(*flag, input_bam, reference).splitlines())
+    strings = read_bam_strings(input_bam, reference=reference, strand=strand)
     in_family = np.fromiter((s.split('\tME:Z:')[1].split('\t')[0].startswith(family) for s in strings),
                             dtype=bool)
     return strings[in_family]

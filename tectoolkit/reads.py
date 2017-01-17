@@ -5,6 +5,23 @@ import numpy as np
 from tectoolkit import bam_io
 
 
+def read_families(input_bam, reference, strand, families):
+    """
+    Read a section of a bam file and return as a generator of :class:`ReadGroup`.
+    One :class:`ReadGroup` is returned per family.
+
+    :param input_bam: 
+    :param reference:
+    :param strand:
+    :param families:
+    :return:
+    """
+    strings = bam_io.read_bam_strings(input_bam, reference=reference, strand=strand)
+    tags = np.array([s.split('\tME:Z:')[1].split('\t')[0] for s in strings])
+    generator = (strings[tags.astype('U{0}'.format(len(family))) == family] for family in families)
+    return (ReadGroup._from_sam_strings(strings, strand) for strings in generator)
+
+
 class ReadGroup(object):
     """
     A collection of mapped SAM read positions. This class does not contain read sequences.
@@ -216,7 +233,7 @@ class ReadGroup(object):
         :rtype: :class:`ReadGroup`
         """
         assert strand in ('+', '-')
-        sam = bam_io.read_bam_strings(bam, reference=reference, family=family, strand=strand)
+        sam = bam_io.read_bam_strings_family(bam, reference=reference, family=family, strand=strand)
         return ReadGroup._from_sam_strings(sam, strand=strand)
 
 
