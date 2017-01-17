@@ -1,25 +1,6 @@
 #! /usr/bin/env python
 
-import re
 import numpy as np
-from tectoolkit import bam_io
-
-
-def read_families(input_bam, reference, strand, families):
-    """
-    Read a section of a bam file and return as a generator of :class:`ReadGroup`.
-    One :class:`ReadGroup` is returned per family.
-
-    :param input_bam: 
-    :param reference:
-    :param strand:
-    :param families:
-    :return:
-    """
-    strings = bam_io.read_bam_strings(input_bam, reference=reference, strand=strand)
-    tags = np.array([s.split('\tME:Z:')[1].split('\t')[0] for s in strings])
-    generator = (strings[tags.astype('U{0}'.format(len(family))) == family] for family in families)
-    return (ReadGroup._from_sam_strings(strings, strand) for strings in generator)
 
 
 class ReadGroup(object):
@@ -40,7 +21,7 @@ class ReadGroup(object):
                            ('strand', np.str_, 1),
                            ('name', np.str_, 254)])
 
-    def __init__(self, reads=None):
+    def __init__(self, reads=None, **kwargs):
         """
         Init method for :class:`ReadGroup`.
 
@@ -50,6 +31,7 @@ class ReadGroup(object):
         if reads is None:
             reads = []
         self.reads = np.array(reads, dtype=ReadGroup.DTYPE_READ, copy=True)
+        self.attributes = kwargs
 
     def __iter__(self):
         """
@@ -135,73 +117,7 @@ class ReadGroup(object):
         return ReadGroup(reads)
 
     @staticmethod
-    def _cigar_mapped_length(cigar):
-        """
-        Calculate length of the mapped section of a read from a sam CIGAR string.
-        This length is calculated based on the length of the section of reference genome which the
-        read is mapped to. Therefore, deletions are counted and insertions are not.
-        Values for the symbols 'M', 'D', 'N', 'P', 'X' and '=' count towards length.
-
-        :param cigar: A sam format CIGAR string thant may contain the symbols 'MIDNSHP=Q'
-        :type cigar: str
-
-        :return: length of the mapped section of read as it appears on the reference genome
-        :rtype: int
-        """
-        return sum([int(i[0:-1]) for i in re.findall(r"[0-9]+[MIDNSHP=X]", cigar) if (i[-1] in 'MDNP=X')])
-
-    @classmethod
-    def _parse_sam_strings(cls, strings, strand=None):
-        """
-        Parses a collection of SAM formatted strings into a tuple generator.
-
-        :param strings: A collection of SAM formatted strings
-        :type strings: iterable[str]
-        :param strand: Strand ('+' or '-') of all reads (if known)
-        :type strand: str
-
-        :return: An iterable of mapped SAM read positions and names
-        :rtype: generator[(int, int, str, str)]
-        """
-        def _parse_sam_string(string, strand):
-            attr = string.split("\t")
-            name = str(attr[0])
-            start = int(attr[3])
-            length = ReadGroup._cigar_mapped_length(attr[5])
-            end = start + length - 1  # 1 based indexing used in SAM format
-            if strand is None:
-                strand = bam_io.flag_orientation(int(attr[1]))
-            if strand == '+':
-                tip = end
-                tail = start
-                return tip, tail, strand, name
-            elif strand == '-':
-                tip = start
-                tail = end
-                return tip, tail, strand, name
-
-        assert strand in ['+', '-', None]
-        reads = (_parse_sam_string(string, strand) for string in strings)
-        return reads
-
-    @classmethod
-    def _from_sam_strings(cls, strings, strand=None):
-        """
-        Construct an instance of :class:`ReadGroup` from an iterable of SAM formatted strings.
-
-        :param strings: An iterable of SAM formatted strings
-        :type strings: iter[str]
-        :param strand: Strand ('+' or '-') of all reads (if known)
-        :type strand: str
-
-        :return: An instance of :class:`ReadGroup`
-        :rtype: :class:`ReadGroup`
-        """
-        generator = cls._parse_sam_strings(strings, strand=strand)
-        return cls.from_iter(generator)
-
-    @classmethod
-    def from_iter(cls, iterable):
+    def from_iter(iterable, **kwargs):
         """
         Create an instance of :class:`ReadGroup` from an iterable.
 
@@ -213,28 +129,7 @@ class ReadGroup(object):
         """
         reads = np.fromiter(iterable, dtype=ReadGroup.DTYPE_READ)
         reads.sort(order=('tip', 'tail'))
-        return ReadGroup(reads)
-
-    @classmethod
-    def from_bam(cls, bam, reference, family, strand):
-        """
-        Reads subset of reads from bam file that are of the targeted reference, family and strand.
-
-        :param bam: A bam file path
-        :type bam: str
-        :param reference: Target reference of reads
-        :type reference: str
-        :param family: Target family of reads
-        :type family: str
-        :param strand: Target strand of reads ('+' or '-')
-        :type strand: str
-
-        :return: Subset of bam reads
-        :rtype: :class:`ReadGroup`
-        """
-        assert strand in ('+', '-')
-        sam = bam_io.read_bam_strings_family(bam, reference=reference, family=family, strand=strand)
-        return ReadGroup._from_sam_strings(sam, strand=strand)
+        return ReadGroup(reads, **kwargs)
 
 
 class UnivariateLoci(object):
