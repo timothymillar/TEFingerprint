@@ -151,32 +151,21 @@ class FingerprintProgram(object):
 
 class Fingerprint(object):
     """Fingerprint a bam file"""
-    def __init__(self, bam, reference, family, strand, eps, min_reads):
+    def __init__(self, reads, eps, min_reads):
         """
         Init method for :class:`Fingerprint`.
 
-        :param bam: A bam file path
-        :type bam: str
-        :param reference: The target reference name to be fingerprinted
-        :type reference: str
-        :param family: The target family/category of TE's to be fingerprinted
-        :type family: str
-        :param strand: The target strand ('+' or '-') to fingerprinted
-        :type strand: str
+        :param reads: A collection of reads
+        :type reads: :class:`ReadGroup`
         :param eps: The eps value(s) to be used in the cluster analysis (:class:`FUDC` for one values
         or :class:`HUDC` for two values)
         :type eps: list[int]
         :param min_reads: Minimum number of reads required to form cluster in cluster analysis
         :type min_reads: int
         """
-        self.reference = reference
-        self.family = family
-        self.strand = strand
         self.eps = eps
         self.min_reads = min_reads
-        self.sample_name = ''
-        self.source = os.path.basename(bam)
-        self.reads = ReadGroup.from_bam(bam, self.reference, self.family, self.strand)
+        self.reads = reads
         self.loci = self._fit()
 
     def _fit(self):
@@ -210,14 +199,18 @@ class Fingerprint(object):
         :return: A generator of :class:`GffFeature` objects
         :rtype: generator[:class:`GffFeature`]
         """
+        reference = self.reads.attributes['reference']
+        family = self.reads.attributes['family']
+        strand = self.reads.strand()
+        sample = self.reads.attributes['source']
         for start, end in self.loci:
-            yield NestedFeature(seqid=self.reference,
+            yield NestedFeature(seqid=reference,
                                 start=start,
                                 end=end,
-                                strand=self.strand,
-                                ID="{0}_{1}_{2}_{3}".format(self.family, self.reference, self.strand, start),
-                                Name=self.family,
-                                sample=self.source)
+                                strand=strand,
+                                ID="{0}_{1}_{2}_{3}".format(family, reference, strand, start),
+                                Name=family,
+                                sample=sample)
 
 if __name__ == '__main__':
     pass
