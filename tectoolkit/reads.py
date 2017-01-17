@@ -83,11 +83,14 @@ class ReadGroup(object):
         :return: '+', '-' or '.' respectively if all reads are on forwards, reverse or combination of strands
         :rtype: str
         """
-        variation = set(self.reads['strand'])
-        if len(variation) > 1:
-            return '.'
+        if len(self.reads) > 0:
+            variation = set(self.reads['strand'])
+            if len(variation) > 1:
+                return '.'
+            else:
+                return variation.pop()
         else:
-            return variation.pop()
+            return None
 
     def subset_by_locus(self, start, stop, margin=0, end='tip'):
         """
