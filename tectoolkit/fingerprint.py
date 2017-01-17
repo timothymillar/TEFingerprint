@@ -1,7 +1,6 @@
 #! /usr/bin/env python
 
 import sys
-import os
 import argparse
 from itertools import product
 from multiprocessing import Pool
@@ -108,12 +107,13 @@ class FingerprintProgram(object):
         """
         return product(self.args.input_bam,
                        self.references,
-                       self.args.families,
                        self.args.strands,
+                       [self.args.families],
                        [self.args.eps],
                        self.args.min_reads)
 
-    def _fingerprint(self, input_bam, reference, family, strand, eps, min_reads):
+    @staticmethod
+    def _fingerprint(input_bam, reference, strand, families, eps, min_reads):
         """
         Creates an instance of  :class:`Fingerprint` and prints the GFF3 formatted results to stdout.
 
@@ -121,8 +121,8 @@ class FingerprintProgram(object):
         :type input_bam: str
         :param reference: The target reference name to be fingerprinted
         :type reference: str
-        :param family: The target family/category of TE's to be fingerprinted
-        :type family: str
+        :param families: The target families/categories of TE's to be fingerprinted
+        :type families: list[str]
         :param strand: The target strand ('+' or '-') to fingerprinted
         :type strand: str
         :param eps: The eps value(s) to be used in the cluster analysis (:class:`FUDC` for one values
@@ -131,9 +131,11 @@ class FingerprintProgram(object):
         :param min_reads: Minimum number of reads required to form cluster in cluster analysis
         :type min_reads: int
         """
-        fingerprint = Fingerprint(input_bam, reference, family, strand, eps, min_reads)
-        for feature in fingerprint.loci_to_gff():
-            print(feature)
+        read_groups = bam_io.read_families(input_bam, reference, strand, families)
+        fingerprints = (Fingerprint(reads, eps, min_reads) for reads in read_groups)
+        for fingerprint in fingerprints:
+            for feature in fingerprint.loci_to_gff():
+                print(feature)
 
     def run(self):
         """
