@@ -175,8 +175,8 @@ class CompareProgram(object):
         :type reference: str
         :param strand: The target strand to compared ('+' or '-')
         :type strand: str
-        :param family: The target family/category of TE's to be fingerprinted and compared
-        :type family: str
+        :param families: The target family/category of TE's to be fingerprinted and compared
+        :type families: list[str]
         :param mate_element_tag: The sam tag that contains the mates element name in the bam file
         :type mate_element_tag: str
         :param eps: The eps value(s) to be used in the cluster analysis (:class:`FUDC` for one values

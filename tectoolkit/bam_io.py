@@ -174,19 +174,21 @@ def read_bam_into_groups(bam, reference, strand, tag, groups):
     """
     Read a section of a bam file and return as a generator of :class:`ReadGroup`.
     One :class:`ReadGroup` is returned per group.
+    Reads are sorted into any group for which there tag starts with the group name.
 
-    :param bam:
-    :type bam: str
-    :param reference:
+    :param input_bam: The path to an indexed sorted Bam file
+    :type input_bam: str
+    :param reference: Select reads from a single reference or slice of reference
     :type reference: str
-    :param strand:
+    :param strand: Select reads that are found on a specific strand, '+' or '-'
     :type strand: str
-    :param tag:
+    :param tag: Sam format tag which holds group information for each read
     :type tag: str
-    :param groups:
-    :type groups: str
+    :param groups: A list of group names
+    :type groups: list[str]
 
     :return: A generator of :class:`ReadGroup`
+    :rtype: generator[:class:`ReadGroup`]
     """
     assert strand in ['+', '-']
     strings = read_bam_strings(bam, reference=reference, strand=strand)
