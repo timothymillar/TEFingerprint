@@ -49,6 +49,10 @@ class FingerprintProgram(object):
                             help='TE grouping(s) to be used. '
                                  'These must be exact string match\'s to start of read name and are used to split '
                                  'reads into categories for analysis')
+        parser.add_argument('--mate_element_tag',
+                            type=str,
+                            default='ME',
+                            help='Tag used in bam file to indicate the element type mate read')
         parser.add_argument('-s', '--strands',
                             type=str,
                             nargs='+',
@@ -109,11 +113,12 @@ class FingerprintProgram(object):
                        self.references,
                        self.args.strands,
                        [self.args.families],
+                       [self.args.mate_element_tag],
                        [self.args.eps],
                        self.args.min_reads)
 
     @staticmethod
-    def _fingerprint(input_bam, reference, strand, families, eps, min_reads):
+    def _fingerprint(input_bam, reference, strand, families, mate_element_tag, eps, min_reads):
         """
         Creates an instance of  :class:`Fingerprint` and prints the GFF3 formatted results to stdout.
 
@@ -123,6 +128,8 @@ class FingerprintProgram(object):
         :type reference: str
         :param families: The target families/categories of TE's to be fingerprinted
         :type families: list[str]
+        :param mate_element_tag: The sam tag that contains the mates element name in the bam file
+        :type mate_element_tag: str
         :param strand: The target strand ('+' or '-') to fingerprinted
         :type strand: str
         :param eps: The eps value(s) to be used in the cluster analysis (:class:`FUDC` for one values
@@ -131,7 +138,7 @@ class FingerprintProgram(object):
         :param min_reads: Minimum number of reads required to form cluster in cluster analysis
         :type min_reads: int
         """
-        read_groups = bam_io.read_families(input_bam, reference, strand, families)
+        read_groups = bam_io.read_split_bam_by_tag(input_bam, reference, strand, mate_element_tag, families)
         fingerprints = (Fingerprint(reads, eps, min_reads) for reads in read_groups)
         for fingerprint in fingerprints:
             for feature in fingerprint.loci_to_gff():

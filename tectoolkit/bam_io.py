@@ -170,26 +170,34 @@ def _parse_sam_strings(strings, strand=None):
     return reads
 
 
-def read_families(bam, reference, strand, families):
+def read_split_bam_by_tag(bam, reference, strand, tag, groups):
     """
     Read a section of a bam file and return as a generator of :class:`ReadGroup`.
-    One :class:`ReadGroup` is returned per family.
+    One :class:`ReadGroup` is returned per group.
 
     :param bam:
+    :type bam: str
     :param reference:
+    :type reference: str
     :param strand:
-    :param families:
-    :return:
+    :type strand: str
+    :param tag:
+    :type tag: str
+    :param groups:
+    :type groups: str
+
+    :return: A generator of :class:`ReadGroup`
     """
     assert strand in ['+', '-']
     strings = read_bam_strings(bam, reference=reference, strand=strand)
-    tags = np.array([s.split('\tME:Z:')[1].split('\t')[0] for s in strings])
-    generator = (strings[tags.astype('U{0}'.format(len(family))) == family] for family in families)
+    tag = '\t' + tag + ':[Zi]:'
+    tags = np.array([re.split(tag, s)[1].split('\t')[0] for s in strings])
+    generator = (strings[tags.astype('U{0}'.format(len(group))) == group] for group in groups)
     generator = (_parse_sam_strings(strings, strand=strand) for strings in generator)
     return (ReadGroup.from_iter(reads,
                                 reference=reference,
                                 family=family,
-                                source=os.path.basename(bam)) for family, reads in zip(families, generator))
+                                source=os.path.basename(bam)) for family, reads in zip(groups, generator))
 
 if __name__ == '__main__':
     pass
