@@ -175,6 +175,10 @@ class Fingerprint(object):
         self.eps = eps
         self.min_reads = min_reads
         self.reads = reads
+        self.reference = self.reads.reference
+        self.family = self.reads.grouping
+        self.strand = self.reads.strand()
+        self.source = self.reads.source
         self.loci = self._fit()
 
     def _fit(self):
@@ -208,18 +212,14 @@ class Fingerprint(object):
         :return: A generator of :class:`GffFeature` objects
         :rtype: generator[:class:`GffFeature`]
         """
-        reference = self.reads.reference
-        family = self.reads.grouping
-        strand = self.reads.strand()
-        sample = self.reads.source
         for start, end in self.loci:
-            yield NestedFeature(seqid=reference,
+            yield NestedFeature(seqid=self.reference,
                                 start=start,
                                 end=end,
-                                strand=strand,
-                                ID="{0}_{1}_{2}_{3}".format(family, reference, strand, start),
-                                Name=family,
-                                sample=sample)
+                                strand=self.strand,
+                                ID="{0}_{1}_{2}_{3}".format(self.family, self.reference, self.strand, start),
+                                Name=self.family,
+                                sample=self.source)
 
 if __name__ == '__main__':
     pass
