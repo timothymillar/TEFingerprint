@@ -138,7 +138,7 @@ class FingerprintProgram(object):
         :param min_reads: Minimum number of reads required to form cluster in cluster analysis
         :type min_reads: int
         """
-        read_groups = bam_io.read_split_bam_by_tag(input_bam, reference, strand, mate_element_tag, families)
+        read_groups = bam_io.read_bam_into_groups(input_bam, reference, strand, mate_element_tag, families)
         fingerprints = (Fingerprint(reads, eps, min_reads) for reads in read_groups)
         for fingerprint in fingerprints:
             for feature in fingerprint.loci_to_gff():
@@ -208,10 +208,10 @@ class Fingerprint(object):
         :return: A generator of :class:`GffFeature` objects
         :rtype: generator[:class:`GffFeature`]
         """
-        reference = self.reads.attributes['reference']
-        family = self.reads.attributes['family']
+        reference = self.reads.reference
+        family = self.reads.grouping
         strand = self.reads.strand()
-        sample = self.reads.attributes['source']
+        sample = self.reads.source
         for start, end in self.loci:
             yield NestedFeature(seqid=reference,
                                 start=start,

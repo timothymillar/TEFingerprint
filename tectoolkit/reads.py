@@ -21,17 +21,25 @@ class ReadGroup(object):
                            ('strand', np.str_, 1),
                            ('name', np.str_, 254)])
 
-    def __init__(self, reads=None, **kwargs):
+    def __init__(self, reads=None, reference=None, grouping=None, source=None):
         """
         Init method for :class:`ReadGroup`.
 
         :param reads: A numpy array.
         :type reads: :class:`numpy.ndarray`[(int, int, str, str)]
+        :param reference: The (optional) name of the reference/chromosome reads are aligned to
+        :type reference: str
+        :param grouping: The (optional) group name/type of the reads
+        :type grouping: str
+        :param source: The (optional) name of the source file that reads were imported from
+        :type source: str
         """
         if reads is None:
             reads = []
         self.reads = np.array(reads, dtype=ReadGroup.DTYPE_READ, copy=True)
-        self.attributes = kwargs
+        self.reference = reference
+        self.grouping = grouping
+        self.source = source
 
     def __iter__(self):
         """

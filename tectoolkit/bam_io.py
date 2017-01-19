@@ -170,7 +170,7 @@ def _parse_sam_strings(strings, strand=None):
     return reads
 
 
-def read_split_bam_by_tag(bam, reference, strand, tag, groups):
+def read_bam_into_groups(bam, reference, strand, tag, groups):
     """
     Read a section of a bam file and return as a generator of :class:`ReadGroup`.
     One :class:`ReadGroup` is returned per group.
@@ -196,8 +196,8 @@ def read_split_bam_by_tag(bam, reference, strand, tag, groups):
     generator = (_parse_sam_strings(strings, strand=strand) for strings in generator)
     return (ReadGroup.from_iter(reads,
                                 reference=reference,
-                                family=family,
-                                source=os.path.basename(bam)) for family, reads in zip(groups, generator))
+                                grouping=group,
+                                source=os.path.basename(bam)) for group, reads in zip(groups, generator))
 
 if __name__ == '__main__':
     pass
