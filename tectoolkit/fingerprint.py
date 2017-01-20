@@ -141,8 +141,7 @@ class FingerprintProgram(object):
         read_groups = bam_io.read_bam_into_groups(input_bam, reference, strand, mate_element_tag, families)
         fingerprints = (Fingerprint(reads, eps, min_reads) for reads in read_groups)
         for fingerprint in fingerprints:
-            for feature in fingerprint.loci_to_gff():
-                print(feature)
+            print(format(fingerprint, 'gff'))
 
     def run(self):
         """
@@ -205,7 +204,11 @@ class Fingerprint(object):
         else:
             pass
 
-    def loci_to_gff(self):
+    def __format__(self, code):
+        assert code in {'gff'}
+        return '\n'.join([str(l) for l in list(self._to_gff())])
+
+    def _to_gff(self):
         """
         Creates :class:`GffFeature` object for each loci in :class:`Fingerprint`.
 

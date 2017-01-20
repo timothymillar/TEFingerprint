@@ -202,7 +202,7 @@ class CompareProgram(object):
             comparison = FingerprintComparison(tuple(fingerprints[i][family] for i in bam_ids),
                                                bin_buffer,
                                                reference_length)
-            for feature in comparison.to_gff():
+            for feature in comparison._to_gff():
                 print(format(feature, 'nested'))
 
     def run(self):
@@ -328,7 +328,11 @@ class FingerprintComparison(object):
                                   'sample': source} for start, end in loci]
         return bin_dict, sample_dicts
 
-    def to_gff(self):
+    def __format__(self, code):
+        assert code in {'gff'}
+        return '\n'.join([format(l, 'nested') for l in list(self._to_gff())])
+
+    def _to_gff(self):
         """
         Creates :class:`GffFeature` object for each comparative bins in :class:`FingerprintComparison`.
         Component :class:`Fingerprint` loci found within the comparative bin are included as nested features.
