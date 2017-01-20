@@ -29,7 +29,7 @@ class NestedFeature(object):
 
     def _parse_attributes(self, attributes):
         if attributes is not None:
-            return ';'.join(tuple('{0}={1}'.format(key, value) for key, value in self.tags.items()))
+            return ';'.join(tuple('{0}={1}'.format(key, self.tags[key]) for key in sorted(self.tags.keys())))
         else:
             return'.'
 
