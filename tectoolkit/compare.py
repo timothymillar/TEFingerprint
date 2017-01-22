@@ -52,6 +52,10 @@ class CompareProgram(object):
                             help='TE grouping(s) to be used. '
                                  'These must be exact string match\'s to start of read name and are used to split '
                                  'reads into categories for analysis')
+        parser.add_argument('--mate_element_tag',
+                            type=str,
+                            default='ME',
+                            help='Tag used in bam file to indicate the element type mate read')
         parser.add_argument('-s', '--strands',
                             type=str,
                             nargs='+',
@@ -153,13 +157,14 @@ class CompareProgram(object):
         """
         return product([self.args.input_bams],
                        self.references,
-                       self.args.families,
                        self.args.strands,
+                       [self.args.families],
+                       [self.args.mate_element_tag],
                        [self.args.eps],
                        self.args.min_reads,
                        self.args.bin_buffer)
 
-    def _run_comparison(self, input_bams, reference, family, strand, eps, min_reads, bin_buffer):
+    def _run_comparison(self, input_bams, reference, strand, families, mate_element_tag, eps, min_reads, bin_buffer):
         """
         Creates a :class:`Fingerprint` for each of a set of bam files and then combines these in an
         instance of :class:`FingerprintComparison` and prints the GFF3 formatted results to stdout.
@@ -168,10 +173,12 @@ class CompareProgram(object):
         :type input_bams: list[str]
         :param reference: The target reference name common to all input bam files
         :type reference: str
-        :param family: The target family/category of TE's to be fingerprinted and compared
-        :type family: str
         :param strand: The target strand to compared ('+' or '-')
         :type strand: str
+        :param families: The target family/category of TE's to be fingerprinted and compared
+        :type families: list[str]
+        :param mate_element_tag: The sam tag that contains the mates element name in the bam file
+        :type mate_element_tag: str
         :param eps: The eps value(s) to be used in the cluster analysis (:class:`FUDC` for one values
         or :class:`HUDC` for two values)
         :type eps: list[int]
@@ -180,11 +187,23 @@ class CompareProgram(object):
         :param bin_buffer: A value to extend the comparative bins by in both directions
         :type bin_buffer: int
         """
-        fingerprints = (Fingerprint(bam, reference, family, strand, eps, min_reads) for bam in input_bams)
+        # create nested dict of fingerprints (avoids multiple reads of the same section of each bam)
+        fingerprints = {}
+        for i, bam in enumerate(input_bams):
+            read_groups = bam_io.read_bam_into_groups(bam, reference, strand, mate_element_tag, families)
+            fingerprints[i] = dict(zip(families, (Fingerprint(reads, eps, min_reads) for reads in read_groups)))
+
+        # get reference length to avoid over-buffering of comparative bins
         reference_length = self.reference_lengths[reference]
-        comparison = FingerprintComparison(tuple(fingerprints), bin_buffer, reference_length)
-        for feature in comparison.to_gff():
-            print(format(feature, 'nested'))
+
+        # loop through each family and compare fingerprint of from each input bam
+        bam_ids = list(range(len(input_bams)))
+        for family in families:
+            comparison = FingerprintComparison(tuple(fingerprints[i][family] for i in bam_ids),
+                                               bin_buffer,
+                                               reference_length)
+            for feature in comparison._to_gff():
+                print(format(feature, 'nested'))
 
     def run(self):
         """
@@ -215,9 +234,9 @@ class FingerprintComparison(object):
         self.fingerprints = fingerprints
         for f in fingerprints:
             assert type(f) == Fingerprint
+        assert len({f.strand for f in fingerprints if f.strand is not None}) == 1
         assert len({(f.reference,
                      f.family,
-                     f.strand,
                      f.eps[0],
                      f.eps[-1],
                      f.min_reads) for f in fingerprints}) == 1
@@ -309,7 +328,11 @@ class FingerprintComparison(object):
                                   'sample': source} for start, end in loci]
         return bin_dict, sample_dicts
 
-    def to_gff(self):
+    def __format__(self, code):
+        assert code in {'gff'}
+        return '\n'.join([format(l, 'nested') for l in list(self._to_gff())])
+
+    def _to_gff(self):
         """
         Creates :class:`GffFeature` object for each comparative bins in :class:`FingerprintComparison`.
         Component :class:`Fingerprint` loci found within the comparative bin are included as nested features.

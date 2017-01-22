@@ -73,25 +73,71 @@ tests from the projects root directory:
 Usage
 -----
 
-Currently the required pre-processing of paired end reads is not
-supported natively by the tool (see the `Leapfrog
-Readme <https://github.com/mfiers/leapfrog/blob/master/README>`__ for
-details). The basic 'tec' tool is used as a wrapper for included
-programs like ``fingerprint``, ``compare`` and ``filter_gff``. If no
-aruments are given the help text will be displayed:
+The basic 'tec' tool is used as a wrapper for included programs like
+``fingerprint``, ``compare`` and ``filter_gff``. If no arguments are
+given the help text will be displayed:
 
 ::
 
-     tec
-    usage: Identify program to run [-h] {fingerprint,compare,filter_gff}
+    $ tec
+    usage: Identify program to run [-h]
+                                   {fingerprint,compare,filter_gff,preprocess}
     Identify program to run: error: the following arguments are required: program
-    usage: Identify program to run [-h] {fingerprint,compare,filter_gff}
+    usage: Identify program to run [-h]
+                                   {fingerprint,compare,filter_gff,preprocess}
 
     positional arguments:
-      {fingerprint,compare,filter_gff}
+      {fingerprint,compare,filter_gff,preprocess}
 
     optional arguments:
       -h, --help            show this help message and exit
+
+Preprocess
+~~~~~~~~~~
+
+Preprocessing pipeline. Requires a paired-end reads in fastq format, a
+library of tranposable elements in fasta format and a reference genome
+in fasta format. Fasta files should be pre indexed using BWA. This
+pipeline also requires that BWA and Samtools are installed and on the OS
+PATH.
+
+Paired end reads are aligned to the library of transposable elements.
+Unmapped reads with mapped mates (dangler reads) are identified and
+extracted. Dangler reads are mapped against the reference genome and
+tagged with the ID od their mates transposable element.
+
+::
+
+    $ tec preprocess
+    usage: Identify potential TE flanking regions [-h] [--reference REFERENCE]
+                                                  [--repeats REPEATS] [-o OUTPUT]
+                                                  [--mate_element_tag MATE_ELEMENT_TAG]
+                                                  [--tempdir TEMPDIR] [-t THREADS]
+                                                  reads reads
+    Identify potential TE flanking regions: error: the following arguments are required: reads
+    usage: Identify potential TE flanking regions [-h] [--reference REFERENCE]
+                                                  [--repeats REPEATS] [-o OUTPUT]
+                                                  [--mate_element_tag MATE_ELEMENT_TAG]
+                                                  [--tempdir TEMPDIR] [-t THREADS]
+                                                  reads reads
+
+    positional arguments:
+      reads                 A pair of fastq files containing paired end reads
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      --reference REFERENCE
+                            Reference genome in fasta format with bwa index
+      --repeats REPEATS     Library of repeat elements in fasta format with bwa
+                            index
+      -o OUTPUT, --output OUTPUT
+                            Name of output bam file
+      --mate_element_tag MATE_ELEMENT_TAG
+                            Tag used in bam file to indicate the element type mate
+                            read
+      --tempdir TEMPDIR     Optional directory to store temp files in
+      -t THREADS, --threads THREADS
+                            Maximum number of cpu threads to be used
 
 Fingerprint
 ~~~~~~~~~~~
@@ -102,19 +148,19 @@ Fingerprint
     usage: Identify potential TE flanking regions [-h]
                                                   [-r [REFERENCES [REFERENCES ...]]]
                                                   [-f [FAMILIES [FAMILIES ...]]]
+                                                  [--mate_element_tag MATE_ELEMENT_TAG]
                                                   [-s {-,+} [{-,+} ...]]
                                                   [-m MIN_READS]
-                                                  [-e EPSILON [EPSILON ...]]
-                                                  [-t THREADS]
+                                                  [-e EPS [EPS ...]] [-t THREADS]
                                                   input_bam
     Identify potential TE flanking regions: error: the following arguments are required: input_bam
     usage: Identify potential TE flanking regions [-h]
                                                   [-r [REFERENCES [REFERENCES ...]]]
                                                   [-f [FAMILIES [FAMILIES ...]]]
+                                                  [--mate_element_tag MATE_ELEMENT_TAG]
                                                   [-s {-,+} [{-,+} ...]]
                                                   [-m MIN_READS]
-                                                  [-e EPSILON [EPSILON ...]]
-                                                  [-t THREADS]
+                                                  [-e EPS [EPS ...]] [-t THREADS]
                                                   input_bam
 
     positional arguments:
@@ -130,6 +176,9 @@ Fingerprint
                             TE grouping(s) to be used. These must be exact string
                             match's to start of read name and are used to split
                             reads into categories for analysis
+      --mate_element_tag MATE_ELEMENT_TAG
+                            Tag used in bam file to indicate the element type mate
+                            read
       -s {-,+} [{-,+} ...], --strands {-,+} [{-,+} ...]
                             Strand(s) to be analysed. Use + for forward or - for
                             reverse. Default is to analyse both strands
@@ -143,7 +192,7 @@ Fingerprint
                             within epsilon range of one another, they are
                             classified as a subcluster. Overlapping sets of
                             subclusters are then merged to form clusters.
-      -e EPSILON [EPSILON ...], --epsilon EPSILON [EPSILON ...]
+      -e EPS [EPS ...], --eps EPS [EPS ...]
                             Epsilon is the maximum allowable distance among a set
                             of read tips to be considered a (sub)cluster. If a
                             single value is given, the UDC algorithm will be used
@@ -175,18 +224,18 @@ Compare
     usage: Compare potential TE flanking regions [-h]
                                                  [-r [REFERENCES [REFERENCES ...]]]
                                                  [-f [FAMILIES [FAMILIES ...]]]
-                                                 [-s {-,+} [{-,+} ...]]
-                                                 [-m MIN_READS]
-                                                 [-e EPSILON [EPSILON ...]]
+                                                 [--mate_element_tag MATE_ELEMENT_TAG]
+                                                 [-s {+,-} [{+,-} ...]]
+                                                 [-m MIN_READS] [-e EPS [EPS ...]]
                                                  [-b BIN_BUFFER] [-t THREADS]
                                                  input_bams [input_bams ...]
     Compare potential TE flanking regions: error: the following arguments are required: input_bams
     usage: Compare potential TE flanking regions [-h]
                                                  [-r [REFERENCES [REFERENCES ...]]]
                                                  [-f [FAMILIES [FAMILIES ...]]]
-                                                 [-s {-,+} [{-,+} ...]]
-                                                 [-m MIN_READS]
-                                                 [-e EPSILON [EPSILON ...]]
+                                                 [--mate_element_tag MATE_ELEMENT_TAG]
+                                                 [-s {+,-} [{+,-} ...]]
+                                                 [-m MIN_READS] [-e EPS [EPS ...]]
                                                  [-b BIN_BUFFER] [-t THREADS]
                                                  input_bams [input_bams ...]
 
@@ -203,7 +252,10 @@ Compare
                             TE grouping(s) to be used. These must be exact string
                             match's to start of read name and are used to split
                             reads into categories for analysis
-      -s {-,+} [{-,+} ...], --strands {-,+} [{-,+} ...]
+      --mate_element_tag MATE_ELEMENT_TAG
+                            Tag used in bam file to indicate the element type mate
+                            read
+      -s {+,-} [{+,-} ...], --strands {+,-} [{+,-} ...]
                             Strand(s) to be analysed. Use + for forward or - for
                             reverse. Default is to analyse both strands
                             (separately).
@@ -216,7 +268,7 @@ Compare
                             within epsilon range of one another, they are
                             classified as a subcluster. Overlapping sets of
                             subclusters are then merged to form clusters.
-      -e EPSILON [EPSILON ...], --epsilon EPSILON [EPSILON ...]
+      -e EPS [EPS ...], --eps EPS [EPS ...]
                             Epsilon is the maximum allowable distance among a set
                             of read tips to be considered a (sub)cluster. If a
                             single value is given, the UDC algorithm will be used

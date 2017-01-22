@@ -1,7 +1,6 @@
 #! /usr/bin/env python
 
 import sys
-import os
 import argparse
 from itertools import product
 from multiprocessing import Pool
@@ -50,6 +49,10 @@ class FingerprintProgram(object):
                             help='TE grouping(s) to be used. '
                                  'These must be exact string match\'s to start of read name and are used to split '
                                  'reads into categories for analysis')
+        parser.add_argument('--mate_element_tag',
+                            type=str,
+                            default='ME',
+                            help='Tag used in bam file to indicate the element type mate read')
         parser.add_argument('-s', '--strands',
                             type=str,
                             nargs='+',
@@ -108,12 +111,14 @@ class FingerprintProgram(object):
         """
         return product(self.args.input_bam,
                        self.references,
-                       self.args.families,
                        self.args.strands,
+                       [self.args.families],
+                       [self.args.mate_element_tag],
                        [self.args.eps],
                        self.args.min_reads)
 
-    def _fingerprint(self, input_bam, reference, family, strand, eps, min_reads):
+    @staticmethod
+    def _fingerprint(input_bam, reference, strand, families, mate_element_tag, eps, min_reads):
         """
         Creates an instance of  :class:`Fingerprint` and prints the GFF3 formatted results to stdout.
 
@@ -121,8 +126,10 @@ class FingerprintProgram(object):
         :type input_bam: str
         :param reference: The target reference name to be fingerprinted
         :type reference: str
-        :param family: The target family/category of TE's to be fingerprinted
-        :type family: str
+        :param families: The target families/categories of TE's to be fingerprinted
+        :type families: list[str]
+        :param mate_element_tag: The sam tag that contains the mates element name in the bam file
+        :type mate_element_tag: str
         :param strand: The target strand ('+' or '-') to fingerprinted
         :type strand: str
         :param eps: The eps value(s) to be used in the cluster analysis (:class:`FUDC` for one values
@@ -131,9 +138,10 @@ class FingerprintProgram(object):
         :param min_reads: Minimum number of reads required to form cluster in cluster analysis
         :type min_reads: int
         """
-        fingerprint = Fingerprint(input_bam, reference, family, strand, eps, min_reads)
-        for feature in fingerprint.loci_to_gff():
-            print(feature)
+        read_groups = bam_io.read_bam_into_groups(input_bam, reference, strand, mate_element_tag, families)
+        fingerprints = (Fingerprint(reads, eps, min_reads) for reads in read_groups)
+        for fingerprint in fingerprints:
+            print(format(fingerprint, 'gff'))
 
     def run(self):
         """
@@ -151,32 +159,25 @@ class FingerprintProgram(object):
 
 class Fingerprint(object):
     """Fingerprint a bam file"""
-    def __init__(self, bam, reference, family, strand, eps, min_reads):
+    def __init__(self, reads, eps, min_reads):
         """
         Init method for :class:`Fingerprint`.
 
-        :param bam: A bam file path
-        :type bam: str
-        :param reference: The target reference name to be fingerprinted
-        :type reference: str
-        :param family: The target family/category of TE's to be fingerprinted
-        :type family: str
-        :param strand: The target strand ('+' or '-') to fingerprinted
-        :type strand: str
+        :param reads: A collection of reads
+        :type reads: :class:`ReadGroup`
         :param eps: The eps value(s) to be used in the cluster analysis (:class:`FUDC` for one values
         or :class:`HUDC` for two values)
         :type eps: list[int]
         :param min_reads: Minimum number of reads required to form cluster in cluster analysis
         :type min_reads: int
         """
-        self.reference = reference
-        self.family = family
-        self.strand = strand
         self.eps = eps
         self.min_reads = min_reads
-        self.sample_name = ''
-        self.source = os.path.basename(bam)
-        self.reads = ReadGroup.from_bam(bam, self.reference, self.family, self.strand)
+        self.reads = reads
+        self.reference = self.reads.reference
+        self.family = self.reads.grouping
+        self.strand = self.reads.strand()
+        self.source = self.reads.source
         self.loci = self._fit()
 
     def _fit(self):
@@ -203,7 +204,11 @@ class Fingerprint(object):
         else:
             pass
 
-    def loci_to_gff(self):
+    def __format__(self, code):
+        assert code in {'gff'}
+        return '\n'.join([str(l) for l in list(self._to_gff())])
+
+    def _to_gff(self):
         """
         Creates :class:`GffFeature` object for each loci in :class:`Fingerprint`.
 

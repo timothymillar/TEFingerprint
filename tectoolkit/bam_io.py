@@ -1,19 +1,20 @@
 #! /usr/bin/env python
 
+import os
+import re
 import pysam
 import numpy as np
+from tectoolkit.reads import ReadGroup
 
 
-def read_bam_strings(input_bam, reference='', family='', strand='.'):
+def read_bam_strings(input_bam, reference='', strand='.'):
     """
-    Read a subset of strings from an indexed Bam file.
+    Read  strings from an indexed Bam file.
 
     :param input_bam: The path to an indexed sorted Bam file
     :type input_bam: str
     :param reference: Select reads from a single reference or slice of reference
     :type reference: str
-    :param family: Select reads that have names beginning with 'family'
-    :type family: str
     :param strand: Select reads that are found on a specific strand, '+' or '-'
     :type strand: str
 
@@ -23,9 +24,7 @@ def read_bam_strings(input_bam, reference='', family='', strand='.'):
     SAM_FLAGS = {'+': ('-F', '20'),
                  '-': ('-f', '16', '-F', '4')}
     flag = SAM_FLAGS[strand]
-    sam_strings = np.array(pysam.view(*flag, input_bam, reference).splitlines())
-    in_family = np.array([string.startswith(family) for string in sam_strings])
-    return sam_strings[in_family]
+    return np.array(pysam.view(*flag, input_bam, reference).splitlines())
 
 
 def read_bam_references(input_bam):
@@ -119,6 +118,88 @@ def flag_attributes(flag):
     values = parse_flag(flag)
     return dict(zip(attributes, values))
 
+
+def _cigar_mapped_length(cigar):
+    """
+    Calculate length of the mapped section of a read from a sam CIGAR string.
+    This length is calculated based on the length of the section of reference genome which the
+    read is mapped to. Therefore, deletions are counted and insertions are not.
+    Values for the symbols 'M', 'D', 'N', 'P', 'X' and '=' count towards length.
+
+    :param cigar: A sam format CIGAR string thant may contain the symbols 'MIDNSHP=Q'
+    :type cigar: str
+
+    :return: length of the mapped section of read as it appears on the reference genome
+    :rtype: int
+    """
+    return sum([int(i[0:-1]) for i in re.findall(r"[0-9]+[MIDNSHP=X]", cigar) if (i[-1] in 'MDNP=X')])
+
+
+def _parse_sam_strings(strings, strand=None):
+    """
+    Parses a collection of SAM formatted strings into a tuple generator.
+
+    :param strings: A collection of SAM formatted strings
+    :type strings: iterable[str]
+    :param strand: Strand ('+' or '-') of all reads (if known)
+    :type strand: str
+
+    :return: An iterable of mapped SAM read positions and names
+    :rtype: generator[(int, int, str, str)]
+    """
+
+    def _parse_sam_string(string, strand):
+        attr = string.split("\t")
+        name = str(attr[0])
+        start = int(attr[3])
+        length = _cigar_mapped_length(attr[5])
+        end = start + length - 1  # 1 based indexing used in SAM format
+        if strand is None:
+            strand = flag_orientation(int(attr[1]))
+        if strand == '+':
+            tip = end
+            tail = start
+            return tip, tail, strand, name
+        elif strand == '-':
+            tip = start
+            tail = end
+            return tip, tail, strand, name
+
+    assert strand in ['+', '-', None]
+    reads = (_parse_sam_string(string, strand) for string in strings)
+    return reads
+
+
+def read_bam_into_groups(bam, reference, strand, tag, groups):
+    """
+    Read a section of a bam file and return as a generator of :class:`ReadGroup`.
+    One :class:`ReadGroup` is returned per group.
+    Reads are sorted into any group for which there tag starts with the group name.
+
+    :param input_bam: The path to an indexed sorted Bam file
+    :type input_bam: str
+    :param reference: Select reads from a single reference or slice of reference
+    :type reference: str
+    :param strand: Select reads that are found on a specific strand, '+' or '-'
+    :type strand: str
+    :param tag: Sam format tag which holds group information for each read
+    :type tag: str
+    :param groups: A list of group names
+    :type groups: list[str]
+
+    :return: A generator of :class:`ReadGroup`
+    :rtype: generator[:class:`ReadGroup`]
+    """
+    assert strand in ['+', '-']
+    strings = read_bam_strings(bam, reference=reference, strand=strand)
+    tag = '\t' + tag + ':[Zi]:'
+    tags = np.array([re.split(tag, s)[1].split('\t')[0] for s in strings])
+    generator = (strings[tags.astype('U{0}'.format(len(group))) == group] for group in groups)
+    generator = (_parse_sam_strings(strings, strand=strand) for strings in generator)
+    return (ReadGroup.from_iter(reads,
+                                reference=reference,
+                                grouping=group,
+                                source=os.path.basename(bam)) for group, reads in zip(groups, generator))
 
 if __name__ == '__main__':
     pass
