@@ -11,12 +11,18 @@ from tempfile import mkdtemp
 
 class PreProcessProgram(object):
     """"""
-    def __init__(self, fastq_1, fastq_2, reference_fasta, repeats_fasta, output_bam, temp_dir=False, threads=1):
+    def __init__(self, fastq_1, fastq_2,
+                 reference_fasta,
+                 repeats_fasta,
+                 output_bam,
+                 mate_element_tag='ME',
+                 temp_dir=False, threads=1):
         self.fastq_1 = fastq_1
         self.fastq_2 = fastq_2
         self.reference_fasta = reference_fasta
         self.repeats_fasta = repeats_fasta
         self.output_bam = output_bam
+        self.mate_element_tag = mate_element_tag
         self.temp_dir = temp_dir
         self.threads = str(threads)
 
@@ -47,11 +53,16 @@ class PreProcessProgram(object):
                             type=str,
                             nargs=1,
                             help="Name of output bam file")
+        parser.add_argument('--mate_element_tag',
+                            type=str,
+                            nargs=1,
+                            default=['ME'],
+                            help='Tag used in bam file to indicate the element type mate read')
         parser.add_argument('--tempdir',
                             type=str,
                             nargs=1,
                             default=[False],
-                            help="Name of output bam file")
+                            help="Optional directory to store temp files in")
         parser.add_argument('-t', '--threads',
                             type=int,
                             nargs=1,
@@ -73,6 +84,7 @@ class PreProcessProgram(object):
                                  arguments.reference[0],
                                  arguments.repeats[0],
                                  arguments.output[0],
+                                 mate_element_tag=arguments.mate_element_tag[0],
                                  temp_dir=arguments.tempdir[0],
                                  threads=arguments.threads[0])
 
@@ -115,7 +127,7 @@ class PreProcessProgram(object):
 
         # tag danglers and write output file
         print('>>> Adding tags to mapped danglers at: {0}'.format(self.output_bam))
-        tag_danglers(temp_bam_2, dangler_strings, self.output_bam)
+        tag_danglers(temp_bam_2, dangler_strings, self.output_bam, self.mate_element_tag)
 
         # index bam
         print('>>> Indexing: {0}'.format(self.output_bam))
@@ -273,7 +285,7 @@ def map_danglers_to_reference(fastq, reference_fasta, output_bam, threads):
     return subprocess.call([command], shell=True)
 
 
-def tag_danglers(dangler_bam, dangler_strings, output_bam):
+def tag_danglers(dangler_bam, dangler_strings, output_bam, tag):
     """
     Tags mapped danglers with the id of the element which their mate mapped to and writes to new bam.
 
@@ -289,7 +301,7 @@ def tag_danglers(dangler_bam, dangler_strings, output_bam):
     danglers_untagged = pysam.Samfile(dangler_bam, "rb")
     danglers_tagged = pysam.Samfile(output_bam, "wb", template=danglers_untagged)
     for read in danglers_untagged.fetch():
-        read.tags += [('ME', read_mate_elements[read.qname])]
+        read.tags += [(tag, read_mate_elements[read.qname])]
         danglers_tagged.write(read)
     danglers_tagged.close()
 
