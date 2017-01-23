@@ -138,7 +138,7 @@ class FingerprintProgram(object):
         :param min_reads: Minimum number of reads required to form cluster in cluster analysis
         :type min_reads: int
         """
-        read_groups = bam_io.read_bam_into_groups(input_bam, reference, strand, mate_element_tag, families)
+        read_groups = bam_io.read_bam_into_groups(input_bam, reference, strand, families, group_tag=mate_element_tag)
         fingerprints = (Fingerprint(reads, eps, min_reads) for reads in read_groups)
         for fingerprint in fingerprints:
             print(format(fingerprint, 'gff'))

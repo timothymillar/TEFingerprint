@@ -170,7 +170,7 @@ def _parse_sam_strings(strings, strand=None):
     return reads
 
 
-def read_bam_into_groups(bam, reference, strand, tag, groups):
+def read_bam_into_groups(bam, reference, strand, groups, group_tag='ME'):
     """
     Read a section of a bam file and return as a generator of :class:`ReadGroup`.
     One :class:`ReadGroup` is returned per group.
@@ -182,8 +182,8 @@ def read_bam_into_groups(bam, reference, strand, tag, groups):
     :type reference: str
     :param strand: Select reads that are found on a specific strand, '+' or '-'
     :type strand: str
-    :param tag: Sam format tag which holds group information for each read
-    :type tag: str
+    :param group_tag: Sam format tag which holds group information for each read
+    :type group_tag: str
     :param groups: A list of group names
     :type groups: list[str]
 
@@ -192,8 +192,8 @@ def read_bam_into_groups(bam, reference, strand, tag, groups):
     """
     assert strand in ['+', '-']
     strings = read_bam_strings(bam, reference=reference, strand=strand)
-    tag = '\t' + tag + ':[Zi]:'
-    tags = np.array([re.split(tag, s)[1].split('\t')[0] for s in strings])
+    group_tag = '\t' + group_tag + ':[Zi]:'
+    tags = np.array([re.split(group_tag, s)[1].split('\t')[0] for s in strings])
     generator = (strings[tags.astype('U{0}'.format(len(group))) == group] for group in groups)
     generator = (_parse_sam_strings(strings, strand=strand) for strings in generator)
     return (ReadGroup.from_iter(reads,

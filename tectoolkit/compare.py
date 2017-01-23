@@ -190,7 +190,7 @@ class CompareProgram(object):
         # create nested dict of fingerprints (avoids multiple reads of the same section of each bam)
         fingerprints = {}
         for i, bam in enumerate(input_bams):
-            read_groups = bam_io.read_bam_into_groups(bam, reference, strand, mate_element_tag, families)
+            read_groups = bam_io.read_bam_into_groups(bam, reference, strand, families, group_tag=mate_element_tag)
             fingerprints[i] = dict(zip(families, (Fingerprint(reads, eps, min_reads) for reads in read_groups)))
 
         # get reference length to avoid over-buffering of comparative bins
