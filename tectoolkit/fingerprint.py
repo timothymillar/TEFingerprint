@@ -2,6 +2,7 @@
 
 import sys
 import argparse
+import numpy as np
 from itertools import product
 from multiprocessing import Pool
 from tectoolkit import bam_io
@@ -111,14 +112,14 @@ class FingerprintProgram(object):
         """
         return product(self.args.input_bam,
                        self.references,
-                       self.args.strands,
+                       [self.args.strands],
                        [self.args.families],
                        [self.args.mate_element_tag],
                        [self.args.eps],
                        self.args.min_reads)
 
     @staticmethod
-    def _fingerprint(input_bam, reference, strand, families, mate_element_tag, eps, min_reads):
+    def _fingerprint(input_bam, reference, strands, families, mate_element_tag, eps, min_reads):
         """
         Creates an instance of  :class:`Fingerprint` and prints the GFF3 formatted results to stdout.
 
@@ -138,7 +139,13 @@ class FingerprintProgram(object):
         :param min_reads: Minimum number of reads required to form cluster in cluster analysis
         :type min_reads: int
         """
-        read_groups = bam_io.read_bam_into_groups(input_bam, reference, strand, families, group_tag=mate_element_tag)
+
+        read_groups = zip(bam_io.read_bam_into_groups(input_bam, reference, '+', families,
+                                                      group_tag=mate_element_tag),
+                          bam_io.read_bam_into_groups(input_bam, reference, '-', families,
+                                                      group_tag=mate_element_tag))
+        read_groups = (ReadGroup.append(forward, reverse) for forward, reverse in read_groups)
+
         fingerprints = (Fingerprint(reads, eps, min_reads) for reads in read_groups)
         for fingerprint in fingerprints:
             print(format(fingerprint, 'gff'))
@@ -173,14 +180,18 @@ class Fingerprint(object):
         """
         self.eps = eps
         self.min_reads = min_reads
-        self.reads = reads
-        self.reference = self.reads.reference
-        self.family = self.reads.grouping
-        self.strand = self.reads.strand()
-        self.source = self.reads.source
-        self.loci = self._fit()
+        self.join_threshold = 500
+        self.forward_reads = reads.forward_reads()
+        self.reverse_reads = reads.reverse_reads()
+        self.reference = reads.reference
+        self.family = reads.grouping
+        self.source = reads.source
+        self.forward_loci = self._cluster(self.forward_reads)
+        self.reverse_loci = self._cluster(self.reverse_reads)
+        self.loci_joins = np.fromiter(self._loci_joiner(),
+                                      dtype=[('forward_index', np.int64), ('reverse_index', np.int64)])
 
-    def _fit(self):
+    def _cluster(self, reads):
         """
         Run a clustering algorithm on the targeted reads specified in an instance of :class:`Fingerprint`.
         If a single eps value was passed to the instance of :class:`Fingerprint` the :class:`FUDC` algorithm is used.
@@ -193,20 +204,41 @@ class Fingerprint(object):
             # use hierarchical clustering method
             max_eps, min_eps = max(self.eps), min(self.eps)
             hudc = HUDC(self.min_reads, max_eps, min_eps)
-            hudc.fit(self.reads['tip'])
+            hudc.fit(reads['tip'])
             return UnivariateLoci.from_iter(hudc.cluster_extremities())
         elif len(self.eps) == 1:
             # use flat clustering method
             eps = max(self.eps)
             fudc = UDC(self.min_reads, eps)
-            fudc.fit(self.reads['tip'])
+            fudc.fit(reads['tip'])
             return UnivariateLoci.from_iter(fudc.cluster_extremities())
         else:
             pass
 
+    def _loci_joiner(self):
+        for i, i_value in enumerate(self.forward_loci['stop']):
+            dists = abs(self.reverse_loci['start'] - i_value)
+            if np.min(dists) < self.join_threshold:
+                j = np.argmin(dists)
+                if np.argmin(abs(self.forward_loci['stop'] - self.reverse_loci['start'][j])) == i:
+                    yield (i, j)
+
+    def _loci_features(self, loci, strand):
+        """"""
+        return [{'seqid': self.reference,
+                 'start': start,
+                 'end': end,
+                 'strand': strand,
+                 'ID': self._id(strand, start),
+                 'Name': self.family,
+                 'sample': self.source}for start, end in loci]
+
     def __format__(self, code):
         assert code in {'gff'}
-        return '\n'.join([str(l) for l in list(self._to_gff())])
+        return '\n'.join([str(f) for f in list(self._to_gff())])
+
+    def _id(self, strand, start):
+        return "{0}_{1}_{2}_{3}".format(self.family, self.reference, strand, start)
 
     def _to_gff(self):
         """
@@ -215,14 +247,15 @@ class Fingerprint(object):
         :return: A generator of :class:`GffFeature` objects
         :rtype: generator[:class:`GffFeature`]
         """
-        for start, end in self.loci:
-            yield NestedFeature(seqid=self.reference,
-                                start=start,
-                                end=end,
-                                strand=self.strand,
-                                ID="{0}_{1}_{2}_{3}".format(self.family, self.reference, self.strand, start),
-                                Name=self.family,
-                                sample=self.source)
+        forward_features = self._loci_features(self.forward_loci, '+')
+        reverse_features = self._loci_features(self.reverse_loci, '-')
+        for f, r in self.loci_joins:
+            forward_features[f]['pairID'] = reverse_features[r]['ID']
+            reverse_features[r]['pairID'] = forward_features[f]['ID']
+        for f in forward_features:
+            yield NestedFeature(**f)
+        for r in reverse_features:
+            yield NestedFeature(**r)
 
 if __name__ == '__main__':
     pass

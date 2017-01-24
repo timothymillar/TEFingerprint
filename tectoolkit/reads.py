@@ -100,6 +100,12 @@ class ReadGroup(object):
         else:
             return None
 
+    def forward_reads(self):
+        return ReadGroup(self.reads[self.reads['strand'] == '+'])
+
+    def reverse_reads(self):
+        return ReadGroup(self.reads[self.reads['strand'] == '-'])
+
     def subset_by_locus(self, start, stop, margin=0, end='tip'):
         """
         Returns a new ReadGroup object containing (the specified end of) all reads within specified (inclusive) bounds.
@@ -126,6 +132,19 @@ class ReadGroup(object):
         else:
             reads = self.reads[np.logical_and(self.reads[end] >= start, self.reads[end] <= stop)]
         return ReadGroup(reads)
+
+    @staticmethod
+    def append(x, y):
+        """
+
+        :param x: ReadGroup
+        :param y: ReadGroup
+        :return: ReadGroup
+        """
+        assert x.reference == y.reference
+        assert x.grouping == y.grouping
+        assert x.source == y.source
+        return ReadGroup(np.append(x.reads, y.reads), reference=x.reference, grouping=x.grouping, source=x.source)
 
     @staticmethod
     def from_iter(iterable, **kwargs):
