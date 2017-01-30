@@ -170,14 +170,14 @@ def _parse_sam_strings(strings, strand=None):
     return reads
 
 
-def read_bam_into_groups(bam, reference, strand, groups, group_tag='ME'):
+def read_bam_into_stranded_groups(bam, reference, strand, groups, group_tag='ME'):
     """
     Read a section of a bam file and return as a generator of :class:`ReadGroup`.
     One :class:`ReadGroup` is returned per group.
     Reads are sorted into any group for which there tag starts with the group name.
 
-    :param input_bam: The path to an indexed sorted Bam file
-    :type input_bam: str
+    :param bam: The path to an indexed sorted Bam file
+    :type bam: str
     :param reference: Select reads from a single reference or slice of reference
     :type reference: str
     :param strand: Select reads that are found on a specific strand, '+' or '-'
@@ -200,6 +200,20 @@ def read_bam_into_groups(bam, reference, strand, groups, group_tag='ME'):
                                 reference=reference,
                                 grouping=group,
                                 source=os.path.basename(bam)) for group, reads in zip(groups, generator))
+
+
+def read_bam_into_groups(bam, reference, groups, group_tag='ME'):
+    """
+
+    :param bam:
+    :param reference:
+    :param groups:
+    :param group_tag:
+    :return:
+    """
+    read_groups = zip(read_bam_into_stranded_groups(bam, reference, '+', groups, group_tag='ME'),
+                      read_bam_into_stranded_groups(bam, reference, '-', groups, group_tag='ME'))
+    return (ReadGroup.append(forward, reverse) for forward, reverse in read_groups)
 
 if __name__ == '__main__':
     pass
