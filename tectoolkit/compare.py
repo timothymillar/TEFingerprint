@@ -232,6 +232,8 @@ class FingerprintComparison(object):
         :type reference_length: int
         """
         self.fingerprints = fingerprints
+
+        # assert that fingerprints are comparable
         for f in fingerprints:
             assert type(f) == Fingerprint
         assert len({f.strand for f in fingerprints if f.strand is not None}) == 1
@@ -240,37 +242,56 @@ class FingerprintComparison(object):
                      f.eps[0],
                      f.eps[-1],
                      f.min_reads) for f in fingerprints}) == 1
+
+        # inherit common attributes
         self.reference = self.fingerprints[0].reference
         self.family = self.fingerprints[0].family
-        self.strand = self.fingerprints[0].strand
         self.eps = self.fingerprints[0].eps
         self.min_reads = self.fingerprints[0].min_reads
-        self.bin_loci = self._identify_bins()
-        self._buffer_bins(buffer, reference_length)
 
-    def _identify_bins(self):
-        """
-        Identifies bins (loci) in which to compare fingerprints from different samples (bam files).
-        Bins are calculated by merging the overlapping fingerprints from all samples.
+        # create comparison bins
+        self.forward_bins = reduce(UnivariateLoci.append, [f.forward for f in self.fingerprints])
+        self.forward_bins.melt()
+        self.reverse_bins = reduce(UnivariateLoci.append, [f.reverse for f in self.fingerprints])
+        self.reverse_bins.melt()
 
-        :return: The union of loci among compared fingerprints
-        :rtype: :class:`UnivariateLoci`
-        """
-        loci = reduce(UnivariateLoci.append, [f.loci for f in self.fingerprints])
-        loci.melt()
-        return loci
-
-    def _buffer_bins(self, buffer, reference_length):
-        """
-        Expands comparative bins by buffer zone.
-        """
+        # buffer comparison bins
         if buffer == 0:
             pass
         else:
-            self.bin_loci.loci['start'] -= buffer
-            self.bin_loci.loci['stop'] += buffer
-            self.bin_loci.loci['start'][self.bin_loci.loci['start'] <= 0] = 0
-            self.bin_loci.loci['stop'][self.bin_loci.loci['stop'] >= reference_length] = reference_length
+            # buffer forward
+            self.forward_bins.loci['start'] -= buffer
+            self.forward_bins.loci['stop'] += buffer
+            self.forward_bins.loci['start'][self.forward_bins.loci['start'] <= 0] = 0
+            self.forward_bins.loci['stop'][self.forward_bins.loci['stop'] >= reference_length] = reference_length
+
+            # buffer reverse
+            self.reverse_bins.loci['start'] -= buffer
+            self.reverse_bins.loci['stop'] += buffer
+            self.reverse_bins.loci['start'][self.reverse_bins.loci['start'] <= 0] = 0
+            self.reverse_bins.loci['stop'][self.reverse_bins.loci['stop'] >= reference_length] = reference_length
+
+    def _compare(self):
+        sources = (f.source for f in self.fingerprints)
+        forward_dicts, reverse_dicts = zip(*tuple(f.feature_dicts for f in self.fingerprints))
+
+        strand = '+'
+        for start, end in self.forward_bins:
+            bin_id = "bin_{0}_{1}_{2}_{3}".format(self.family, self.reference, strand, start)
+
+            read_presence = tuple(f.reads.forward.within_locus(start, end) for f in self.fingerprints)
+            cluster_presence = tuple(f.forward.within_locus(start, end) for f in self.fingerprints)
+
+            for index, boolean in enumerate(cluster_presence):
+                if boolean:
+                    forward_dicts[index]["Parent"] = bin_id
+
+            bin_dict = {'seqid': self.reference,
+                        'start': start,
+                        'end': end,
+                        'strand': strand,
+                        'ID': bin_id,
+                        'Name': self.family}
 
     def _compare_bin(self, start, end):
         """
