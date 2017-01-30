@@ -102,7 +102,7 @@ class StrandReads(object):
         """
         self.reads.sort(order=order)
 
-    def subset_by_locus(self, start, stop, margin=0, end='tip'):
+    def within_locus(self, start, stop, margin=0, end='tip'):
         """
         Returns a new ReadGroup object containing (the specified end of) all reads within specified (inclusive) bounds.
 
@@ -122,12 +122,14 @@ class StrandReads(object):
         stop += margin
         if end == 'both':
             # 'tip' may be smaller or larger than 'tail'
-            reads = self.reads
-            reads = reads[np.logical_and(reads['tip'] >= start, reads['tip'] <= stop)]
-            reads = reads[np.logical_and(reads['tail'] >= start, reads['tail'] <= stop)]
+            bindex = np.logical_and(self.reads['tip'] >= start, self.reads['tip'] <= stop)
+            return bindex and np.logical_and(self.reads['tail'] >= start, self.reads['tail'] <= stop)
         else:
-            reads = self.reads[np.logical_and(self.reads[end] >= start, self.reads[end] <= stop)]
-        return StrandReads(reads, strand=self.strand)
+            return np.logical_and(self.reads[end] >= start, self.reads[end] <= stop)
+
+    def subset_by_locus(self, start, stop, margin=0, end='tip'):
+        bindex = self.within_locus(start, stop, margin=0, end='tip')
+        return StrandReads(self.reads[bindex], strand=self.strand)
 
     @staticmethod
     def append(x, y):
@@ -265,6 +267,17 @@ class UnivariateLoci(object):
         else:
             self.loci = np.fromiter(_melter(self.loci), dtype=UnivariateLoci.DTYPE_ULOCUS)
 
+    def within_locus(self, start, stop, margin=0, end='both'):
+        """
+        """
+        assert end in {'start', 'stop', 'both'}
+        start -= margin
+        stop += margin
+        if end == 'both':
+            return np.logical_and(self.loci['start'] >= start, self.loci['stop'] <= stop)
+        else:
+            return np.logical_and(self.loci[end] >= start, self.loci[end] <= stop)
+
     def subset_by_locus(self, start, stop, margin=0, end='both'):
         """
         Returns a new ReadGroup object containing (the specified end of) all reads within specified (inclusive) bounds.
@@ -280,14 +293,8 @@ class UnivariateLoci(object):
         :return: The subset of reads that fall within the specified bounds
         :rtype: :class:`StrandReads`
         """
-        assert end in {'start', 'stop', 'both'}
-        start -= margin
-        stop += margin
-        if end == 'both':
-            loci = self.loci[np.logical_and(self.loci['start'] >= start, self.loci['stop'] <= stop)]
-        else:
-            loci = self.loci[np.logical_and(self.loci[end] >= start, self.loci[end] <= stop)]
-        return UnivariateLoci(loci, strand=self.strand)
+        bindex = self.within_locus(start, stop, margin=0, end='both')
+        return UnivariateLoci(self.loci[bindex], strand=self.strand)
 
     @classmethod
     def from_iter(cls, iterable, strand):

@@ -3,7 +3,7 @@
 import pytest
 import numpy as np
 import numpy.testing as npt
-from tectoolkit.reads import ReadGroup, UnivariateLoci
+from tectoolkit.reads import StrandReads, UnivariateLoci
 
 
 class TestReadGroup:
@@ -12,8 +12,8 @@ class TestReadGroup:
         Test for __init__ method.
         Read array should be copied.
         """
-        input_reads = np.array([(8, 2, '+', 'a'), (5, 3, '+', 'b'), (7, 5, '+', 'c')], dtype=ReadGroup.DTYPE_READ)
-        query = ReadGroup(input_reads)
+        input_reads = np.array([(8, 2, '+', 'a'), (5, 3, '+', 'b'), (7, 5, '+', 'c')], dtype=StrandReads.DTYPE_READ)
+        query = StrandReads(input_reads)
         assert query.reads is not input_reads
         npt.assert_array_equal(query.reads, input_reads)
 
@@ -22,17 +22,17 @@ class TestReadGroup:
         Test for __iter__ method.
         Iterating over :class:`ReadGroup` should iterate of the the wrapped numpy array of reads.
         """
-        input_reads = np.array([(8, 2, '+', 'a'), (5, 3, '+', 'b'), (7, 5, '+', 'c')], dtype=ReadGroup.DTYPE_READ)
-        query = ReadGroup(input_reads)
-        npt.assert_array_equal(np.array([r for r in query], dtype=ReadGroup.DTYPE_READ), input_reads)
+        input_reads = np.array([(8, 2, '+', 'a'), (5, 3, '+', 'b'), (7, 5, '+', 'c')], dtype=StrandReads.DTYPE_READ)
+        query = StrandReads(input_reads)
+        npt.assert_array_equal(np.array([r for r in query], dtype=StrandReads.DTYPE_READ), input_reads)
 
     def test__getitem__(self):
         """
         Test for __getitem__ method.
         Indexing should pass through to the wrapped numpy array of reads.
         """
-        input_reads = np.array([(8, 2, '+', 'a'), (5, 3, '+', 'b'), (7, 5, '+', 'c')], dtype=ReadGroup.DTYPE_READ)
-        query = ReadGroup(input_reads)
+        input_reads = np.array([(8, 2, '+', 'a'), (5, 3, '+', 'b'), (7, 5, '+', 'c')], dtype=StrandReads.DTYPE_READ)
+        query = StrandReads(input_reads)
         npt.assert_array_equal(query['tip'], np.array([8, 5, 7]))
         npt.assert_array_equal(query['name'], np.array(['a', 'b', 'c']))
         npt.assert_array_equal(query[0:2], input_reads[0:2])
@@ -43,8 +43,8 @@ class TestReadGroup:
         Test for __len__ method.
         Should return len wrapped numpy array of reads.
         """
-        input_reads = np.array([(8, 2, '+', 'a'), (5, 3, '+', 'b'), (7, 5, '+', 'c')], dtype=ReadGroup.DTYPE_READ)
-        query = ReadGroup(input_reads)
+        input_reads = np.array([(8, 2, '+', 'a'), (5, 3, '+', 'b'), (7, 5, '+', 'c')], dtype=StrandReads.DTYPE_READ)
+        query = StrandReads(input_reads)
         assert len(query) == 3
 
     @pytest.mark.parametrize("iterable",
@@ -57,8 +57,8 @@ class TestReadGroup:
         Test factory for method from_iter using generators.
         """
         generator = (item for item in iterable)
-        query = ReadGroup.from_iter(generator)
-        answer = ReadGroup(np.array(iterable, dtype=ReadGroup.DTYPE_READ))
+        query = StrandReads.from_iter(generator)
+        answer = StrandReads(np.array(iterable, dtype=StrandReads.DTYPE_READ))
         query.sort()
         answer.sort()
         npt.assert_array_equal(query, answer)
@@ -85,9 +85,9 @@ class TestReadGroup:
         Test factory for method subset_by_locus.
         Tests for subsetting by 'tip', 'tail' or 'both' end(s) of reads.
         """
-        query = ReadGroup.from_iter(query)
+        query = StrandReads.from_iter(query)
         query.sort()
-        answer = ReadGroup.from_iter(answer)
+        answer = StrandReads.from_iter(answer)
         answer.sort()
         npt.assert_array_equal(query.subset_by_locus(*locus, end=end), answer)
 

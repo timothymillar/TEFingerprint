@@ -216,7 +216,7 @@ class Fingerprint(object):
                 if np.argmin(abs(self.forward['stop'] - self.reverse['start'][j])) == i:
                     yield (i, j)
 
-    def _loci_features(self, loci):
+    def _strand_feature_dicts(self, loci):
         """"""
         strand = loci.strand
         return [{'seqid': self.reference,
@@ -229,27 +229,24 @@ class Fingerprint(object):
 
     def __format__(self, code):
         assert code in {'gff'}
-        return '\n'.join([str(f) for f in list(self._to_gff())])
+        return '\n'.join([str(f) for f in list(self.feature_dicts())])
 
     def _id(self, strand, start):
         return "{0}_{1}_{2}_{3}".format(self.family, self.reference, strand, start)
 
-    def _to_gff(self):
+    def feature_dicts(self):
         """
         Creates :class:`GffFeature` object for each loci in :class:`Fingerprint`.
 
         :return: A generator of :class:`GffFeature` objects
         :rtype: generator[:class:`GffFeature`]
         """
-        forward_features = self._loci_features(self.forward)
-        reverse_features = self._loci_features(self.reverse)
+        forward_features = self._strand_feature_dicts(self.forward)
+        reverse_features = self._strand_feature_dicts(self.reverse)
         for f, r in self.connections:
             forward_features[f]['pairID'] = reverse_features[r]['ID']
             reverse_features[r]['pairID'] = forward_features[f]['ID']
-        for f in forward_features:
-            yield NestedFeature(**f)
-        for r in reverse_features:
-            yield NestedFeature(**r)
+        return forward_features, reverse_features
 
 if __name__ == '__main__':
     pass
