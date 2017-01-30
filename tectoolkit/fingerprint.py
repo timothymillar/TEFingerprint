@@ -6,7 +6,7 @@ import numpy as np
 from itertools import product
 from multiprocessing import Pool
 from tectoolkit import bam_io
-from tectoolkit.reads import ReadGroup, UnivariateLoci
+from tectoolkit.reads import Reads, UnivariateLoci
 from tectoolkit.gff_io import NestedFeature
 from tectoolkit.cluster import UDC, HUDC
 
@@ -165,7 +165,7 @@ class Fingerprint(object):
         Init method for :class:`Fingerprint`.
 
         :param reads: A collection of reads
-        :type reads: :class:`ReadGroup`
+        :type reads: :class:`Reads`
         :param eps: The eps value(s) to be used in the cluster analysis (:class:`FUDC` for one values
         or :class:`HUDC` for two values)
         :type eps: list[int]
@@ -175,15 +175,14 @@ class Fingerprint(object):
         self.eps = eps
         self.min_reads = min_reads
         self.join_threshold = 500
-        self.forward_reads = reads.forward_reads()
-        self.reverse_reads = reads.reverse_reads()
+        self.reads = reads
         self.reference = reads.reference
         self.family = reads.grouping
         self.source = reads.source
-        self.forward_loci = self._cluster(self.forward_reads)
-        self.reverse_loci = self._cluster(self.reverse_reads)
-        self.loci_joins = np.fromiter(self._loci_joiner(),
-                                      dtype=[('forward_index', np.int64), ('reverse_index', np.int64)])
+        self.forward = self._cluster(self.reads.forward)
+        self.reverse = self._cluster(self.reads.reverse)
+        self.connections = np.fromiter(self._loci_joiner(),
+                                       dtype=[('forward_index', np.int64), ('reverse_index', np.int64)])
 
     def _cluster(self, reads):
         """
@@ -199,26 +198,27 @@ class Fingerprint(object):
             max_eps, min_eps = max(self.eps), min(self.eps)
             hudc = HUDC(self.min_reads, max_eps, min_eps)
             hudc.fit(reads['tip'])
-            return UnivariateLoci.from_iter(hudc.cluster_extremities())
+            return UnivariateLoci.from_iter(hudc.cluster_extremities(), reads.strand)
         elif len(self.eps) == 1:
             # use flat clustering method
             eps = max(self.eps)
             fudc = UDC(self.min_reads, eps)
             fudc.fit(reads['tip'])
-            return UnivariateLoci.from_iter(fudc.cluster_extremities())
+            return UnivariateLoci.from_iter(fudc.cluster_extremities(), reads.strand)
         else:
             pass
 
     def _loci_joiner(self):
-        for i, i_value in enumerate(self.forward_loci['stop']):
-            dists = abs(self.reverse_loci['start'] - i_value)
+        for i, i_value in enumerate(self.forward['stop']):
+            dists = abs(self.reverse['start'] - i_value)
             if np.min(dists) < self.join_threshold:
                 j = np.argmin(dists)
-                if np.argmin(abs(self.forward_loci['stop'] - self.reverse_loci['start'][j])) == i:
+                if np.argmin(abs(self.forward['stop'] - self.reverse['start'][j])) == i:
                     yield (i, j)
 
-    def _loci_features(self, loci, strand):
+    def _loci_features(self, loci):
         """"""
+        strand = loci.strand
         return [{'seqid': self.reference,
                  'start': start,
                  'end': end,
@@ -241,9 +241,9 @@ class Fingerprint(object):
         :return: A generator of :class:`GffFeature` objects
         :rtype: generator[:class:`GffFeature`]
         """
-        forward_features = self._loci_features(self.forward_loci, '+')
-        reverse_features = self._loci_features(self.reverse_loci, '-')
-        for f, r in self.loci_joins:
+        forward_features = self._loci_features(self.forward)
+        reverse_features = self._loci_features(self.reverse)
+        for f, r in self.connections:
             forward_features[f]['pairID'] = reverse_features[r]['ID']
             reverse_features[r]['pairID'] = forward_features[f]['ID']
         for f in forward_features:
