@@ -4,7 +4,7 @@ import os
 import re
 import pysam
 import numpy as np
-from tectoolkit.reads import ReadGroup
+from tectoolkit.reads import Reads, StrandReads
 
 
 def read_bam_strings(input_bam, reference='', strand='.'):
@@ -147,6 +147,7 @@ def _parse_sam_strings(strings, strand=None):
     :return: An iterable of mapped SAM read positions and names
     :rtype: generator[(int, int, str, str)]
     """
+    assert strand in ['+', '-']
 
     def _parse_sam_string(string, strand):
         attr = string.split("\t")
@@ -154,23 +155,21 @@ def _parse_sam_strings(strings, strand=None):
         start = int(attr[3])
         length = _cigar_mapped_length(attr[5])
         end = start + length - 1  # 1 based indexing used in SAM format
-        if strand is None:
-            strand = flag_orientation(int(attr[1]))
         if strand == '+':
             tip = end
             tail = start
-            return tip, tail, strand, name
+            return tip, tail, name
         elif strand == '-':
             tip = start
             tail = end
-            return tip, tail, strand, name
+            return tip, tail, name
 
     assert strand in ['+', '-', None]
     reads = (_parse_sam_string(string, strand) for string in strings)
     return reads
 
 
-def _read_bam_into_stranded_groups(bam, reference, strand, groups, group_tag='ME'):
+def _read_bam_into_strand_reads_by_group(bam, reference, strand, groups, group_tag='ME'):
     """
     Read a section of a bam file and return as a generator of :class:`ReadGroup`.
     One :class:`ReadGroup` is returned per group.
@@ -195,11 +194,12 @@ def _read_bam_into_stranded_groups(bam, reference, strand, groups, group_tag='ME
     group_tag = '\t' + group_tag + ':[Zi]:'
     tags = np.array([re.split(group_tag, s)[1].split('\t')[0] for s in strings])
     generator = (strings[tags.astype('U{0}'.format(len(group))) == group] for group in groups)
-    generator = (_parse_sam_strings(strings, strand=strand) for strings in generator)
-    return (ReadGroup.from_iter(reads,
-                                reference=reference,
-                                grouping=group,
-                                source=os.path.basename(bam)) for group, reads in zip(groups, generator))
+    generator = (_parse_sam_strings(strings, strand) for strings in generator)
+    return (StrandReads.from_iter(reads,
+                                  strand=strand,
+                                  reference=reference,
+                                  grouping=group,
+                                  source=os.path.basename(bam)) for group, reads in zip(groups, generator))
 
 
 def read_bam_into_groups(bam, reference, groups, group_tag='ME'):
@@ -211,9 +211,9 @@ def read_bam_into_groups(bam, reference, groups, group_tag='ME'):
     :param group_tag:
     :return:
     """
-    read_groups = zip(_read_bam_into_stranded_groups(bam, reference, '+', groups, group_tag=group_tag),
-                      _read_bam_into_stranded_groups(bam, reference, '-', groups, group_tag=group_tag))
-    return (ReadGroup.append(forward, reverse) for forward, reverse in read_groups)
+    strand_groups = zip(_read_bam_into_strand_reads_by_group(bam, reference, '+', groups, group_tag=group_tag),
+                        _read_bam_into_strand_reads_by_group(bam, reference, '-', groups, group_tag=group_tag))
+    return (Reads(forward, reverse) for forward, reverse in strand_groups)
 
 if __name__ == '__main__':
     pass
