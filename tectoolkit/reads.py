@@ -3,7 +3,24 @@
 import numpy as np
 
 
-class ReadGroup(object):
+class Reads(object):
+
+    def __init__(self, forward, reverse):
+        assert isinstance(forward, StrandReads)
+        assert isinstance(reverse, StrandReads)
+        assert forward.strand == '+'
+        assert reverse.strand == '-'
+        assert forward.reference == reverse.reference
+        assert forward.source == reverse.source
+        assert forward.grouping == reverse.grouping
+        self.forward = forward
+        self.reverse = reverse
+        self.source = forward.source
+        self.reference = forward.reference
+        self.grouping = forward.grouping
+
+
+class StrandReads(object):
     """
     A collection of mapped SAM read positions. This class does not contain read sequences.
 
@@ -18,10 +35,9 @@ class ReadGroup(object):
     """
     DTYPE_READ = np.dtype([('tip', np.int64),
                            ('tail', np.int64),
-                           ('strand', np.str_, 1),
                            ('name', np.str_, 254)])
 
-    def __init__(self, reads=None, reference=None, grouping=None, source=None):
+    def __init__(self, reads=None, reference=None, strand=None, grouping=None, source=None):
         """
         Init method for :class:`ReadGroup`.
 
@@ -34,12 +50,14 @@ class ReadGroup(object):
         :param source: The (optional) name of the source file that reads were imported from
         :type source: str
         """
+        assert strand in ['+', '-']
         if reads is None:
             reads = []
-        self.reads = np.array(reads, dtype=ReadGroup.DTYPE_READ, copy=True)
+        self.reads = np.array(reads, dtype=StrandReads.DTYPE_READ, copy=True)
         self.reference = reference
         self.grouping = grouping
         self.source = source
+        self.strand = strand
 
     def __iter__(self):
         """
@@ -84,28 +102,6 @@ class ReadGroup(object):
         """
         self.reads.sort(order=order)
 
-    def strand(self):
-        """
-        Identifies the consensus strand of all reads in the group.
-
-        :return: '+', '-' or '.' respectively if all reads are on forwards, reverse or combination of strands
-        :rtype: str
-        """
-        if len(self.reads) > 0:
-            variation = set(self.reads['strand'])
-            if len(variation) > 1:
-                return '.'
-            else:
-                return variation.pop()
-        else:
-            return None
-
-    def forward_reads(self):
-        return ReadGroup(self.reads[self.reads['strand'] == '+'])
-
-    def reverse_reads(self):
-        return ReadGroup(self.reads[self.reads['strand'] == '-'])
-
     def subset_by_locus(self, start, stop, margin=0, end='tip'):
         """
         Returns a new ReadGroup object containing (the specified end of) all reads within specified (inclusive) bounds.
@@ -119,7 +115,7 @@ class ReadGroup(object):
         :type end: str
 
         :return: The subset of reads that fall within the specified bounds
-        :rtype: :class:`ReadGroup`
+        :rtype: :class:`StrandReads`
         """
         assert end in {'tip', 'tail', 'both'}
         start -= margin
@@ -131,7 +127,7 @@ class ReadGroup(object):
             reads = reads[np.logical_and(reads['tail'] >= start, reads['tail'] <= stop)]
         else:
             reads = self.reads[np.logical_and(self.reads[end] >= start, self.reads[end] <= stop)]
-        return ReadGroup(reads)
+        return StrandReads(reads, strand=self.strand)
 
     @staticmethod
     def append(x, y):
@@ -144,7 +140,12 @@ class ReadGroup(object):
         assert x.reference == y.reference
         assert x.grouping == y.grouping
         assert x.source == y.source
-        return ReadGroup(np.append(x.reads, y.reads), reference=x.reference, grouping=x.grouping, source=x.source)
+        assert x.strand == y.strand
+        return StrandReads(np.append(x.reads, y.reads),
+                           reference=x.reference,
+                           grouping=x.grouping,
+                           source=x.source,
+                           strand=x.strand)
 
     @staticmethod
     def from_iter(iterable, **kwargs):
@@ -155,11 +156,11 @@ class ReadGroup(object):
         :type iterable: iter[(int, int, str, str)]
 
         :return: An instance of :class:`ReadGroup`
-        :rtype: :class:`ReadGroup`
+        :rtype: :class:`StrandReads`
         """
-        reads = np.fromiter(iterable, dtype=ReadGroup.DTYPE_READ)
+        reads = np.fromiter(iterable, dtype=StrandReads.DTYPE_READ)
         reads.sort(order=('tip', 'tail'))
-        return ReadGroup(reads, **kwargs)
+        return StrandReads(reads, **kwargs)
 
 
 class UnivariateLoci(object):
@@ -175,7 +176,7 @@ class UnivariateLoci(object):
     DTYPE_ULOCUS = np.dtype([('start', np.int64),
                              ('stop', np.int64)])
 
-    def __init__(self, loci=None):
+    def __init__(self, loci=None, strand=None):
         """
         Init method for :class:`ReadLoci`.
 
@@ -185,6 +186,8 @@ class UnivariateLoci(object):
         if loci is None:
             loci = []
         self.loci = np.array(loci, dtype=UnivariateLoci.DTYPE_ULOCUS, copy=True)
+        assert strand in ['+', '-']
+        self.strand = strand
 
     def __iter__(self):
         """
@@ -275,7 +278,7 @@ class UnivariateLoci(object):
         :type end: str
 
         :return: The subset of reads that fall within the specified bounds
-        :rtype: :class:`ReadGroup`
+        :rtype: :class:`StrandReads`
         """
         assert end in {'start', 'stop', 'both'}
         start -= margin
@@ -284,10 +287,10 @@ class UnivariateLoci(object):
             loci = self.loci[np.logical_and(self.loci['start'] >= start, self.loci['stop'] <= stop)]
         else:
             loci = self.loci[np.logical_and(self.loci[end] >= start, self.loci[end] <= stop)]
-        return UnivariateLoci(loci)
+        return UnivariateLoci(loci, strand=self.strand)
 
     @classmethod
-    def from_iter(cls, iterable):
+    def from_iter(cls, iterable, strand):
         """
         Construct an instance of :class:`ReadLoci` form an iterable.
 
@@ -297,7 +300,7 @@ class UnivariateLoci(object):
         :return: Instance of :class:`ReadLoci`
         :rtype: :class:`UnivariateLoci`
         """
-        loci = UnivariateLoci(np.fromiter(iterable, dtype=UnivariateLoci.DTYPE_ULOCUS))
+        loci = UnivariateLoci(np.fromiter(iterable, dtype=UnivariateLoci.DTYPE_ULOCUS), strand=strand)
         loci.sort()
         return loci
 
@@ -314,6 +317,7 @@ class UnivariateLoci(object):
         :return: Instance of :class:`ReadLoci`
         :rtype: :class:`UnivariateLoci`
         """
+        assert x.strand == y.strand
         loci = UnivariateLoci(np.append(x.loci, y.loci))
         loci.sort()
         return loci
