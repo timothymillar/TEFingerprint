@@ -170,7 +170,7 @@ def _parse_sam_strings(strings, strand=None):
     return reads
 
 
-def read_bam_into_stranded_groups(bam, reference, strand, groups, group_tag='ME'):
+def _read_bam_into_stranded_groups(bam, reference, strand, groups, group_tag='ME'):
     """
     Read a section of a bam file and return as a generator of :class:`ReadGroup`.
     One :class:`ReadGroup` is returned per group.
@@ -211,8 +211,8 @@ def read_bam_into_groups(bam, reference, groups, group_tag='ME'):
     :param group_tag:
     :return:
     """
-    read_groups = zip(read_bam_into_stranded_groups(bam, reference, '+', groups, group_tag='ME'),
-                      read_bam_into_stranded_groups(bam, reference, '-', groups, group_tag='ME'))
+    read_groups = zip(_read_bam_into_stranded_groups(bam, reference, '+', groups, group_tag=group_tag),
+                      _read_bam_into_stranded_groups(bam, reference, '-', groups, group_tag=group_tag))
     return (ReadGroup.append(forward, reverse) for forward, reverse in read_groups)
 
 if __name__ == '__main__':
