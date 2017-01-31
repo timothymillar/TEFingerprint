@@ -7,7 +7,7 @@ from functools import reduce
 from itertools import product
 from multiprocessing import Pool
 from tectoolkit import bam_io
-from tectoolkit.reads import UnivariateLoci
+from tectoolkit.reads import StrandLoci
 from tectoolkit.gff_io import GffFeature
 from tectoolkit.fingerprint import Fingerprint
 
@@ -241,9 +241,9 @@ class FingerprintComparison(object):
 
         # create comparison bins
         self.strand = {}
-        self.strand['+'] = reduce(UnivariateLoci.append, [f.strand['+'] for f in self.fingerprints])
+        self.strand['+'] = reduce(StrandLoci.append, [f.strand['+'] for f in self.fingerprints])
         self.strand['+'].melt()
-        self.strand['-'] = reduce(UnivariateLoci.append, [f.strand['-'] for f in self.fingerprints])
+        self.strand['-'] = reduce(StrandLoci.append, [f.strand['-'] for f in self.fingerprints])
         self.strand['-'].melt()
 
         # buffer comparison bins

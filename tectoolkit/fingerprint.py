@@ -6,7 +6,7 @@ import numpy as np
 from itertools import product
 from multiprocessing import Pool
 from tectoolkit import bam_io
-from tectoolkit.reads import Reads, UnivariateLoci
+from tectoolkit.reads import Reads, StrandLoci
 from tectoolkit.gff_io import GffFeature
 from tectoolkit.cluster import UDC, HUDC
 
@@ -187,20 +187,20 @@ class Fingerprint(object):
         If two eps values were passed to the instance of :class:`Fingerprint` the :class:`HUDC` algorithm is used.
 
         :return: Loci identified by the clustering algorithm
-        :rtype: :class:`UnivariateLoci`
+        :rtype: :class:`StrandLoci`
         """
         if len(self.eps) == 2:
             # use hierarchical clustering method
             max_eps, min_eps = max(self.eps), min(self.eps)
             hudc = HUDC(self.min_reads, max_eps, min_eps)
             hudc.fit(reads['tip'])
-            return UnivariateLoci.from_iter(hudc.cluster_extremities(), reads.strand)
+            return StrandLoci.from_iter(hudc.cluster_extremities(), reads.strand)
         elif len(self.eps) == 1:
             # use flat clustering method
             eps = max(self.eps)
             fudc = UDC(self.min_reads, eps)
             fudc.fit(reads['tip'])
-            return UnivariateLoci.from_iter(fudc.cluster_extremities(), reads.strand)
+            return StrandLoci.from_iter(fudc.cluster_extremities(), reads.strand)
         else:
             pass
 

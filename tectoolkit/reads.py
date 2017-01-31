@@ -177,7 +177,7 @@ class StrandReads(object):
         return StrandReads(reads, **kwargs)
 
 
-class UnivariateLoci(object):
+class StrandLoci(object):
     """
     A collection of univariate loci that relate to reads mapped to a reference genome.
 
@@ -199,7 +199,7 @@ class UnivariateLoci(object):
         """
         if loci is None:
             loci = []
-        self.loci = np.array(loci, dtype=UnivariateLoci.DTYPE_ULOCUS, copy=True)
+        self.loci = np.array(loci, dtype=StrandLoci.DTYPE_ULOCUS, copy=True)
         assert strand in {'+', '-'}
         self.strand = strand
 
@@ -277,7 +277,7 @@ class UnivariateLoci(object):
         if len(self.loci) == 0:
             pass
         else:
-            self.loci = np.fromiter(_melter(self.loci), dtype=UnivariateLoci.DTYPE_ULOCUS)
+            self.loci = np.fromiter(_melter(self.loci), dtype=StrandLoci.DTYPE_ULOCUS)
 
     def within_locus(self, start, stop, margin=0, end='both'):
         """
@@ -306,7 +306,7 @@ class UnivariateLoci(object):
         :rtype: :class:`StrandReads`
         """
         bindex = self.within_locus(start, stop, margin=margin, end=end)
-        return UnivariateLoci(self.loci[bindex], strand=self.strand)
+        return StrandLoci(self.loci[bindex], strand=self.strand)
 
     @classmethod
     def from_iter(cls, iterable, strand=None):
@@ -317,9 +317,9 @@ class UnivariateLoci(object):
         :type iterable: iterable[(int, int)]
 
         :return: Instance of :class:`ReadLoci`
-        :rtype: :class:`UnivariateLoci`
+        :rtype: :class:`StrandLoci`
         """
-        loci = UnivariateLoci(np.fromiter(iterable, dtype=UnivariateLoci.DTYPE_ULOCUS), strand=strand)
+        loci = StrandLoci(np.fromiter(iterable, dtype=StrandLoci.DTYPE_ULOCUS), strand=strand)
         loci.sort()
         return loci
 
@@ -331,18 +331,18 @@ class UnivariateLoci(object):
         :param x: Instance of :class:`ReadLoci`
         :type x: :class:`ReadLoci`
         :param y: Instance of :class:`ReadLoci`
-        :type y: :class:`UnivariateLoci`
+        :type y: :class:`StrandLoci`
 
         :return: Instance of :class:`ReadLoci`
-        :rtype: :class:`UnivariateLoci`
+        :rtype: :class:`StrandLoci`
         """
         if len(x) == 0:
-            return UnivariateLoci(y.loci, strand=y.strand)
+            return StrandLoci(y.loci, strand=y.strand)
         elif len(y) == 0:
-            return UnivariateLoci(x.loci, strand=x.strand)
+            return StrandLoci(x.loci, strand=x.strand)
         else:
             assert x.strand == y.strand
-            loci = UnivariateLoci(np.append(x.loci, y.loci), strand=x.strand)
+            loci = StrandLoci(np.append(x.loci, y.loci), strand=x.strand)
             loci.sort()
             return loci
 
