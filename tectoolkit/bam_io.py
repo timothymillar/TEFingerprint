@@ -141,7 +141,7 @@ def _parse_sam_strings(strings, strand=None):
 
     :param strings: A collection of SAM formatted strings
     :type strings: iterable[str]
-    :param strand: Strand ('+' or '-') of all reads (if known)
+    :param strand: Strand ('+' or '-') of all reads
     :type strand: str
 
     :return: An iterable of mapped SAM read positions and names
@@ -164,7 +164,6 @@ def _parse_sam_strings(strings, strand=None):
             tail = end
             return tip, tail, name
 
-    assert strand in ['+', '-', None]
     reads = (_parse_sam_string(string, strand) for string in strings)
     return reads
 
