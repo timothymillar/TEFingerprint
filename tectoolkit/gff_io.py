@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 
 
-class NestedFeature(object):
+class GffFeature(object):
     """"""
     def __init__(self,
                  seqid='.',
@@ -33,13 +33,6 @@ class NestedFeature(object):
         else:
             return'.'
 
-    def add_children(self, *args):
-        for child in args:
-            assert isinstance(child, NestedFeature)
-            assert "ID" in self.tags
-            child.tags["Parent"] = self.tags["ID"]
-            self.children.append(child)
-
     def __str__(self):
         template = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}"
         return template.format(self.seqid,
@@ -51,30 +44,6 @@ class NestedFeature(object):
                                self.strand,
                                self.phase,
                                self._parse_attributes(self.tags))
-
-    def _str_nested(self):
-        return [self.__str__()] + [child._str_nested() for child in self.children]
-
-    def _flatten(self, item):
-        """
-
-        :param item:
-        :return:
-        """
-        if isinstance(item, list):
-            for element in item:
-                for item in self._flatten(element):
-                    yield item
-        else:
-            yield item
-
-    def __format__(self, code):
-        assert code in {'nested', 'single'}
-        if code == "nested":
-            return '\n'.join(self._flatten(self._str_nested()))
-        else:
-            return self.__str__()
-
 
 if __name__ == '__main__':
     pass
