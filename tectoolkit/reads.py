@@ -5,7 +5,19 @@ import numpy as np
 
 class Reads(object):
 
-    def __init__(self, forward, reverse):
+    def __init__(self, forward=None, reverse=None):
+        if forward is None:
+            forward = StrandReads(np.array([], dtype=StrandReads.DTYPE_READ),
+                                  reference=reverse.reference,
+                                  grouping=reverse.grouping,
+                                  source=reverse.source,
+                                  strand='+')
+        if reverse is None:
+            reverse = StrandReads(np.array([], dtype=StrandReads.DTYPE_READ),
+                                  reference=forward.reference,
+                                  grouping=forward.grouping,
+                                  source=forward.source,
+                                  strand='-')
         assert isinstance(forward, StrandReads)
         assert isinstance(reverse, StrandReads)
         assert forward.strand == '+'
