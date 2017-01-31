@@ -305,7 +305,7 @@ class UnivariateLoci(object):
         :return: The subset of reads that fall within the specified bounds
         :rtype: :class:`StrandReads`
         """
-        bindex = self.within_locus(start, stop, margin=0, end='both')
+        bindex = self.within_locus(start, stop, margin=margin, end=end)
         return UnivariateLoci(self.loci[bindex], strand=self.strand)
 
     @classmethod

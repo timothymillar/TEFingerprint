@@ -105,7 +105,7 @@ class TestUnivariateLoci:
                                (4, 4),
                                (3, 99),
                                (1, 1)], dtype=UnivariateLoci.DTYPE_ULOCUS)
-        query = UnivariateLoci(input_loci)
+        query = UnivariateLoci(input_loci, strand='+')
         query.sort()
         answer = np.array([(1, 1),
                            (2, 4),
@@ -121,9 +121,9 @@ class TestUnivariateLoci:
         """
         loci = [(3, 6), (6, 8), (7, 9), (10, 12), (13, 13), (15, 25), (16, 17), (19, 20)]
         iterable = (locus for locus in loci)
-        query = UnivariateLoci.from_iter(iterable)
+        query = UnivariateLoci.from_iter(iterable, strand='+')
         query.sort()
-        answer = UnivariateLoci(np.array(loci, dtype=UnivariateLoci.DTYPE_ULOCUS))
+        answer = UnivariateLoci(np.array(loci, dtype=UnivariateLoci.DTYPE_ULOCUS), strand='+')
         npt.assert_array_equal(query, answer)
 
     @pytest.mark.parametrize("loci,melted_loci",
@@ -154,7 +154,7 @@ class TestUnivariateLoci:
         """
         query = UnivariateLoci.from_iter(loci, strand='+')  # strand does not matter
         query.melt()  # melt should automatically sort loci
-        answer = UnivariateLoci.from_iter(melted_loci)
+        answer = UnivariateLoci.from_iter(melted_loci, strand='+')
         answer.sort()
         npt.assert_array_equal(query, answer)
 
@@ -174,9 +174,9 @@ class TestUnivariateLoci:
         """
         Test factory for method subset_by_locus.
         """
-        query = UnivariateLoci.from_iter(loci)
+        query = UnivariateLoci.from_iter(loci, strand='+')
         query.sort()
-        subset = UnivariateLoci.from_iter(subset)
+        subset = UnivariateLoci.from_iter(subset, strand='+')
         subset.sort()
         npt.assert_array_equal(query.subset_by_locus(*locus, end=end), subset)
 
@@ -184,8 +184,9 @@ class TestUnivariateLoci:
         """
         Test for method append.
         """
-        x = UnivariateLoci.from_iter([(3, 9), (10, 12), (13, 13), (15, 25)])
-        y = UnivariateLoci.from_iter([(4, 11), (7, 22), (23, 33), (25, 35)])
+        x = UnivariateLoci.from_iter([(3, 9), (10, 12), (13, 13), (15, 25)], strand='+')
+        y = UnivariateLoci.from_iter([(4, 11), (7, 22), (23, 33), (25, 35)], strand='+')
         query = UnivariateLoci.append(x, y)
-        answer = UnivariateLoci.from_iter([(3, 9), (4, 11), (7, 22), (10, 12), (13, 13), (15, 25), (23, 33), (25, 35)])
+        answer = UnivariateLoci.from_iter([(3, 9), (4, 11), (7, 22), (10, 12), (13, 13), (15, 25), (23, 33), (25, 35)],
+                                          strand='+')
         npt.assert_array_equal(query, answer)
