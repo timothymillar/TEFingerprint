@@ -6,14 +6,14 @@ import numpy.testing as npt
 from tectoolkit.reads import StrandReads, UnivariateLoci
 
 
-class TestReadGroup:
+class TestStrandReads:
     def test__init__(self):
         """
         Test for __init__ method.
         Read array should be copied.
         """
-        input_reads = np.array([(8, 2, '+', 'a'), (5, 3, '+', 'b'), (7, 5, '+', 'c')], dtype=StrandReads.DTYPE_READ)
-        query = StrandReads(input_reads)
+        input_reads = np.array([(8, 2, 'a'), (5, 3, 'b'), (7, 5, 'c')], dtype=StrandReads.DTYPE_READ)
+        query = StrandReads(input_reads, strand='+')
         assert query.reads is not input_reads
         npt.assert_array_equal(query.reads, input_reads)
 
@@ -22,8 +22,8 @@ class TestReadGroup:
         Test for __iter__ method.
         Iterating over :class:`ReadGroup` should iterate of the the wrapped numpy array of reads.
         """
-        input_reads = np.array([(8, 2, '+', 'a'), (5, 3, '+', 'b'), (7, 5, '+', 'c')], dtype=StrandReads.DTYPE_READ)
-        query = StrandReads(input_reads)
+        input_reads = np.array([(8, 2, 'a'), (5, 3, 'b'), (7, 5, 'c')], dtype=StrandReads.DTYPE_READ)
+        query = StrandReads(input_reads, strand='+')
         npt.assert_array_equal(np.array([r for r in query], dtype=StrandReads.DTYPE_READ), input_reads)
 
     def test__getitem__(self):
@@ -31,63 +31,62 @@ class TestReadGroup:
         Test for __getitem__ method.
         Indexing should pass through to the wrapped numpy array of reads.
         """
-        input_reads = np.array([(8, 2, '+', 'a'), (5, 3, '+', 'b'), (7, 5, '+', 'c')], dtype=StrandReads.DTYPE_READ)
-        query = StrandReads(input_reads)
+        input_reads = np.array([(8, 2, 'a'), (5, 3, 'b'), (7, 5, 'c')], dtype=StrandReads.DTYPE_READ)
+        query = StrandReads(input_reads, strand='+')
         npt.assert_array_equal(query['tip'], np.array([8, 5, 7]))
         npt.assert_array_equal(query['name'], np.array(['a', 'b', 'c']))
         npt.assert_array_equal(query[0:2], input_reads[0:2])
-        assert tuple(query[1]) == (5, 3, '+', 'b')
+        assert tuple(query[1]) == (5, 3, 'b')
 
     def test__len__(self):
         """
         Test for __len__ method.
         Should return len wrapped numpy array of reads.
         """
-        input_reads = np.array([(8, 2, '+', 'a'), (5, 3, '+', 'b'), (7, 5, '+', 'c')], dtype=StrandReads.DTYPE_READ)
-        query = StrandReads(input_reads)
+        input_reads = np.array([(8, 2, 'a'), (5, 3, 'b'), (7, 5, 'c')], dtype=StrandReads.DTYPE_READ)
+        query = StrandReads(input_reads, strand='+')
         assert len(query) == 3
 
-    @pytest.mark.parametrize("iterable",
-                             [[(8, 2, '+', 'a')],
-                              [(8, 2, '+', 'a'), (5, 3, '+', 'b'), (7, 5, '+', 'c')],
-                              [(2, 8, '-', 'Gypsy27_a'), (5, 3, '+', 'Gypsy27_b'), (7, 9, '-', 'Gypsy27_c')]],
-                             ids=['single', 'forward', 'mixed'])
-    def test_from_iter(self, iterable):
+    @pytest.mark.parametrize("iterable,strand",
+                             [([(8, 2, 'a')], '+'),
+                              ([(8, 2, 'a'), (5, 3, 'b'), (7, 5, 'c')], '+')],
+                             ids=['single', 'forward'])
+    def test_from_iter(self, iterable, strand):
         """
         Test factory for method from_iter using generators.
         """
         generator = (item for item in iterable)
-        query = StrandReads.from_iter(generator)
-        answer = StrandReads(np.array(iterable, dtype=StrandReads.DTYPE_READ))
+        query = StrandReads.from_iter(generator, strand=strand)
+        answer = StrandReads(np.array(iterable, dtype=StrandReads.DTYPE_READ), strand=strand)
         query.sort()
         answer.sort()
         npt.assert_array_equal(query, answer)
 
     @pytest.mark.parametrize("query,answer,locus,end",
                              # loci contain read tips
-                             [([(8, 2, '+', 'a'), (5, 3, '+', 'b'), (7, 5, '+', 'c')],
-                               [(5, 3, '+', 'b'), (7, 5, '+', 'c')],
+                             [([(8, 2, 'a'), (5, 3, 'b'), (7, 5, 'c')],
+                               [(5, 3, 'b'), (7, 5, 'c')],
                                (5, 7),
                                'tip'),
                               # loci contain read tails
-                              ([(8, 2, '+', 'a'), (5, 3, '+', 'b'), (7, 5, '+', 'c')],
-                               [(5, 3, '+', 'b'), (8, 2, '+', 'a')],
+                              ([(8, 2, 'a'), (5, 3, 'b'), (7, 5, 'c')],
+                               [(5, 3, 'b'), (8, 2, 'a')],
                                (1, 3),
                                'tail'),
                               # loci contain read tips and tails
-                              ([(8, 3, '+', 'a'), (5, 3, '+', 'b'), (5, 2, '+', 'c')],
-                               [(5, 3, '+', 'b')],
+                              ([(8, 3, 'a'), (5, 3, 'b'), (5, 2, 'c')],
+                               [(5, 3, 'b')],
                                (3, 5),
                                'both')],
-                             ids=['tips', 'tails', 'mixed'])
+                             ids=['tips', 'tails', 'both'])
     def test_subset_by_locus(self, query, answer, locus, end):
         """
         Test factory for method subset_by_locus.
         Tests for subsetting by 'tip', 'tail' or 'both' end(s) of reads.
         """
-        query = StrandReads.from_iter(query)
+        query = StrandReads.from_iter(query, strand='+')
         query.sort()
-        answer = StrandReads.from_iter(answer)
+        answer = StrandReads.from_iter(answer, strand='+')
         answer.sort()
         npt.assert_array_equal(query.subset_by_locus(*locus, end=end), answer)
 
@@ -153,7 +152,7 @@ class TestUnivariateLoci:
          * Adjacent loci do not get merged: (7, 9) & (10, 12) -->  (*, 9) & (10, *)
          * Locus may span a single base: (13, 13) --> (13, 13)
         """
-        query = UnivariateLoci.from_iter(loci)
+        query = UnivariateLoci.from_iter(loci, strand='+')  # strand does not matter
         query.melt()  # melt should automatically sort loci
         answer = UnivariateLoci.from_iter(melted_loci)
         answer.sort()

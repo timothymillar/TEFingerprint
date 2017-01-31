@@ -133,13 +133,14 @@ class StrandReads(object):
         stop += margin
         if end == 'both':
             # 'tip' may be smaller or larger than 'tail'
-            bindex = np.logical_and(self.reads['tip'] >= start, self.reads['tip'] <= stop)
-            return bindex and np.logical_and(self.reads['tail'] >= start, self.reads['tail'] <= stop)
+            tip_within = np.logical_and(self.reads['tip'] >= start, self.reads['tip'] <= stop)
+            tail_within = np.logical_and(self.reads['tail'] >= start, self.reads['tail'] <= stop)
+            return np.logical_and(tip_within, tail_within)
         else:
             return np.logical_and(self.reads[end] >= start, self.reads[end] <= stop)
 
     def subset_by_locus(self, start, stop, margin=0, end='tip'):
-        bindex = self.within_locus(start, stop, margin=0, end='tip')
+        bindex = self.within_locus(start, stop, margin=margin, end=end)
         return StrandReads(self.reads[bindex], strand=self.strand)
 
     @staticmethod
@@ -199,7 +200,7 @@ class UnivariateLoci(object):
         if loci is None:
             loci = []
         self.loci = np.array(loci, dtype=UnivariateLoci.DTYPE_ULOCUS, copy=True)
-        assert strand in {'+', '-', None}
+        assert strand in {'+', '-'}
         self.strand = strand
 
     def __iter__(self):
@@ -308,7 +309,7 @@ class UnivariateLoci(object):
         return UnivariateLoci(self.loci[bindex], strand=self.strand)
 
     @classmethod
-    def from_iter(cls, iterable, strand):
+    def from_iter(cls, iterable, strand=None):
         """
         Construct an instance of :class:`ReadLoci` form an iterable.
 
