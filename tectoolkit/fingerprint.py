@@ -162,6 +162,7 @@ class Fingerprint(object):
         :param min_reads: Minimum number of reads required to form cluster in cluster analysis
         :type min_reads: int
         """
+        assert isinstance(reads, Reads)
         self.eps = eps
         self.min_reads = min_reads
         self.join_threshold = 500
@@ -172,8 +173,12 @@ class Fingerprint(object):
         self.strand = {}
         self.strand['+'] = self._cluster(self.reads.strand['+'])
         self.strand['-'] = self._cluster(self.reads.strand['-'])
-        self.connections = np.fromiter(self._loci_joiner(),
-                                       dtype=[('forward_index', np.int64), ('reverse_index', np.int64)])
+
+        if len(self.strand['+']) > 0 and len(self.strand['-']) > 0:
+            self.connections = np.fromiter(self._loci_joiner(),
+                                           dtype=[('forward_index', np.int64), ('reverse_index', np.int64)])
+        else:
+            self.connections = np.array([], dtype=[('forward_index', np.int64), ('reverse_index', np.int64)])
 
     def _cluster(self, reads):
         """
