@@ -8,7 +8,7 @@ from itertools import product
 from multiprocessing import Pool
 from tectoolkit import bam_io
 from tectoolkit.reads import UnivariateLoci
-from tectoolkit.gff_io import NestedFeature
+from tectoolkit.gff_io import GffFeature
 from tectoolkit.fingerprint import Fingerprint
 
 
@@ -56,13 +56,6 @@ class CompareProgram(object):
                             type=str,
                             default='ME',
                             help='Tag used in bam file to indicate the element type mate read')
-        parser.add_argument('-s', '--strands',
-                            type=str,
-                            nargs='+',
-                            choices=set("+-"),
-                            default=['+', '-'],
-                            help='Strand(s) to be analysed. Use + for forward or - for reverse. Default is to analyse '
-                                 'both strands (separately).')
         parser.add_argument('-m', '--min_reads',
                             type=int,
                             default=[5],
@@ -157,14 +150,13 @@ class CompareProgram(object):
         """
         return product([self.args.input_bams],
                        self.references,
-                       self.args.strands,
                        [self.args.families],
                        [self.args.mate_element_tag],
                        [self.args.eps],
                        self.args.min_reads,
                        self.args.bin_buffer)
 
-    def _run_comparison(self, input_bams, reference, strand, families, mate_element_tag, eps, min_reads, bin_buffer):
+    def _run_comparison(self, input_bams, reference, families, mate_element_tag, eps, min_reads, bin_buffer):
         """
         Creates a :class:`Fingerprint` for each of a set of bam files and then combines these in an
         instance of :class:`FingerprintComparison` and prints the GFF3 formatted results to stdout.
@@ -190,7 +182,7 @@ class CompareProgram(object):
         # create nested dict of fingerprints (avoids multiple reads of the same section of each bam)
         fingerprints = {}
         for i, bam in enumerate(input_bams):
-            read_groups = bam_io.read_bam_into_groups(bam, reference, strand, families, group_tag=mate_element_tag)
+            read_groups = bam_io.read_bam_into_groups(bam, reference, families, group_tag=mate_element_tag)
             fingerprints[i] = dict(zip(families, (Fingerprint(reads, eps, min_reads) for reads in read_groups)))
 
         # get reference length to avoid over-buffering of comparative bins
@@ -202,8 +194,7 @@ class CompareProgram(object):
             comparison = FingerprintComparison(tuple(fingerprints[i][family] for i in bam_ids),
                                                bin_buffer,
                                                reference_length)
-            for feature in comparison._to_gff():
-                print(format(feature, 'nested'))
+            print(format(comparison, 'gff'))
 
     def run(self):
         """
@@ -236,7 +227,6 @@ class FingerprintComparison(object):
         # assert that fingerprints are comparable
         for f in fingerprints:
             assert type(f) == Fingerprint
-        assert len({f.strand for f in fingerprints if f.strand is not None}) == 1
         assert len({(f.reference,
                      f.family,
                      f.eps[0],
@@ -250,122 +240,75 @@ class FingerprintComparison(object):
         self.min_reads = self.fingerprints[0].min_reads
 
         # create comparison bins
-        self.forward_bins = reduce(UnivariateLoci.append, [f.forward for f in self.fingerprints])
-        self.forward_bins.melt()
-        self.reverse_bins = reduce(UnivariateLoci.append, [f.reverse for f in self.fingerprints])
-        self.reverse_bins.melt()
+        self.strand = {}
+        self.strand['+'] = reduce(UnivariateLoci.append, [f.strand['+'] for f in self.fingerprints])
+        self.strand['+'].melt()
+        self.strand['-'] = reduce(UnivariateLoci.append, [f.strand['-'] for f in self.fingerprints])
+        self.strand['-'].melt()
 
         # buffer comparison bins
         if buffer == 0:
             pass
         else:
             # buffer forward
-            self.forward_bins.loci['start'] -= buffer
-            self.forward_bins.loci['stop'] += buffer
-            self.forward_bins.loci['start'][self.forward_bins.loci['start'] <= 0] = 0
-            self.forward_bins.loci['stop'][self.forward_bins.loci['stop'] >= reference_length] = reference_length
+            self.strand['+'].loci['start'] -= buffer
+            self.strand['+'].loci['stop'] += buffer
+            self.strand['+'].loci['start'][self.strand['+'].loci['start'] <= 0] = 0
+            self.strand['+'].loci['stop'][self.strand['+'].loci['stop'] >= reference_length] = reference_length
 
             # buffer reverse
-            self.reverse_bins.loci['start'] -= buffer
-            self.reverse_bins.loci['stop'] += buffer
-            self.reverse_bins.loci['start'][self.reverse_bins.loci['start'] <= 0] = 0
-            self.reverse_bins.loci['stop'][self.reverse_bins.loci['stop'] >= reference_length] = reference_length
-
-    def _compare(self):
-        sources = (f.source for f in self.fingerprints)
-        forward_dicts, reverse_dicts = zip(*tuple(f.feature_dicts for f in self.fingerprints))
-
-        strand = '+'
-        for start, end in self.forward_bins:
-            bin_id = "bin_{0}_{1}_{2}_{3}".format(self.family, self.reference, strand, start)
-
-            read_presence = tuple(f.reads.forward.within_locus(start, end) for f in self.fingerprints)
-            cluster_presence = tuple(f.forward.within_locus(start, end) for f in self.fingerprints)
-
-            for index, boolean in enumerate(cluster_presence):
-                if boolean:
-                    forward_dicts[index]["Parent"] = bin_id
-
-            bin_dict = {'seqid': self.reference,
-                        'start': start,
-                        'end': end,
-                        'strand': strand,
-                        'ID': bin_id,
-                        'Name': self.family}
-
-    def _compare_bin(self, start, end):
-        """
-        Calculates basic statistics for a given bin (loci) to be compared across samples.
-        Identifies (nested) fingerprint loci that fall within the bin bounds.
-        Collects bin and nested fingerprint loci attributes into dictionaries of parameters for :class:`GffFeature`
-
-        :param start: Start location of comparative bin
-        :type start: int
-        :param end: End location of comparative bin
-        :type end: int
-
-        :return: Bin and nested fingerprint loci attributes
-        :rtype: (dict[str, any], list[dict[str, any]])
-        """
-        local_reads = tuple(f.reads.subset_by_locus(start, end) for f in self.fingerprints)
-        local_clusters = tuple(f.loci.subset_by_locus(start, end) for f in self.fingerprints)
-        sources = tuple(f.source for f in self.fingerprints)
-        local_read_counts = np.array([len(reads) for reads in local_reads])
-        read_count_max = max(local_read_counts)
-        read_count_min = min(local_read_counts)
-        read_presence = sum(local_read_counts != 0)
-        read_absence = sum(local_read_counts == 0)
-        local_cluster_counts = np.array([len(loci) for loci in local_clusters])
-        cluster_presence = sum(local_cluster_counts != 0)
-        cluster_absence = sum(local_cluster_counts == 0)
-        bin_dict = {'seqid': self.reference,
-                    'start': start,
-                    'end': end,
-                    'strand': self.strand,
-                    'ID': "bin_{0}_{1}_{2}_{3}".format(self.family, self.reference, self.strand, start),
-                    'Name': self.family,
-                    'read_count_min': read_count_min,
-                    'read_count_max': read_count_max,
-                    'read_presence': read_presence,
-                    'read_absence': read_absence,
-                    'cluster_presence': cluster_presence,
-                    'cluster_absence': cluster_absence}
-        sample_dicts = []
-        for number, sample in enumerate(zip(sources, local_clusters)):
-            source, loci = sample
-            if len(loci) == 0:
-                pass
-            else:
-                sample_dicts += [{'seqid': self.reference,
-                                  'start': start,
-                                  'end': end,
-                                  'strand': self.strand,
-                                  'ID': "{0}_{1}_{2}_{3}_{4}".format(number,
-                                                                     self.family,
-                                                                     self.reference,
-                                                                     self.strand,
-                                                                     start),
-                                  'Name': self.family,
-                                  'sample': source} for start, end in loci]
-        return bin_dict, sample_dicts
+            self.strand['-'].loci['start'] -= buffer
+            self.strand['-'].loci['stop'] += buffer
+            self.strand['-'].loci['start'][self.strand['-'].loci['start'] <= 0] = 0
+            self.strand['-'].loci['stop'][self.strand['-'].loci['stop'] >= reference_length] = reference_length
 
     def __format__(self, code):
         assert code in {'gff'}
-        return '\n'.join([format(l, 'nested') for l in list(self._to_gff())])
+        return '\n'.join(['\n'.join([str(feature) for feature in self.comparison_features('+')]),
+                          '\n'.join([str(feature) for feature in self.comparison_features('-')])])
 
-    def _to_gff(self):
-        """
-        Creates :class:`GffFeature` object for each comparative bins in :class:`FingerprintComparison`.
-        Component :class:`Fingerprint` loci found within the comparative bin are included as nested features.
+    def comparison_features(self, strand):
+        """"""
+        # tuple of of object arrays
+        cluster_features = tuple(np.array(list(f.fingerprint_features(strand=strand))) for f in self.fingerprints)
 
-        :return: A generator of nested :class:`GffFeature` objects
-        :rtype: generator[:class:`GffFeature`]
-        """
-        for start, end in self.bin_loci:
-            bin_dict, sample_dicts = self._compare_bin(start, end)
-            feature = NestedFeature(**bin_dict)
-            feature.add_children(*[NestedFeature(**d) for d in sample_dicts])
-            yield feature
+        for start, end in self.strand[strand]:
+
+            # create a unique id for the bin
+            bin_id = "bin_{0}_{1}_{2}_{3}".format(self.family, self.reference, strand, start)
+
+            # tuple of boolean arrays showing whether clusters/reads are in bin
+            boolean_read_presence = tuple(f.reads.strand[strand].within_locus(start, end) for f in self.fingerprints)
+            boolean_cluster_presence = tuple(f.strand[strand].within_locus(start, end) for f in self.fingerprints)
+
+            # summary stats for bin
+            read_counts = np.array([sum(p) for p in boolean_read_presence])
+            cluster_counts = np.array([sum(c) for c in boolean_cluster_presence])
+            read_presence = np.sum(read_counts != 0)
+            read_absence = np.sum(read_counts == 0)
+            cluster_presence = np.sum(cluster_counts != 0)
+            cluster_absence = np.sum(cluster_counts == 0)
+            sources = (f.source for f in self.fingerprints)
+
+            # bin feature
+            yield GffFeature(seqid=self.reference,
+                             start=start,
+                             end=end,
+                             strand=strand,
+                             ID=bin_id,
+                             Name=self.family,
+                             read_presence=read_presence,
+                             read_absence=read_absence,
+                             cluster_presence=cluster_presence,
+                             cluster_absence=cluster_absence,
+                             samples=','.join(sources))
+
+            # add parent ID to child features
+            for index in range(len(self.fingerprints)):
+                child_features = cluster_features[index][boolean_cluster_presence[index]]
+                for feature in child_features:
+                    feature.tags["Parent"] = bin_id
+                    yield feature
 
 if __name__ == '__main__':
     pass

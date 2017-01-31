@@ -187,7 +187,7 @@ class UnivariateLoci(object):
         if loci is None:
             loci = []
         self.loci = np.array(loci, dtype=UnivariateLoci.DTYPE_ULOCUS, copy=True)
-        assert strand in ['+', '-']
+        assert strand in {'+', '-', None}
         self.strand = strand
 
     def __iter__(self):
@@ -316,17 +316,22 @@ class UnivariateLoci(object):
         Combine two :class:`ReadLoci` objects into a single object.
 
         :param x: Instance of :class:`ReadLoci`
-        :typev x: :class:`ReadLoci`
+        :type x: :class:`ReadLoci`
         :param y: Instance of :class:`ReadLoci`
         :type y: :class:`UnivariateLoci`
 
         :return: Instance of :class:`ReadLoci`
         :rtype: :class:`UnivariateLoci`
         """
-        assert x.strand == y.strand
-        loci = UnivariateLoci(np.append(x.loci, y.loci))
-        loci.sort()
-        return loci
+        if len(x) == 0:
+            return UnivariateLoci(y.loci, strand=y.strand)
+        elif len(y) == 0:
+            return UnivariateLoci(x.loci, strand=x.strand)
+        else:
+            assert x.strand == y.strand
+            loci = UnivariateLoci(np.append(x.loci, y.loci), strand=x.strand)
+            loci.sort()
+            return loci
 
 if __name__ == '__main__':
     pass
