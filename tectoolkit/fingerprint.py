@@ -7,7 +7,7 @@ from itertools import product
 from multiprocessing import Pool
 from tectoolkit import bam_io
 from tectoolkit.reads import Reads, UnivariateLoci
-from tectoolkit.gff_io import NestedFeature
+from tectoolkit.gff_io import GffFeature
 from tectoolkit.cluster import UDC, HUDC
 
 
@@ -54,13 +54,6 @@ class FingerprintProgram(object):
                             type=str,
                             default='ME',
                             help='Tag used in bam file to indicate the element type mate read')
-        parser.add_argument('-s', '--strands',
-                            type=str,
-                            nargs='+',
-                            choices=set("+-"),
-                            default=['+', '-'],
-                            help='Strand(s) to be analysed. Use + for forward or - for reverse. Default is to analyse '
-                                 'both strands (separately).')
         parser.add_argument('-m', '--min_reads',
                             type=int,
                             default=[5],
@@ -112,14 +105,13 @@ class FingerprintProgram(object):
         """
         return product(self.args.input_bam,
                        self.references,
-                       [self.args.strands],
                        [self.args.families],
                        [self.args.mate_element_tag],
                        [self.args.eps],
                        self.args.min_reads)
 
     @staticmethod
-    def _fingerprint(input_bam, reference, strands, families, mate_element_tag, eps, min_reads):
+    def _fingerprint(input_bam, reference, families, mate_element_tag, eps, min_reads):
         """
         Creates an instance of  :class:`Fingerprint` and prints the GFF3 formatted results to stdout.
 
@@ -131,8 +123,6 @@ class FingerprintProgram(object):
         :type families: list[str]
         :param mate_element_tag: The sam tag that contains the mates element name in the bam file
         :type mate_element_tag: str
-        :param strand: The target strand ('+' or '-') to fingerprinted
-        :type strand: str
         :param eps: The eps value(s) to be used in the cluster analysis (:class:`FUDC` for one values
         or :class:`HUDC` for two values)
         :type eps: list[int]
@@ -179,8 +169,9 @@ class Fingerprint(object):
         self.reference = reads.reference
         self.family = reads.grouping
         self.source = reads.source
-        self.forward = self._cluster(self.reads.forward)
-        self.reverse = self._cluster(self.reads.reverse)
+        self.strand = {}
+        self.strand['+'] = self._cluster(self.reads.strand['+'])
+        self.strand['-'] = self._cluster(self.reads.strand['-'])
         self.connections = np.fromiter(self._loci_joiner(),
                                        dtype=[('forward_index', np.int64), ('reverse_index', np.int64)])
 
@@ -209,44 +200,41 @@ class Fingerprint(object):
             pass
 
     def _loci_joiner(self):
-        for i, i_value in enumerate(self.forward['stop']):
-            dists = abs(self.reverse['start'] - i_value)
+        for i, i_value in enumerate(self.strand['+']['stop']):
+            dists = abs(self.strand['-']['start'] - i_value)
             if np.min(dists) < self.join_threshold:
                 j = np.argmin(dists)
-                if np.argmin(abs(self.forward['stop'] - self.reverse['start'][j])) == i:
+                if np.argmin(abs(self.strand['+']['stop'] - self.strand['-']['start'][j])) == i:
                     yield (i, j)
-
-    def _strand_feature_dicts(self, loci):
-        """"""
-        strand = loci.strand
-        return [{'seqid': self.reference,
-                 'start': start,
-                 'end': end,
-                 'strand': strand,
-                 'ID': self._id(strand, start),
-                 'Name': self.family,
-                 'sample': self.source}for start, end in loci]
 
     def __format__(self, code):
         assert code in {'gff'}
-        return '\n'.join([str(f) for f in list(self.feature_dicts())])
+        return '\n'.join([str(f) for f in list(self.fingerprint_features())])
 
-    def _id(self, strand, start):
-        return "{0}_{1}_{2}_{3}".format(self.family, self.reference, strand, start)
-
-    def feature_dicts(self):
+    def fingerprint_features(self, strand=None):
         """
         Creates :class:`GffFeature` object for each loci in :class:`Fingerprint`.
 
         :return: A generator of :class:`GffFeature` objects
         :rtype: generator[:class:`GffFeature`]
         """
-        forward_features = self._strand_feature_dicts(self.forward)
-        reverse_features = self._strand_feature_dicts(self.reverse)
+        assert strand in {'+', '-', None}
+        forward, reverse = ([GffFeature(seqid=self.reference,
+                                        start=start,
+                                        end=end,
+                                        strand=s,
+                                        ID="{0}_{1}_{2}_{3}".format(self.family, self.reference, s, start),
+                                        Name=self.family,
+                                        sample=self.source) for start, end in self.strand[s]] for s in ('+', '-'))
         for f, r in self.connections:
-            forward_features[f]['pairID'] = reverse_features[r]['ID']
-            reverse_features[r]['pairID'] = forward_features[f]['ID']
-        return forward_features, reverse_features
+            forward[f].tags['pairID'] = reverse[r].tags['ID']
+            reverse[r].tags['pairID'] = forward[f].tags['ID']
+        if strand == '+':
+            return forward
+        elif strand == '-':
+            return reverse
+        else:
+            return forward + reverse
 
 if __name__ == '__main__':
     pass

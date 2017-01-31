@@ -13,8 +13,7 @@ class Reads(object):
         assert forward.reference == reverse.reference
         assert forward.source == reverse.source
         assert forward.grouping == reverse.grouping
-        self.forward = forward
-        self.reverse = reverse
+        self.strand = {'+': forward, '-': reverse}
         self.source = forward.source
         self.reference = forward.reference
         self.grouping = forward.grouping
