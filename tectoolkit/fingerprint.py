@@ -84,6 +84,12 @@ class FingerprintProgram(object):
                                  'If the parent is more robust it is selected, otherwise the process is repeated for '
                                  'child cluster recursively until a parent or terminal (cluster with no children) '
                                  'is selected. ')
+        parser.add_argument('-j', '--join_distance',
+                            type=int,
+                            default=[0],
+                            nargs=1,
+                            help='The maximum distance allowable between neighbouring clusters (of the same family '
+                                 'and opposite strands) to be associated with one another as a pair')
         parser.add_argument('-t', '--threads',
                             type=int,
                             default=1,
@@ -108,10 +114,11 @@ class FingerprintProgram(object):
                        [self.args.families],
                        [self.args.mate_element_tag],
                        [self.args.eps],
-                       self.args.min_reads)
+                       self.args.min_reads,
+                       self.args.join_distance)
 
     @staticmethod
-    def _fingerprint(input_bam, reference, families, mate_element_tag, eps, min_reads):
+    def _fingerprint(input_bam, reference, families, mate_element_tag, eps, min_reads, join_distance):
         """
         Creates an instance of  :class:`Fingerprint` and prints the GFF3 formatted results to stdout.
 
@@ -130,7 +137,7 @@ class FingerprintProgram(object):
         :type min_reads: int
         """
         read_groups = bam_io.read_bam_into_groups(input_bam, reference, families, group_tag=mate_element_tag)
-        fingerprints = (Fingerprint(reads, eps, min_reads) for reads in read_groups)
+        fingerprints = (Fingerprint(reads, eps, min_reads, join_distance) for reads in read_groups)
         for fingerprint in fingerprints:
             print(format(fingerprint, 'gff'))
 
@@ -150,7 +157,7 @@ class FingerprintProgram(object):
 
 class Fingerprint(object):
     """Fingerprint a bam file"""
-    def __init__(self, reads, eps, min_reads):
+    def __init__(self, reads, eps, min_reads, join_distance=0):
         """
         Init method for :class:`Fingerprint`.
 
@@ -165,7 +172,7 @@ class Fingerprint(object):
         assert isinstance(reads, Reads)
         self.eps = eps
         self.min_reads = min_reads
-        self.join_threshold = 500
+        self.join_distance = join_distance
         self.reads = reads
         self.reference = reads.reference
         self.family = reads.grouping
@@ -174,7 +181,7 @@ class Fingerprint(object):
         self.strand['+'] = self._cluster(self.reads.strand['+'])
         self.strand['-'] = self._cluster(self.reads.strand['-'])
 
-        if len(self.strand['+']) > 0 and len(self.strand['-']) > 0:
+        if len(self.strand['+']) > 0 and len(self.strand['-']) > 0 and self.join_distance > 0:
             self.connections = np.fromiter(self._loci_joiner(),
                                            dtype=[('forward_index', np.int64), ('reverse_index', np.int64)])
         else:
@@ -207,7 +214,7 @@ class Fingerprint(object):
     def _loci_joiner(self):
         for i, i_value in enumerate(self.strand['+']['stop']):
             dists = abs(self.strand['-']['start'] - i_value)
-            if np.min(dists) < self.join_threshold:
+            if np.min(dists) < self.join_distance:
                 j = np.argmin(dists)
                 if np.argmin(abs(self.strand['+']['stop'] - self.strand['-']['start'][j])) == i:
                     yield (i, j)

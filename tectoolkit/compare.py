@@ -86,6 +86,12 @@ class CompareProgram(object):
                                  'If the parent is more robust it is selected, otherwise the process is repeated for '
                                  'child cluster recursively until a parent or terminal (cluster with no children) '
                                  'is selected. ')
+        parser.add_argument('-j', '--join_distance',
+                            type=int,
+                            default=[0],
+                            nargs=1,
+                            help='The maximum distance allowable between neighbouring clusters (of the same family '
+                                 'and opposite strands) to be associated with one another as a pair')
         parser.add_argument('-b', '--bin_buffer',
                             type=int,
                             default=[0],
@@ -154,9 +160,10 @@ class CompareProgram(object):
                        [self.args.mate_element_tag],
                        [self.args.eps],
                        self.args.min_reads,
+                       self.args.join_distance,
                        self.args.bin_buffer)
 
-    def _run_comparison(self, input_bams, reference, families, mate_element_tag, eps, min_reads, bin_buffer):
+    def _run_comparison(self, input_bams, reference, families, mate_element_tag, eps, min_reads, join_distance, bin_buffer):
         """
         Creates a :class:`Fingerprint` for each of a set of bam files and then combines these in an
         instance of :class:`FingerprintComparison` and prints the GFF3 formatted results to stdout.
@@ -183,7 +190,7 @@ class CompareProgram(object):
         fingerprints = {}
         for i, bam in enumerate(input_bams):
             read_groups = bam_io.read_bam_into_groups(bam, reference, families, group_tag=mate_element_tag)
-            fingerprints[i] = dict(zip(families, (Fingerprint(reads, eps, min_reads) for reads in read_groups)))
+            fingerprints[i] = dict(zip(families, (Fingerprint(reads, eps, min_reads, join_distance) for reads in read_groups)))
 
         # get reference length to avoid over-buffering of comparative bins
         reference_length = self.reference_lengths[reference]
