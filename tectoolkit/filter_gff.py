@@ -42,13 +42,7 @@ class FilterGffProgram(object):
                                   "numbers if possible and otherwise compare values as strings. "
                                   "Operators '>=', '<=', '>' and '<' will coerce values "
                                   "to floating point numbers before comparison."))
-        try:
-            arguments = parser.parse_args(args)
-        except:
-            parser.print_help()
-            sys.exit(0)
-        else:
-            return arguments
+        return parser.parse_args(args)
 
     def run(self):
         """

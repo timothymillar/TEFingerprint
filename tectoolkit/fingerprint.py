@@ -94,13 +94,7 @@ class FingerprintProgram(object):
                             type=int,
                             default=1,
                             help='Maximum number of cpu threads to be used')
-        try:
-            arguments = parser.parse_args(args)
-        except:
-            parser.print_help()
-            sys.exit(0)
-        else:
-            return arguments
+        return parser.parse_args(args)
 
     def _build_jobs(self):
         """
