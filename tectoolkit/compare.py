@@ -217,18 +217,19 @@ class CompareProgram(object):
 
 
 class FingerprintComparison(object):
-    """Compare a collection of :class:`fingerprint` objects."""
-    def __init__(self, fingerprints, buffer, reference_length):
-        """
-        Init method for :class:`FingerprintComparison`.
+    """
+    Compare a collection of :class:`fingerprint` objects.
+    To ensure that :class:`fingerprint` objects are comparable they must have identical 'reference',
+    'family', 'eps' and 'min_reads' attributes.
 
-        :param fingerprints: a collection of :class:`fingerprint` objects
-        :type fingerprints: tuple[:class:`FingerprintComparison`]
-        :param buffer: A value to extend the comparative bins by in both directions
-        :type buffer: int
-        :param reference_length: The length of the reference used in fingerprints
-        :type reference_length: int
-        """
+    :param fingerprints: a tuple of :class:`fingerprint` objects
+    :type fingerprints: tuple[:class:`FingerprintComparison`]
+    :param buffer: A value to extend the comparative bins by in both directions
+    :type buffer: int
+    :param reference_length: The length of the reference used in fingerprints
+    :type reference_length: int
+    """
+    def __init__(self, fingerprints, buffer, reference_length):
         self.fingerprints = fingerprints
 
         # assert that fingerprints are comparable

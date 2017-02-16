@@ -156,19 +156,22 @@ class FingerprintProgram(object):
 
 
 class Fingerprint(object):
-    """Fingerprint a bam file"""
-    def __init__(self, reads, eps, min_reads, join_distance=0):
-        """
-        Init method for :class:`Fingerprint`.
+    """
+    Fingerprint a :class:`Reads` object based on density of read tips.
 
-        :param reads: A collection of reads
-        :type reads: :class:`Reads`
-        :param eps: The eps value(s) to be used in the cluster analysis (:class:`FUDC` for one values
-        or :class:`HUDC` for two values)
-        :type eps: list[int]
-        :param min_reads: Minimum number of reads required to form cluster in cluster analysis
-        :type min_reads: int
-        """
+    The algorithm used is determined by the number of eps values passed.
+    If one eps value is specified, the :class:`UDC` algorithm is used.
+    If two eps value are specified, the :class:`HUDC` algorithm is used.
+    A separate collection of fingerprint loci is calculated for each strand.
+
+    :param reads: A collection of reads
+    :type reads: :class:`Reads`
+    :param eps: The eps value(s) to be used in the cluster analysis
+    :type eps: list[int]
+    :param min_reads: Minimum number of reads required to form cluster in cluster analysis
+    :type min_reads: int
+    """
+    def __init__(self, reads, eps, min_reads, join_distance=0):
         assert isinstance(reads, Reads)
         self.eps = eps
         self.min_reads = min_reads
