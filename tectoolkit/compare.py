@@ -275,7 +275,13 @@ class FingerprintComparison(object):
                           '\n'.join([str(feature) for feature in self.comparison_features('-')])])
 
     def comparison_features(self, strand):
-        """"""
+        """
+        Creates :class:`GffFeature` object for each comparative bin and child loci in :class:`FingerprintComparison`.
+        Simple summary statistic are included for each comparative bin.
+
+        :return: A generator of :class:`GffFeature` objects
+        :rtype: generator[:class:`GffFeature`]
+        """
         # tuple of of object arrays
         cluster_features = tuple(np.array(list(f.fingerprint_features(strand=strand))) for f in self.fingerprints)
 
