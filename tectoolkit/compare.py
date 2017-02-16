@@ -308,8 +308,10 @@ class FingerprintComparison(object):
                              Name=self.family,
                              read_presence=read_presence,
                              read_absence=read_absence,
+                             read_counts=','.join(map(str, read_counts)),
                              cluster_presence=cluster_presence,
                              cluster_absence=cluster_absence,
+                             cluster_counts=','.join(map(str, cluster_counts)),
                              samples=','.join(sources))
 
             # add parent ID to child features
