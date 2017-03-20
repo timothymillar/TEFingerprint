@@ -79,7 +79,6 @@ def _parse_read_loci(strings):
         yield start, stop, name
 
 
-
 def _bam_strand_read_loci(bam, reference, strand, categories, tag='ME'):
     source = os.path.basename(bam)
     strings = _read_bam_strings(bam, reference, strand)
@@ -87,12 +86,12 @@ def _bam_strand_read_loci(bam, reference, strand, categories, tag='ME'):
     tags = np.array([re.split(tag, s)[1].split('\t')[0] for s in strings])
     for category in categories:
         category_strings = strings[tags.astype('U{0}'.format(len(category))) == category]
-        for start, stop, name in _parse_read_loci(category_strings):
-            yield reference, strand, start, stop, name, category, source
+        loci = _parse_read_loci(category_strings)
+        yield (reference, strand, category, source), loci
 
 
 def bam_read_loci(bam, reference, categories, tag='ME'):
-    for locus in _bam_strand_read_loci(bam, reference, '+', categories, tag=tag):
-        yield locus
-    for locus in _bam_strand_read_loci(bam, reference, '-', categories, tag=tag):
-        yield locus
+    for block in _bam_strand_read_loci(bam, reference, '+', categories, tag=tag):
+        yield block
+    for block in _bam_strand_read_loci(bam, reference, '-', categories, tag=tag):
+        yield block

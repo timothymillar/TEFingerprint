@@ -110,39 +110,54 @@ class Loci(object):
         self.array = melted
 
 
-class ReadLoci(Loci):
-    DTYPE = np.dtype(_LOCI_SLOTS + _ID_SLOT + _CATEGORY_SLOT + _SOURCE_SLOT)
+class ReadLoci(object):
+    _DTYPE = np.dtype([('start', np.int64), ('stop', np.int64), ('name', np.str_, 254)])
+
+    def __init__(self):
+        self._hash = {}
 
     @classmethod
     def from_bam(cls, bam, reference, categories, tag='ME'):
-        return cls.from_iter(_bam_read_loci(bam, reference, categories, tag=tag))
+        reads = ReadLoci()
+        reads._hash = {key: np.fromiter(loci, dtype=cls._DTYPE)
+                       for key, loci in _bam_read_loci(bam, reference, categories, tag=tag)}
+        return reads
 
     def fingerprint(self, min_reads, eps, min_eps=0, hierarchical=True):
 
-        fingerprint = np.empty(0, dtype=FingerPrint.DTYPE)
+        fprint = FingerPrint()
 
-        for case, reads in self.split(ignore=['start', 'stop', 'name']):
-            tips = reads._tips()
+        for key, loci in self._hash.items():
+
+            # get tips
+            if key[1] == '+':
+                tips = loci["stop"]
+            else:
+                tips = loci["start"]
+            tips.sort()
+
+            # fit model
             if hierarchical:
                 model = HUDC(min_reads, max_eps=eps, min_eps=min_eps)
             else:
                 model = UDC(min_reads, eps)
             model.fit(tips)
+
+            # get new loci
             positions = np.fromiter(model.cluster_extremities(),
-                                    dtype=np.dtype([('start', np.int64),
-                                                    ('stop', np.int64)]))
-            array = np.empty(len(positions), dtype=FingerPrint.DTYPE)
-            _partial_fill(array, case)
-            array['start'] = positions['start']
-            array['stop'] = positions['stop']
-            fingerprint = np.append(fingerprint, array)
+                                    dtype=FingerPrint._DTYPE)
 
-        return FingerPrint(fingerprint)
+            # add to fingerprint
+            fprint._hash[key] = positions
+
+        return fprint
 
 
-class FingerPrint(Loci):
-    DTYPE = np.dtype(_LOCI_SLOTS + _CATEGORY_SLOT + _SOURCE_SLOT)
+class FingerPrint(object):
+    _DTYPE = np.dtype([('start', np.int64), ('stop', np.int64)])
 
+    def __init__(self):
+        self._hash = {}
 
 class ComparativeBin(Loci):
     DTYPE = np.dtype(_LOCI_SLOTS + _CATEGORY_SLOT)
