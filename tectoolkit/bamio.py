@@ -70,28 +70,29 @@ def _parse_read_loci(strings):
     :return: An iterable of mapped SAM read positions and names
     :rtype: generator[(int, int, str, str)]
     """
-    def parse_read_locus(string):
+    for string in strings:
         attr = string.split("\t")
         name = str(attr[0])
         start = int(attr[3])
         length = _cigar_mapped_length(attr[5])
         stop = start + length - 1  # 1 based indexing used in SAM format
-        return start, stop, name
-
-    return (parse_read_locus(string) for string in strings)
+        yield start, stop, name
 
 
-def _bam_strand_read_loci(bam, reference, strand, tag='ME'):
+
+def _bam_strand_read_loci(bam, reference, strand, categories, tag='ME'):
     source = os.path.basename(bam)
     strings = _read_bam_strings(bam, reference, strand)
-    categories = np.array([re.split(tag, s)[1].split('\t')[0] for s in strings])
-    loci = _parse_read_loci(strings)
-    return ((reference, strand, start, stop, name, category, source)
-            for (start, stop, name), category in zip(loci, categories))
+    tag = '\t' + tag + ':[Zi]:'
+    tags = np.array([re.split(tag, s)[1].split('\t')[0] for s in strings])
+    for category in categories:
+        category_strings = strings[tags.astype('U{0}'.format(len(category))) == category]
+        for start, stop, name in _parse_read_loci(category_strings):
+            yield reference, strand, start, stop, name, category, source
 
 
-def bam_read_loci(bam, reference, strand, tag='ME'):
-    for locus in _bam_strand_read_loci(bam, reference, '+', tag=tag):
+def bam_read_loci(bam, reference, categories, tag='ME'):
+    for locus in _bam_strand_read_loci(bam, reference, '+', categories, tag=tag):
         yield locus
-    for locus in _bam_strand_read_loci(bam, reference, '-', tag=tag):
+    for locus in _bam_strand_read_loci(bam, reference, '-', categories, tag=tag):
         yield locus
