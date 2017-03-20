@@ -1,7 +1,6 @@
 #! /usr/bin/env python
 
 import numpy as np
-from functools import reduce
 from tectoolkit.bamio import bam_read_loci as _bam_read_loci
 from tectoolkit.cluster import UDC, HUDC
 
@@ -32,50 +31,78 @@ def merge(*args):
     assert len(set(map(type, args))) == 1
     merged = type(args[0])()
     for arg in args:
-        merged.dict.update(arg.dict)
+        merged._update_dict(arg._dict)
     return merged
 
 
-class ReadLoci(object):
-    _DTYPE = np.dtype([('start', np.int64), ('stop', np.int64), ('name', np.str_, 254)])
+class _Loci(object):
+    _DTYPE_LOCI = np.dtype([('start', np.int64), ('stop', np.int64)])
 
-    _DTYPE_FLAT = np.dtype([('reference', np.str_, 256),
-                            ('strand', np.str_, 1),
-                            ('category', np.str_, 256),
-                            ('source', np.str_, 256),
-                            ('start', np.int64),
-                            ('stop', np.int64),
-                            ('name', np.str_, 254)])
+    _LOCI_DEFAULT_VALUES = (0, 0)
+
+    _DTYPE_ARRAY = np.dtype([('reference', np.str_, 256),
+                             ('strand', np.str_, 1),
+                             ('category', np.str_, 256),
+                             ('start', np.int64),
+                             ('stop', np.int64)])
 
     def __init__(self):
-        self.dict = {}
+        self._dict = {}
+
+    def groups(self):
+        return self._dict.keys()
+
+    def loci(self):
+        return self._dict.values()
+
+    def items(self):
+        return self._dict.items()
+
+    def _update_dict(self, dictionary):
+        self._dict.update(dictionary)
+
+    def as_dict(self):
+        return self._dict.copy()
+
+    def as_array(self):
+        array = np.empty(0, type(self)._DTYPE_ARRAY)
+        for key, loci in self._dict.items():
+            sub_array = np.empty(len(loci), type(self)._DTYPE_ARRAY)
+            sub_array.fill((*key, *type(self)._LOCI_DEFAULT_VALUES))
+            for slot in list(type(self)._DTYPE_LOCI.fields.keys()):
+                sub_array[slot] = loci[slot]
+            array = np.append(array, sub_array)
+        return array
+
+
+class ReadLoci(_Loci):
+    _DTYPE_LOCI = np.dtype([('start', np.int64), ('stop', np.int64), ('name', np.str_, 254)])
+
+    _LOCI_DEFAULT_VALUES = (0, 0, '')
+
+    _DTYPE_ARRAY = np.dtype([('reference', np.str_, 256),
+                             ('strand', np.str_, 1),
+                             ('category', np.str_, 256),
+                             ('source', np.str_, 256),
+                             ('start', np.int64),
+                             ('stop', np.int64),
+                             ('name', np.str_, 254)])
 
     @classmethod
     def from_bam(cls, bam, reference, categories, tag='ME'):
         reads = ReadLoci()
-        reads.dict = {key: np.fromiter(loci, dtype=cls._DTYPE)
-                      for key, loci in _bam_read_loci(bam, reference, categories, tag=tag)}
+        reads._update_dict({group: np.fromiter(loci, dtype=cls._DTYPE_LOCI)
+                            for group, loci in _bam_read_loci(bam, reference, categories, tag=tag)})
         return reads
-
-    def as_array(self):
-        array = np.empty(0, ReadLoci._DTYPE_FLAT)
-        for key, loci in self.dict.items():
-            sub_array = np.empty(len(loci), ReadLoci._DTYPE_FLAT)
-            sub_array.fill((*key, 0, 0, ''))
-            sub_array['start'] = loci['start']
-            sub_array['stop'] = loci['stop']
-            sub_array['name'] = loci['name']
-            array = np.append(array, sub_array)
-        return array
 
     def fingerprint(self, min_reads, eps, min_eps=0, hierarchical=True):
 
-        fprint = FingerPrint()
+        dictionary = {}
 
-        for key, loci in self.dict.items():
+        for group, loci in self.items():
 
             # get tips
-            if key[1] == '+':
+            if group[1] == '+':
                 tips = loci["stop"]
             else:
                 tips = loci["start"]
@@ -90,64 +117,41 @@ class ReadLoci(object):
 
             # get new loci
             positions = np.fromiter(model.cluster_extremities(),
-                                    dtype=FingerPrint._DTYPE)
+                                    dtype=FingerPrint._DTYPE_LOCI)
 
             # add to fingerprint
-            fprint.dict[key] = positions
+            dictionary[group] = positions
 
+        fprint = FingerPrint()
+        fprint._update_dict(dictionary)
         return fprint
 
 
-class FingerPrint(object):
-    _DTYPE = np.dtype([('start', np.int64),
-                       ('stop', np.int64)])
+class FingerPrint(_Loci):
 
-    _DTYPE_FLAT = np.dtype([('reference', np.str_, 256),
-                            ('strand', np.str_, 1),
-                            ('category', np.str_, 256),
-                            ('source', np.str_, 256),
-                            ('start', np.int64),
-                            ('stop', np.int64)])
-
-    def __init__(self):
-        self.dict = {}
-
-    def as_array(self):
-        array = np.empty(0, FingerPrint._DTYPE_FLAT)
-        for key, loci in self.dict.items():
-            sub_array = np.empty(len(loci), FingerPrint._DTYPE_FLAT)
-            sub_array.fill((*key, 0, 0))
-            sub_array['start'] = loci['start']
-            sub_array['stop'] = loci['stop']
-            array = np.append(array, sub_array)
-        return array
+    _DTYPE_ARRAY = np.dtype([('reference', np.str_, 256),
+                             ('strand', np.str_, 1),
+                             ('category', np.str_, 256),
+                             ('source', np.str_, 256),
+                             ('start', np.int64),
+                             ('stop', np.int64)])
 
 
-class ComparativeBins(object):
-    _DTYPE = np.dtype([('start', np.int64), ('stop', np.int64)])
-
-    _DTYPE_FLAT = np.dtype([('reference', np.str_, 256),
-                            ('strand', np.str_, 1),
-                            ('category', np.str_, 256),
-                            ('start', np.int64),
-                            ('stop', np.int64)])
-
-    def __init__(self):
-        self.dict = {}
+class ComparativeBins(_Loci):
 
     @classmethod
     def from_union(cls, *args):
-        keys = list(set([key[0:3] for arg in args for key in arg.dict.keys()]))
-        array_dict = {key: np.empty(0, dtype=ComparativeBins._DTYPE) for key in keys}
+        groups = list(set([group[0:3] for arg in args for group in arg.groups()]))
+        dictionary = {group: np.empty(0, dtype=ComparativeBins._DTYPE_LOCI) for group in groups}
         for arg in args:
-            for key, loci in arg.dict.items():
-                array_dict[key[0:3]] = np.append(array_dict[key[0:3]], loci)
+            for group, loci in arg.items():
+                dictionary[group[0:3]] = np.append(dictionary[group[0:3]], loci)
 
-        for key, loci in array_dict.items():
-            array_dict[key] = np.fromiter(_loci_melter(loci), dtype=ComparativeBins._DTYPE)
+        for group, loci in dictionary.items():
+            dictionary[group] = np.fromiter(_loci_melter(loci), dtype=ComparativeBins._DTYPE_LOCI)
 
         bins = ComparativeBins()
-        bins.dict = array_dict
+        bins._update_dict(dictionary)
         return bins
 
     def buffer(self, value):
@@ -156,12 +160,3 @@ class ComparativeBins(object):
     def compare(self, reads):
         pass
 
-    def as_array(self):
-        array = np.empty(0, ComparativeBins._DTYPE_FLAT)
-        for key, loci in self.dict.items():
-            sub_array = np.empty(len(loci), ComparativeBins._DTYPE_FLAT)
-            sub_array.fill((*key, 0, 0))
-            sub_array['start'] = loci['start']
-            sub_array['stop'] = loci['stop']
-            array = np.append(array, sub_array)
-        return array
