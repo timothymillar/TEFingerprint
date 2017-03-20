@@ -159,36 +159,30 @@ class FingerPrint(object):
     def __init__(self):
         self._hash = {}
 
-class ComparativeBin(Loci):
-    DTYPE = np.dtype(_LOCI_SLOTS + _CATEGORY_SLOT)
+
+class ComparativeBins(object):
+    _DTYPE = np.dtype([('start', np.int64), ('stop', np.int64)])
+
+    def __init__(self):
+        self._hash = {}
 
     @classmethod
-    def from_union(cls, loci):
-        assert isinstance(loci, Loci)
-        bins = cls(loci.array[list(cls.DTYPE.fields.keys())])
-        bins.melt()
+    def from_union(cls, *args):
+        keys = list(set([key[0:3] for arg in args for key in arg._hash.keys()]))
+        array_hash = {key: np.empty(0, dtype=ComparativeBins._DTYPE) for key in keys}
+        for arg in args:
+            for key, loci in arg._hash.items():
+                array_hash[key[0:3]] = np.append(array_hash[key[0:3]], loci)
+
+        for key, loci in array_hash.items():
+            array_hash[key] = np.fromiter(_loci_melter(loci), dtype=ComparativeBins._DTYPE)
+
+        bins = ComparativeBins()
+        bins._hash = array_hash
         return bins
 
     def buffer(self, value):
         pass
 
     def compare(self, reads):
-
-        samples = np.unique(reads.array['sample'])
-        count_dtype = list(zip(samples, [np.int64] * len(samples)))
-        comparison_dtype = np.dtype(_LOCI_SLOTS + _CATEGORY_SLOT + _SOURCE_SLOT + [('counts', count_dtype)])
-
-        for case, bins in self.split(ignore=['start', 'stop']):
-            case_reads = reads.sub_group(case)
-            sample_tips = [case_reads.tips[case_reads['sample'] == sample] for sample in samples]
-            for start, stop, in bins.array['start', 'stop']:
-                [np.sum(np.logical_and(tips >= start, tips <= stop)) for tips in sample_tips]
-
-
-
-
-
-
-
-class Comparison(Loci):
-    DTYPE = np.dtype(_LOCI_SLOTS + _CATEGORY_SLOT + _SOURCE_SLOT)
+        pass
