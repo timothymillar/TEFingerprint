@@ -28,9 +28,12 @@ def _loci_melter(array):
     yield start, stop
 
 
-def _partial_fill(array, template):
-    for slot in template.dtype.fields.keys():
-        array[slot] = template[slot]
+def merge(*args):
+    assert len(set(map(type, args))) == 1
+    merged = type(args[0])()
+    for arg in args:
+        merged.dict.update(arg.dict)
+    return merged
 
 
 class ReadLoci(object):
@@ -45,18 +48,18 @@ class ReadLoci(object):
                             ('name', np.str_, 254)])
 
     def __init__(self):
-        self._hash = {}
+        self.dict = {}
 
     @classmethod
     def from_bam(cls, bam, reference, categories, tag='ME'):
         reads = ReadLoci()
-        reads._hash = {key: np.fromiter(loci, dtype=cls._DTYPE)
-                       for key, loci in _bam_read_loci(bam, reference, categories, tag=tag)}
+        reads.dict = {key: np.fromiter(loci, dtype=cls._DTYPE)
+                      for key, loci in _bam_read_loci(bam, reference, categories, tag=tag)}
         return reads
 
     def as_array(self):
         array = np.empty(0, ReadLoci._DTYPE_FLAT)
-        for key, loci in self._hash.items():
+        for key, loci in self.dict.items():
             sub_array = np.empty(len(loci), ReadLoci._DTYPE_FLAT)
             sub_array.fill((*key, 0, 0, ''))
             sub_array['start'] = loci['start']
@@ -69,7 +72,7 @@ class ReadLoci(object):
 
         fprint = FingerPrint()
 
-        for key, loci in self._hash.items():
+        for key, loci in self.dict.items():
 
             # get tips
             if key[1] == '+':
@@ -90,7 +93,7 @@ class ReadLoci(object):
                                     dtype=FingerPrint._DTYPE)
 
             # add to fingerprint
-            fprint._hash[key] = positions
+            fprint.dict[key] = positions
 
         return fprint
 
@@ -107,11 +110,11 @@ class FingerPrint(object):
                             ('stop', np.int64)])
 
     def __init__(self):
-        self._hash = {}
+        self.dict = {}
 
     def as_array(self):
         array = np.empty(0, FingerPrint._DTYPE_FLAT)
-        for key, loci in self._hash.items():
+        for key, loci in self.dict.items():
             sub_array = np.empty(len(loci), FingerPrint._DTYPE_FLAT)
             sub_array.fill((*key, 0, 0))
             sub_array['start'] = loci['start']
@@ -130,21 +133,21 @@ class ComparativeBins(object):
                             ('stop', np.int64)])
 
     def __init__(self):
-        self._hash = {}
+        self.dict = {}
 
     @classmethod
     def from_union(cls, *args):
-        keys = list(set([key[0:3] for arg in args for key in arg._hash.keys()]))
-        array_hash = {key: np.empty(0, dtype=ComparativeBins._DTYPE) for key in keys}
+        keys = list(set([key[0:3] for arg in args for key in arg.dict.keys()]))
+        array_dict = {key: np.empty(0, dtype=ComparativeBins._DTYPE) for key in keys}
         for arg in args:
-            for key, loci in arg._hash.items():
-                array_hash[key[0:3]] = np.append(array_hash[key[0:3]], loci)
+            for key, loci in arg.dict.items():
+                array_dict[key[0:3]] = np.append(array_dict[key[0:3]], loci)
 
-        for key, loci in array_hash.items():
-            array_hash[key] = np.fromiter(_loci_melter(loci), dtype=ComparativeBins._DTYPE)
+        for key, loci in array_dict.items():
+            array_dict[key] = np.fromiter(_loci_melter(loci), dtype=ComparativeBins._DTYPE)
 
         bins = ComparativeBins()
-        bins._hash = array_hash
+        bins.dict = array_dict
         return bins
 
     def buffer(self, value):
@@ -155,7 +158,7 @@ class ComparativeBins(object):
 
     def as_array(self):
         array = np.empty(0, ComparativeBins._DTYPE_FLAT)
-        for key, loci in self._hash.items():
+        for key, loci in self.dict.items():
             sub_array = np.empty(len(loci), ComparativeBins._DTYPE_FLAT)
             sub_array.fill((*key, 0, 0))
             sub_array['start'] = loci['start']
