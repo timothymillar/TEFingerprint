@@ -5,21 +5,6 @@ from functools import reduce
 from tectoolkit.bamio import bam_read_loci as _bam_read_loci
 from tectoolkit.cluster import UDC, HUDC
 
-_LOCI_SLOTS = [
-    ('reference', np.str_, 254),
-    ('strand', np.str_, 1),
-    ('start', np.int64),
-    ('stop', np.int64)]
-
-_ID_SLOT = [
-    ('name', np.str_, 254)]
-
-_CATEGORY_SLOT = [
-    ('category', np.str_, 254)]
-
-_SOURCE_SLOT = [
-    ('sample', np.str_, 254)]
-
 
 def _loci_melter(array):
     array_starts = np.array(array['start'])
@@ -48,70 +33,16 @@ def _partial_fill(array, template):
         array[slot] = template[slot]
 
 
-class Loci(object):
-    DTYPE = np.dtype(_LOCI_SLOTS)
-
-    def __init__(self, loci=None):
-        if loci is None:
-            loci = []
-        self.array = np.array(loci, dtype=self.DTYPE, copy=True)
-
-    def __len__(self):
-        return len(self.array)
-
-    @classmethod
-    def from_iter(cls, iterable):
-        return cls(np.fromiter(iterable, dtype=cls.DTYPE))
-
-    def attributes(self):
-        return list(self.array.dtype.fields.keys())
-
-    def _tips(self):
-        forward_tips = self.array['stop'][self.array['strand'] == '+']
-        reverse_tips = self.array['start'][self.array['strand'] == '-']
-        tips = np.append(forward_tips, reverse_tips)
-        tips.sort()
-        return tips
-
-    def sub_structures(self, by=None, ignore=None):
-        if not by:
-            by = self.attributes()
-        if ignore:
-            for attribute in ignore:
-                by.remove(attribute)
-        return np.unique((self.array[by]))
-
-    def sub_group(self, structure):
-        attributes = list(structure.dtype.fields.keys())
-        return type(self)(self.array[self.array[attributes] == structure])
-
-    def split(self, by=None, ignore=None):
-        for structure in self.sub_structures(by=by, ignore=ignore):
-            yield structure, self.sub_group(structure)
-
-    def sort(self, order=('start', 'stop')):
-        self.array.sort(order=order)
-
-    def melt(self, by=None, ignore=None):
-        ignore = ignore + ['start', 'stop'] if ignore else ['start', 'stop']
-
-        melted = np.empty(0, dtype=self.array.dtype)
-
-        for case, loci in self.split(by=by, ignore=ignore):
-            positions = np.fromiter(_loci_melter(loci.array),
-                                    dtype=np.dtype([('start', np.int64),
-                                                    ('stop', np.int64)]))
-            array = np.empty(len(positions), dtype=melted.dtype)
-            _partial_fill(array, case)
-            array['start'] = positions['start']
-            array['stop'] = positions['stop']
-            melted = np.append(melted, array)
-
-        self.array = melted
-
-
 class ReadLoci(object):
     _DTYPE = np.dtype([('start', np.int64), ('stop', np.int64), ('name', np.str_, 254)])
+
+    _DTYPE_FLAT = np.dtype([('reference', np.str_, 256),
+                            ('strand', np.str_, 1),
+                            ('category', np.str_, 256),
+                            ('source', np.str_, 256),
+                            ('start', np.int64),
+                            ('stop', np.int64),
+                            ('name', np.str_, 254)])
 
     def __init__(self):
         self._hash = {}
@@ -122,6 +53,17 @@ class ReadLoci(object):
         reads._hash = {key: np.fromiter(loci, dtype=cls._DTYPE)
                        for key, loci in _bam_read_loci(bam, reference, categories, tag=tag)}
         return reads
+
+    def as_array(self):
+        array = np.empty(0, ReadLoci._DTYPE_FLAT)
+        for key, loci in self._hash.items():
+            sub_array = np.empty(len(loci), ReadLoci._DTYPE_FLAT)
+            sub_array.fill((*key, 0, 0, ''))
+            sub_array['start'] = loci['start']
+            sub_array['stop'] = loci['stop']
+            sub_array['name'] = loci['name']
+            array = np.append(array, sub_array)
+        return array
 
     def fingerprint(self, min_reads, eps, min_eps=0, hierarchical=True):
 
@@ -154,14 +96,38 @@ class ReadLoci(object):
 
 
 class FingerPrint(object):
-    _DTYPE = np.dtype([('start', np.int64), ('stop', np.int64)])
+    _DTYPE = np.dtype([('start', np.int64),
+                       ('stop', np.int64)])
+
+    _DTYPE_FLAT = np.dtype([('reference', np.str_, 256),
+                            ('strand', np.str_, 1),
+                            ('category', np.str_, 256),
+                            ('source', np.str_, 256),
+                            ('start', np.int64),
+                            ('stop', np.int64)])
 
     def __init__(self):
         self._hash = {}
 
+    def as_array(self):
+        array = np.empty(0, FingerPrint._DTYPE_FLAT)
+        for key, loci in self._hash.items():
+            sub_array = np.empty(len(loci), FingerPrint._DTYPE_FLAT)
+            sub_array.fill((*key, 0, 0))
+            sub_array['start'] = loci['start']
+            sub_array['stop'] = loci['stop']
+            array = np.append(array, sub_array)
+        return array
+
 
 class ComparativeBins(object):
     _DTYPE = np.dtype([('start', np.int64), ('stop', np.int64)])
+
+    _DTYPE_FLAT = np.dtype([('reference', np.str_, 256),
+                            ('strand', np.str_, 1),
+                            ('category', np.str_, 256),
+                            ('start', np.int64),
+                            ('stop', np.int64)])
 
     def __init__(self):
         self._hash = {}
@@ -186,3 +152,13 @@ class ComparativeBins(object):
 
     def compare(self, reads):
         pass
+
+    def as_array(self):
+        array = np.empty(0, ComparativeBins._DTYPE_FLAT)
+        for key, loci in self._hash.items():
+            sub_array = np.empty(len(loci), ComparativeBins._DTYPE_FLAT)
+            sub_array.fill((*key, 0, 0))
+            sub_array['start'] = loci['start']
+            sub_array['stop'] = loci['stop']
+            array = np.append(array, sub_array)
+        return array
