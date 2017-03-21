@@ -95,17 +95,20 @@ class ReadLoci(_Loci):
                             for group, loci in _bam_read_loci(bam, reference, categories, tag=tag)})
         return reads
 
+    def tips(self):
+        d = {}
+        for group, loci in self.items():
+            if group[1] == '+':
+                d[group] = loci["stop"]
+            else:
+                d[group] = loci["start"]
+        return d
+
     def fingerprint(self, min_reads, eps, min_eps=0, hierarchical=True):
 
         dictionary = {}
 
-        for group, loci in self.items():
-
-            # get tips
-            if group[1] == '+':
-                tips = loci["stop"]
-            else:
-                tips = loci["start"]
+        for group, tips in self.tips().items():
             tips.sort()
 
             # fit model
@@ -158,5 +161,38 @@ class ComparativeBins(_Loci):
         pass
 
     def compare(self, reads):
-        pass
+        samples = np.array(list({group[3] for group in list(reads.groups())}))
+        samples.sort()
+        tips_dict = reads.tips()
+        results = {}
+        for group, bins in self.items():
+            group_results = np.empty(len(bins), dtype=Comparison._DTYPE_LOCI)
+            group_results['start'] = bins['start']
+            group_results['stop'] = bins['stop']
+            group_results['samples'] = [samples for _ in bins]
 
+            sample_tips = [tips_dict[(*group, sample)] for sample in samples]
+            group_results['counts'] = [[np.sum(np.logical_and(tips >= start, tips <= stop)) for tips in sample_tips] for start, stop in bins]
+
+            results[group] = group_results
+
+        comparison = Comparison()
+        comparison._update_dict(results)
+        return comparison
+
+
+class Comparison(_Loci):
+    _DTYPE_LOCI = np.dtype([('start', np.int64),
+                            ('stop', np.int64),
+                            ('samples', np.object),
+                            ('counts', np.object)])
+
+    _LOCI_DEFAULT_VALUES = (0, 0, None, None)
+
+    _DTYPE_ARRAY = np.dtype([('reference', np.str_, 256),
+                             ('strand', np.str_, 1),
+                             ('category', np.str_, 256),
+                             ('start', np.int64),
+                             ('stop', np.int64),
+                             ('samples', np.object),
+                             ('counts', np.object)])
