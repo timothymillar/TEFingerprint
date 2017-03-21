@@ -172,7 +172,7 @@ class ComparativeBins(_Loci):
             group_results['samples'] = [samples for _ in bins]
 
             sample_tips = [tips_dict[(*group, sample)] for sample in samples]
-            group_results['counts'] = [[np.sum(np.logical_and(tips >= start, tips <= stop)) for tips in sample_tips] for start, stop in bins]
+            group_results['counts'] = [np.array([np.sum(np.logical_and(tips >= start, tips <= stop)) for tips in sample_tips]) for start, stop in bins]
 
             results[group] = group_results
 
