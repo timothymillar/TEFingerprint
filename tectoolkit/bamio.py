@@ -82,6 +82,10 @@ def _parse_read_loci(strings):
 def _bam_strand_read_loci(bam, reference, strand, categories, tag='ME'):
     source = os.path.basename(bam)
     strings = _read_bam_strings(bam, reference, strand)
+    if ':' in reference:
+        pass
+    else:
+        reference += ':0-{0}'.format(_read_bam_reference_lengths(bam)[reference])
     tag = '\t' + tag + ':[Zi]:'
     tags = np.array([re.split(tag, s)[1].split('\t')[0] for s in strings])
     for category in categories:

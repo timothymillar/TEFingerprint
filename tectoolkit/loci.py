@@ -86,7 +86,7 @@ class _Loci(object):
         attributes = '{0}={1}'.format('category', record['category'])
         attributes = 'ID=' + identifier + ';' + attributes
         template = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}"
-        return template.format(record['reference'],
+        return template.format(record['reference'].split(':')[0],
                                '.',
                                '.',
                                record['start'],
@@ -161,7 +161,7 @@ class ReadLoci(_Loci):
         attributes = ';'.join(['{0}={1}'.format(slot, record[slot]) for slot in ('category', 'source')])
         attributes = 'ID=' + record['name'] + ';' + attributes
         template = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}"
-        return template.format(record['reference'],
+        return template.format(record['reference'].split(':')[0],
                                '.',
                                '.',
                                record['start'],
@@ -187,7 +187,7 @@ class FingerPrint(_Loci):
         attributes = ';'.join(['{0}={1}'.format(slot, record[slot]) for slot in ('category', 'source')])
         attributes = 'ID=' + identifier + ';' + attributes
         template = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}"
-        return template.format(record['reference'],
+        return template.format(record['reference'].split(':')[0],
                                '.',
                                '.',
                                record['start'],
@@ -273,7 +273,7 @@ class Comparison(_Loci):
                                       for slot in ('sources', 'counts')])
         attributes = 'ID=' + identifier + ';' + attributes
         template = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}"
-        return template.format(record['reference'],
+        return template.format(record['reference'].split(':')[0],
                                '.',
                                '.',
                                record['start'],
@@ -300,7 +300,7 @@ class Comparison(_Loci):
         attributes = ';'.join(['{0}={1}'.format(slot, record[slot]) for slot in ('category', 'source', 'count')])
         attributes = 'ID=' + identifier + ';' + attributes
         template = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}"
-        return template.format(record['reference'],
+        return template.format(record['reference'].split(':')[0],
                                '.',
                                '.',
                                record['start'],
