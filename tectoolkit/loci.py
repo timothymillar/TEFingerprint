@@ -49,6 +49,12 @@ class _Loci(object):
     def __init__(self):
         self._dict = {}
 
+    def __len__(self):
+        return sum([len(loci) for loci in self.loci()])
+
+    def __repr__(self):
+        return repr(self._dict)
+
     def groups(self):
         return self._dict.keys()
 
@@ -64,6 +70,17 @@ class _Loci(object):
             child._dict[group] = loci
             yield child
 
+    def buffer(self, value):
+        for key, loci in self.items():
+            reference = key[0]
+            minimum, maximum = tuple(map(int, reference.split(':')[1].split('-')))
+            difs = ((loci['start'][1:] - loci['stop'][:-1]) - 1) / 2
+            difs[difs > value] = value
+            loci['start'][1:] = loci['start'][1:] - np.floor(difs)
+            loci['stop'][:-1] = loci['stop'][:-1] + np.ceil(difs)
+            loci['start'][0] = max(loci['start'][0] - value, minimum)
+            loci['stop'][-1] = min(loci['stop'][-1] + value, maximum)
+
     def _update_dict(self, dictionary):
         self._dict.update(dictionary)
 
@@ -78,6 +95,7 @@ class _Loci(object):
             for slot in list(type(self)._DTYPE_LOCI.fields.keys()):
                 sub_array[slot] = loci[slot]
             array = np.append(array, sub_array)
+        array.sort(order=('reference', 'start', 'stop'))
         return array
 
     @staticmethod
@@ -98,7 +116,6 @@ class _Loci(object):
 
     def as_gff(self):
         array = self.as_array()
-        array.sort(order=('reference', 'start', 'stop'))
         return '\n'.join((self._format_gff_feature(record) for record in array))
 
 
@@ -215,9 +232,6 @@ class ComparativeBins(_Loci):
         bins._update_dict(dictionary)
         return bins
 
-    def buffer(self, value):
-        pass
-
     def compare(self, reads):
         sources = np.array(list({group[3] for group in list(reads.groups())}))
         sources.sort()
@@ -292,6 +306,7 @@ class Comparison(_Loci):
                 sub_array['source'] = locus['sources']
                 sub_array['count'] = locus['counts']
                 array = np.append(array, sub_array)
+        array.sort(order=('reference', 'start', 'stop'))
         return array
 
     @staticmethod
@@ -312,5 +327,4 @@ class Comparison(_Loci):
 
     def as_flat_gff(self):
         array = self.as_flat_array()
-        array.sort(order=('reference', 'start', 'stop', 'source'))
         return '\n'.join((self._format_flat_gff_feature(record) for record in array))
