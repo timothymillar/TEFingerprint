@@ -11,12 +11,12 @@ class FingerprintProgram(object):
         result = fingerprint(bams=self.args.input_bams,
                              references=self.args.references,
                              categories=self.args.families,
-                             mate_element_tag=self.args.mate_element_tag,
-                             min_reads=self.args.min_reads,
-                             eps=self.args.epsilon,
-                             min_eps=self.args.min_eps,
-                             hierarchical=self.args.hierarchical_clustering,
-                             cores=self.args.threads)
+                             mate_element_tag=self.args.mate_element_tag[0],
+                             min_reads=self.args.min_reads[0],
+                             eps=self.args.epsilon[0],
+                             min_eps=self.args.min_eps[0],
+                             hierarchical=self.args.hierarchical_clustering[0],
+                             cores=self.args.threads[0])
         print(result.as_gff())
 
     @staticmethod
@@ -47,7 +47,8 @@ class FingerprintProgram(object):
                                  'reads into categories for analysis')
         parser.add_argument('--mate_element_tag',
                             type=str,
-                            default='ME',
+                            default=['ME'],
+                            nargs=1,
                             help='Tag used in bam file to indicate the element type mate read')
         parser.add_argument('-m', '--min_reads',
                             type=int,
@@ -93,6 +94,7 @@ class FingerprintProgram(object):
                                  'and opposite strands) to be associated with one another as a pair')
         parser.add_argument('-t', '--threads',
                             type=int,
-                            default=1,
+                            default=[1],
+                            nargs=1,
                             help='Maximum number of cpu threads to be used')
         return parser.parse_args(args)
