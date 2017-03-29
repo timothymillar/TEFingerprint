@@ -28,10 +28,12 @@ def fingerprint(bams=None,
             return merge(*pool.starmap(_fingerprint_worker, jobs))
 
 
-def _comparison_worker(bams, reference, categories, mate_element_tag, min_reads, eps, min_eps, hierarchical):
+def _comparison_worker(bams, reference, categories, mate_element_tag, min_reads, eps, min_eps, hierarchical, bin_buffer):
     reads = merge(*[ReadLoci.from_bam(bam, reference, categories, tag=mate_element_tag) for bam in bams])
     fprint = reads.fingerprint(min_reads, eps, min_eps=min_eps, hierarchical=hierarchical)
-    return ComparativeBins.from_union(fprint).compare(reads)
+    bins = ComparativeBins.from_union(fprint)
+    bins.buffer(bin_buffer)
+    return bins.compare(reads)
 
 
 def comparison(bams=None,
@@ -42,8 +44,9 @@ def comparison(bams=None,
                eps=None,
                min_eps=0,
                hierarchical=True,
+               bin_buffer=0,
                cores=1):
-    jobs = product([bams], references, [categories], [mate_element_tag], [min_reads], [eps], [min_eps], [hierarchical])
+    jobs = product([bams], references, [categories], [mate_element_tag], [min_reads], [eps], [min_eps], [hierarchical], [bin_buffer])
 
     if cores == 1:
         return merge(*[_comparison_worker(*job) for job in jobs])

@@ -112,6 +112,7 @@ class ComparisonProgram(object):
                             eps=self.args.epsilon[0],
                             min_eps=self.args.min_eps[0],
                             hierarchical=self.args.hierarchical_clustering[0],
+                            bin_buffer=self.args.bin_buffer[0],
                             cores=self.args.threads[0])
         if self.args.long_form[0] is True:
             print(result.as_flat_gff())
@@ -193,11 +194,12 @@ class ComparisonProgram(object):
                                  'and opposite strands) to be associated with one another as a pair')
         parser.add_argument('-b', '--bin_buffer',
                             type=int,
-                            default=[0],
+                            default=[None],
                             nargs=1,
                             help='Additional buffer to be added to margins of comparative bins. '
                                  'This is used avoid identifying small clusters as unique, when these is only '
-                                 'slight miss-match in read positions across samples (i.e. false positives).')
+                                 'slight miss-match in read positions across samples (i.e. false positives). '
+                                 'By default this will use the same value as epsilon.')
         parser.add_argument('--long_form',
                             type=bool,
                             default=[False],
@@ -209,4 +211,7 @@ class ComparisonProgram(object):
                             default=[1],
                             nargs=1,
                             help='Maximum number of cpu threads to be used')
-        return parser.parse_args(args)
+        args = parser.parse_args(args)
+        if args.bin_buffer == [None]:
+            args.bin_buffer = args.epsilon
+        return args

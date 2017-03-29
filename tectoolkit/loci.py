@@ -71,15 +71,18 @@ class _Loci(object):
             yield child
 
     def buffer(self, value):
-        for key, loci in self.items():
-            reference = key[0]
-            minimum, maximum = tuple(map(int, reference.split(':')[1].split('-')))
-            difs = ((loci['start'][1:] - loci['stop'][:-1]) - 1) / 2
-            difs[difs > value] = value
-            loci['start'][1:] = loci['start'][1:] - np.floor(difs)
-            loci['stop'][:-1] = loci['stop'][:-1] + np.ceil(difs)
-            loci['start'][0] = max(loci['start'][0] - value, minimum)
-            loci['stop'][-1] = min(loci['stop'][-1] + value, maximum)
+        if value <= 0:
+            pass
+        else:
+            for key, loci in self.items():
+                reference = key[0]
+                minimum, maximum = tuple(map(int, reference.split(':')[1].split('-')))
+                difs = ((loci['start'][1:] - loci['stop'][:-1]) - 1) / 2
+                difs[difs > value] = value
+                loci['start'][1:] = loci['start'][1:] - np.floor(difs)
+                loci['stop'][:-1] = loci['stop'][:-1] + np.ceil(difs)
+                loci['start'][0] = max(loci['start'][0] - value, minimum)
+                loci['stop'][-1] = min(loci['stop'][-1] + value, maximum)
 
     def _update_dict(self, dictionary):
         self._dict.update(dictionary)
