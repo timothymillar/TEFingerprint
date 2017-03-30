@@ -4,6 +4,7 @@ import os
 import re
 import pysam
 import numpy as np
+from itertools import product
 
 
 def _read_bam_strings(bam, reference, strand):
@@ -79,7 +80,10 @@ def _parse_read_loci(strings):
         yield start, stop, name
 
 
-def _bam_strand_read_loci(bam, reference, strand, categories, tag='ME'):
+def _read_bam_ref_strand_loci(bam, reference, strand, categories, tag='ME'):
+    print('bam', bam)
+    print('ref', reference)
+    print('cat', categories)
     source = os.path.basename(bam)
     strings = _read_bam_strings(bam, reference, strand)
     if ':' in reference:
@@ -94,8 +98,34 @@ def _bam_strand_read_loci(bam, reference, strand, categories, tag='ME'):
         yield (reference, strand, category, source), loci
 
 
-def bam_read_loci(bam, reference, categories, tag='ME'):
-    for block in _bam_strand_read_loci(bam, reference, '+', categories, tag=tag):
+def _read_bam_ref_loci(bam, reference, categories, tag='ME'):
+    for block in _read_bam_ref_strand_loci(bam, reference, '+', categories, tag=tag):
         yield block
-    for block in _bam_strand_read_loci(bam, reference, '-', categories, tag=tag):
+    for block in _read_bam_ref_strand_loci(bam, reference, '-', categories, tag=tag):
         yield block
+
+
+def extract_bam_references(*args):
+    bam_refs = [_read_bam_reference_lengths(bam) for bam in args]
+    assert all(ref == bam_refs[0] for ref in bam_refs)
+    references = ['{0}:0-{1}'.format(k, v) for k, v in bam_refs[0].items()]
+    return references
+
+
+def extract_bam_reads(bams, categories, references=None, tag='ME'):
+    if isinstance(bams, str):
+        bams = [bams]
+
+    if isinstance(categories, str):
+        categories = [categories]
+
+    if references is None:
+        references = extract_bam_references(*bams)
+    if isinstance(references, str):
+        references = [references]
+
+    # run jobs
+    jobs = product(bams, references)
+    for bam, reference in jobs:
+        for block in _read_bam_ref_loci(bam, reference, categories, tag=tag):
+            yield block

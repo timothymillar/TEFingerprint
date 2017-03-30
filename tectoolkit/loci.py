@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 
 import numpy as np
-from tectoolkit.bamio import bam_read_loci as _bam_read_loci
+from tectoolkit.bamio import _read_bam_ref_loci as _bam_read_loci
 from tectoolkit.cluster import UDC, HUDC
 
 
@@ -231,7 +231,7 @@ class ReadLoci(_Loci):
         """
         reads = ReadLoci()
         reads._update_dict({group: np.fromiter(loci, dtype=cls._DTYPE_LOCI)
-                            for group, loci in _bam_read_loci(bam, reference, categories, tag=tag)})
+                            for group, loci in _read_bam_ref_loci(bam, reference, categories, tag=tag)})
         return reads
 
     def tips(self):
