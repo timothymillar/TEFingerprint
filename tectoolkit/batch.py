@@ -2,19 +2,20 @@
 
 from itertools import product
 from multiprocessing import Pool
-from tectoolkit.loci import *
+from tectoolkit import loci
 
 
-def _fingerprint_worker(bams, categories, reference, mate_element_tag, min_reads, eps, min_eps, hierarchical):
+def _fingerprint_worker(bams, categories, reference, transposon_tag, min_reads, eps, min_eps, hierarchical):
     """Worker function for batch fingerprinting"""
-    reads = merge(*[ReadLoci.from_bam(bam, categories, references=reference, tag=mate_element_tag) for bam in bams])
+    reads = loci.merge(*[loci.ReadLoci.from_bam(bam, categories, references=reference, tag=transposon_tag)
+                         for bam in bams])
     return reads.fingerprint(min_reads, eps, min_eps=min_eps, hierarchical=hierarchical)
 
 
 def fingerprint(bams=None,
                 categories=None,
                 references=None,
-                mate_element_tag='ME',
+                transposon_tag='ME',
                 min_reads=None,
                 eps=None,
                 min_eps=0,
@@ -29,8 +30,8 @@ def fingerprint(bams=None,
     :type categories: list[str]
     :param references: targeted (slices of) references with format 'name' or 'name:minimum-maximum'
     :type references: list[str]
-    :param mate_element_tag: the two letter sam tag containing the transposon associated with each read
-    :type mate_element_tag: str
+    :param transposon_tag: the two letter sam tag containing the transposon associated with each read
+    :type transposon_tag: str
     :param min_reads: minimum number of read tips required to form a fingerprint locus
     :type min_reads: int
     :param eps: maximum distance allowed among each set of read tips to form a fingerprint locus
@@ -43,22 +44,23 @@ def fingerprint(bams=None,
     :type cores: int
 
     :return: Fingerprints of bam files
-    :rtype: :class:`FingerPrint`
+    :rtype: :class:`loci.FingerPrint`
     """
-    jobs = product([bams], [categories], references, [mate_element_tag], [min_reads], [eps], [min_eps], [hierarchical])
+    jobs = product([bams], [categories], references, [transposon_tag], [min_reads], [eps], [min_eps], [hierarchical])
 
     if cores == 1:
-        return merge(*[_fingerprint_worker(*job) for job in jobs])
+        return loci.merge(*[_fingerprint_worker(*job) for job in jobs])
     else:
         with Pool(cores) as pool:
-            return merge(*pool.starmap(_fingerprint_worker, jobs))
+            return loci.merge(*pool.starmap(_fingerprint_worker, jobs))
 
 
-def _comparison_worker(bams, categories, reference, mate_element_tag, min_reads, eps, min_eps, hierarchical, bin_buffer):
+def _comparison_worker(bams, categories, reference, transposon_tag, min_reads, eps, min_eps, hierarchical, bin_buffer):
     """Worker function for batch fingerprint comparisons"""
-    reads = merge(*[ReadLoci.from_bam(bam, categories, references=reference, tag=mate_element_tag) for bam in bams])
+    reads = loci.merge(*[loci.ReadLoci.from_bam(bam, categories, references=reference, tag=transposon_tag)
+                         for bam in bams])
     fprint = reads.fingerprint(min_reads, eps, min_eps=min_eps, hierarchical=hierarchical)
-    bins = ComparativeBins.from_fingerprints(fprint)
+    bins = loci.ComparativeBins.from_fingerprints(fprint)
     bins.buffer(bin_buffer)
     return bins.compare(reads)
 
@@ -66,7 +68,7 @@ def _comparison_worker(bams, categories, reference, mate_element_tag, min_reads,
 def comparison(bams=None,
                categories=None,
                references=None,
-               mate_element_tag='ME',
+               transposon_tag='ME',
                min_reads=None,
                eps=None,
                min_eps=0,
@@ -82,8 +84,8 @@ def comparison(bams=None,
     :type categories: list[str]
     :param references: targeted (slices of) references with format 'name' or 'name:minimum-maximum'
     :type references: list[str]
-    :param mate_element_tag: the two letter sam tag containing the transposon associated with each read
-    :type mate_element_tag: str
+    :param transposon_tag: the two letter sam tag containing the transposon associated with each read
+    :type transposon_tag: str
     :param min_reads: minimum number of read tips required to form a fingerprint locus
     :type min_reads: int
     :param eps: maximum distance allowed among each set of read tips to form a fingerprint locus
@@ -98,15 +100,15 @@ def comparison(bams=None,
     :type cores: int
 
     :return: Fingerprint comparisons of bam files
-    :rtype: :class:`Comparison`
+    :rtype: :class:`loci.Comparison`
     """
     if bin_buffer is None:
         bin_buffer = eps
 
-    jobs = product([bams], [categories], references, [mate_element_tag], [min_reads], [eps], [min_eps], [hierarchical], [bin_buffer])
+    jobs = product([bams], [categories], references, [transposon_tag], [min_reads], [eps], [min_eps], [hierarchical], [bin_buffer])
 
     if cores == 1:
-        return merge(*[_comparison_worker(*job) for job in jobs])
+        return loci.merge(*[_comparison_worker(*job) for job in jobs])
     else:
         with Pool(cores) as pool:
-            return merge(*pool.starmap(_comparison_worker, jobs))
+            return loci.merge(*pool.starmap(_comparison_worker, jobs))

@@ -1,23 +1,23 @@
 #! /usr/bin/env python
 
 import argparse
-from tectoolkit.multicore import fingerprint, comparison
-from tectoolkit.bamio import extract_bam_references
+from tectoolkit import batch
+from tectoolkit import bamio
 
 
 class FingerprintProgram(object):
     """Class for the fingerprint program"""
     def __init__(self, arguments):
         self.args = self.parse_args(arguments)
-        result = fingerprint(bams=self.args.input_bams,
-                             references=self.args.references,
-                             categories=self.args.families,
-                             mate_element_tag=self.args.mate_element_tag[0],
-                             min_reads=self.args.min_reads[0],
-                             eps=self.args.epsilon[0],
-                             min_eps=self.args.min_eps[0],
-                             hierarchical=self.args.hierarchical_clustering[0],
-                             cores=self.args.threads[0])
+        result = batch.fingerprint(bams=self.args.input_bams,
+                                   references=self.args.references,
+                                   categories=self.args.families,
+                                   transposon_tag=self.args.mate_element_tag[0],
+                                   min_reads=self.args.min_reads[0],
+                                   eps=self.args.epsilon[0],
+                                   min_eps=self.args.min_eps[0],
+                                   hierarchical=self.args.hierarchical_clustering[0],
+                                   cores=self.args.threads[0])
         print(result.as_gff())
 
     @staticmethod
@@ -100,7 +100,7 @@ class FingerprintProgram(object):
                             help='Maximum number of cpu threads to be used')
         args = parser.parse_args(args)
         if args.references == [None]:
-            args.references = extract_bam_references(*args.input_bams)
+            args.references = bamio.extract_bam_references(*args.input_bams)
         return args
 
 
@@ -108,16 +108,16 @@ class ComparisonProgram(object):
     """Class for the comparison program"""
     def __init__(self, arguments):
         self.args = self.parse_args(arguments)
-        result = comparison(bams=self.args.input_bams,
-                            references=self.args.references,
-                            categories=self.args.families,
-                            mate_element_tag=self.args.mate_element_tag[0],
-                            min_reads=self.args.min_reads[0],
-                            eps=self.args.epsilon[0],
-                            min_eps=self.args.min_eps[0],
-                            hierarchical=self.args.hierarchical_clustering[0],
-                            bin_buffer=self.args.bin_buffer[0],
-                            cores=self.args.threads[0])
+        result = batch.comparison(bams=self.args.input_bams,
+                                  references=self.args.references,
+                                  categories=self.args.families,
+                                  transposon_tag=self.args.mate_element_tag[0],
+                                  min_reads=self.args.min_reads[0],
+                                  eps=self.args.epsilon[0],
+                                  min_eps=self.args.min_eps[0],
+                                  hierarchical=self.args.hierarchical_clustering[0],
+                                  bin_buffer=self.args.bin_buffer[0],
+                                  cores=self.args.threads[0])
         if self.args.long_form[0] is True:
             print(result.as_flat_gff())
         else:
@@ -217,7 +217,7 @@ class ComparisonProgram(object):
                             help='Maximum number of cpu threads to be used')
         args = parser.parse_args(args)
         if args.references == [None]:
-            args.references = extract_bam_references(*args.input_bams)
+            args.references = bamio.extract_bam_references(*args.input_bams)
         if args.bin_buffer == [None]:
             args.bin_buffer = args.epsilon
         return args

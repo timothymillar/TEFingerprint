@@ -1,8 +1,8 @@
 #! /usr/bin/env python
 
 import numpy as np
-from tectoolkit.bamio import extract_bam_reads
-from tectoolkit.cluster import UDC, HUDC
+from tectoolkit import bamio
+from tectoolkit import cluster
 
 
 def _loci_melter(array):
@@ -254,7 +254,10 @@ class ReadLoci(_Loci):
         """
         reads = ReadLoci()
         reads._update_dict({group: np.fromiter(loci, dtype=cls._DTYPE_LOCI)
-                            for group, loci in extract_bam_reads(bams, categories, references=references, tag=tag)})
+                            for group, loci in bamio.extract_bam_reads(bams,
+                                                                       categories,
+                                                                       references=references,
+                                                                       tag=tag)})
         return reads
 
     def tips(self):
@@ -300,9 +303,9 @@ class ReadLoci(_Loci):
 
             # fit model
             if hierarchical:
-                model = HUDC(min_reads, max_eps=eps, min_eps=min_eps)
+                model = cluster.HUDC(min_reads, max_eps=eps, min_eps=min_eps)
             else:
-                model = UDC(min_reads, eps)
+                model = cluster.UDC(min_reads, eps)
             model.fit(tips)
 
             # get new loci
