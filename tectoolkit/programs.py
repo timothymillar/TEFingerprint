@@ -2,6 +2,7 @@
 
 import argparse
 from tectoolkit.multicore import fingerprint, comparison
+from tectoolkit.bamio import extract_bam_references
 
 
 class FingerprintProgram(object):
@@ -34,8 +35,8 @@ class FingerprintProgram(object):
                             help='One or more bam files to be fingerprinted')
         parser.add_argument('-r', '--references',
                             type=str,
-                            nargs='*',
-                            default=[''],
+                            nargs='+',
+                            default=[None],
                             help='The reference sequence(s) (e.g. chromosome) to be fingerprinted. ' + \
                                  'If left blank all references sequences in the input file will be used.')
         parser.add_argument('-f', '--families',
@@ -97,7 +98,10 @@ class FingerprintProgram(object):
                             default=[1],
                             nargs=1,
                             help='Maximum number of cpu threads to be used')
-        return parser.parse_args(args)
+        args = parser.parse_args(args)
+        if args.references == [None]:
+            args.references = extract_bam_references(*args.input_bams)
+        return args
 
 
 class ComparisonProgram(object):
@@ -135,7 +139,7 @@ class ComparisonProgram(object):
         parser.add_argument('-r', '--references',
                             type=str,
                             nargs='*',
-                            default=[''],
+                            default=[None],
                             help='The reference sequence(s) (e.g. chromosome) to be fingerprinted. ' + \
                                  'If left blank all references sequences in the input file will be used.')
         parser.add_argument('-f', '--families',
@@ -212,6 +216,8 @@ class ComparisonProgram(object):
                             nargs=1,
                             help='Maximum number of cpu threads to be used')
         args = parser.parse_args(args)
+        if args.references == [None]:
+            args.references = extract_bam_references(*args.input_bams)
         if args.bin_buffer == [None]:
             args.bin_buffer = args.epsilon
         return args

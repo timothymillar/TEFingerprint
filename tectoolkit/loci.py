@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 
 import numpy as np
-from tectoolkit.bamio import _read_bam_ref_loci as _bam_read_loci
+from tectoolkit.bamio import extract_bam_reads
 from tectoolkit.cluster import UDC, HUDC
 
 
@@ -210,17 +210,17 @@ class ReadLoci(_Loci):
                              ('name', np.str_, 254)])
 
     @classmethod
-    def from_bam(cls, bam, reference, categories, tag='ME'):
+    def from_bam(cls, bams, categories, references=None, tag='ME'):
         """
         Create an object of :class:`ReadLoci` from a bam file.
         The bam file should contain aligned reads without pairs where each read is tagged with the category of
         transposon it corresponds to.
         The tag 'ME' is used by default.
 
-        :param bam: The path to a bam file
-        :type bam: str
-        :param reference: The name or slice of a reference chromosome to obtain reads from
-        :type reference: str
+        :param bams: The path to a bam file or a list of paths to multiple bam files
+        :type bams: str | list[str]
+        :param references: The name or slice of a reference chromosome to obtain reads from
+        :type references: str
         :param categories: A list of transposon categories to group reads by
         :type categories: list[str]
         :param tag: The sam tag containing the transposon each read corresponds to
@@ -231,7 +231,7 @@ class ReadLoci(_Loci):
         """
         reads = ReadLoci()
         reads._update_dict({group: np.fromiter(loci, dtype=cls._DTYPE_LOCI)
-                            for group, loci in _read_bam_ref_loci(bam, reference, categories, tag=tag)})
+                            for group, loci in extract_bam_reads(bams, categories, references=references, tag=tag)})
         return reads
 
     def tips(self):

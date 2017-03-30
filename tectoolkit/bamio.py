@@ -81,9 +81,6 @@ def _parse_read_loci(strings):
 
 
 def _read_bam_ref_strand_loci(bam, reference, strand, categories, tag='ME'):
-    print('bam', bam)
-    print('ref', reference)
-    print('cat', categories)
     source = os.path.basename(bam)
     strings = _read_bam_strings(bam, reference, strand)
     if ':' in reference:
