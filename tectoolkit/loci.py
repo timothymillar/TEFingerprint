@@ -71,9 +71,9 @@ class _Loci(object):
     A collection of categorised univariate loci.
 
     Loci are categorised into groups based on a combination of states relating to their location and or origin:
-    - reference: str
-    - strand: str
-    - category: str
+     - reference: str
+     - strand: str
+     - category: str
     Where 'reference' takes the form 'name:min-max', 'strand' is '+' or '-', and 'category' identifies which
     category of transpson the loci represent.
 
@@ -201,6 +201,25 @@ class _Loci(object):
 
 
 class ReadLoci(_Loci):
+    """
+    A collection of named sam reads, categorised by origin.
+
+    Loci are categorised into groups based on a combination of states relating to their location and origin:
+     - reference: str
+     - strand: str
+     - category: str
+     - source: str
+    Where 'reference' takes the form 'name:min-max', 'strand' is '+' or '-', 'category' identifies which
+    category of transpson the loci represent, and source is the name of the source bam file.
+
+    Each locus is represented as a single element in a numpy array with the following slots:
+     - start: np.int64
+     - stop: np.int64
+     - name: np.str_, 254
+    Where 'start' and 'stop' are respectively the lower and upper coordinates that define a segment of the reference,
+    and name is the reads name in the source bam file.
+    Coordinates are inclusive, 1 based integers (i.e, use the SAM coordinate system).
+    """
     _DTYPE_LOCI = np.dtype([('start', np.int64), ('stop', np.int64), ('name', np.str_, 254)])
 
     _LOCI_DEFAULT_VALUES = (0, 0, '')
@@ -323,7 +342,23 @@ class ReadLoci(_Loci):
 
 
 class FingerPrint(_Loci):
+    """
+    A collection of categorised univariate loci comprising a density based fingerprint.
 
+    Loci are categorised into groups based on a combination of states relating to their location and origin:
+     - reference: str
+     - strand: str
+     - category: str
+     - source: str
+    Where 'reference' takes the form 'name:min-max', 'strand' is '+' or '-', and 'category' identifies which
+    category of transpson the loci represent.
+
+    Each locus is represented as a single element in a numpy array with the following slots:
+     - start: np.int64
+     - stop: np.int64
+    Where 'start' and 'stop' are respectively the lower and upper coordinates that define a segment of the reference.
+    Coordinates are inclusive, 1 based integers (i.e, use the SAM coordinate system).
+    """
     _DTYPE_ARRAY = np.dtype([('reference', np.str_, 256),
                              ('strand', np.str_, 1),
                              ('category', np.str_, 256),
@@ -358,7 +393,23 @@ class FingerPrint(_Loci):
 
 
 class ComparativeBins(_Loci):
+    """
+    A collection of categorised univariate bins (loci) derived from the union of fingerprint loci from multiple sources.
+    Bins can be used to compare read counts from multiple sources (i.e. bam files).
 
+    Loci are categorised into groups based on a combination of states relating to their location:
+     - reference: str
+     - strand: str
+     - category: str
+    Where 'reference' takes the form 'name:min-max', 'strand' is '+' or '-', and 'category' identifies which
+    category of transpson the loci represent.
+
+    Each locus is represented as a single element in a numpy array with the following slots:
+     - start: np.int64
+     - stop: np.int64
+    Where 'start' and 'stop' are respectively the lower and upper coordinates that define a segment of the reference.
+    Coordinates are inclusive, 1 based integers (i.e, use the SAM coordinate system).
+    """
     @classmethod
     def from_fingerprints(cls, *args):
         """
@@ -450,6 +501,26 @@ class ComparativeBins(_Loci):
 
 
 class Comparison(_Loci):
+    """
+    A collection of categorised univariate loci. Each locus contains read counts for each of the sources used in the
+    comparison.
+
+    Loci are categorised into groups based on a combination of states relating to their location and or origin:
+    - reference: str
+    - strand: str
+    - category: str
+    Where 'reference' takes the form 'name:min-max', 'strand' is '+' or '-', and 'category' identifies which
+    category of transpson the loci represent.
+
+    Each locus is represented as a single element in a numpy array with the following slots:
+     - start: np.int64
+     - stop: np.int64
+     - sources: np.object
+     - counts: np.object
+    Where 'start' and 'stop' are respectively the lower and upper coordinates that define a segment of the reference.
+    Coordinates are inclusive, 1 based integers (i.e, use the SAM coordinate system), sources is a numpy array of
+    strings, and counts is a numpy array of integers showing the number of reads falling within that bin per source.
+    """
     _DTYPE_LOCI = np.dtype([('start', np.int64),
                             ('stop', np.int64),
                             ('sources', np.object),

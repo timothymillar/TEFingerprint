@@ -43,6 +43,23 @@ def _read_bam_reference_lengths(bam):
         return references
 
 
+def extract_bam_references(*args):
+    """
+    Returns a list of references (including their range) from the header(s) of one or more bam file(s).
+    If multiple bam file are specified, they must all have identical references (including their range).
+
+    :param args: The path(s) to one or more indexed sorted Bam file(s)
+    :type args: iterable[str]
+
+    :return: A list of strings with the structure 'name:minimum-maximum'
+    :rtype: list[str]
+    """
+    bam_refs = [_read_bam_reference_lengths(bam) for bam in args]
+    assert all(ref == bam_refs[0] for ref in bam_refs)
+    references = ['{0}:0-{1}'.format(k, v) for k, v in bam_refs[0].items()]
+    return references
+
+
 def _cigar_mapped_length(cigar):
     """
     Calculate length of the mapped section of a read from a sam CIGAR string.
@@ -69,7 +86,7 @@ def _parse_read_loci(strings):
     :type strand: str
 
     :return: An iterable of mapped SAM read positions and names
-    :rtype: generator[(int, int, str, str)]
+    :rtype: generator[(int, int, str)]
     """
     for string in strings:
         attr = string.split("\t")
@@ -81,6 +98,24 @@ def _parse_read_loci(strings):
 
 
 def _read_bam_ref_strand_loci(bam, reference, strand, categories, tag='ME'):
+    """
+    Read a single strand of a single reference from a bam file and categories by their associated transposon.
+    If a reference is specified by name only, its range will be extracted from the bam and appended.
+
+    :param bam: path to a bam file
+    :type bam: str
+    :param reference: target reference of format 'name' or 'name:minimum-maximum'
+    :type reference: str
+    :param strand: target strand '+' or '-'
+    :type strand: str
+    :param categories: a list of transposon categories
+    :type categories: list[str]
+    :param tag: the two letter sam tag containing the transposon associated with each read
+    :type tag: str
+
+    :return: a generator of category tuples and loci tuple generators
+    :rtype: generator[((str, str, str, str), generator[((int, int, str))])]
+    """
     source = os.path.basename(bam)
     strings = _read_bam_strings(bam, reference, strand)
     if ':' in reference:
@@ -96,20 +131,46 @@ def _read_bam_ref_strand_loci(bam, reference, strand, categories, tag='ME'):
 
 
 def _read_bam_ref_loci(bam, reference, categories, tag='ME'):
+    """
+    Read both strands of a single reference from a bam file and categories by their associated transposon.
+    If a reference is specified by name only, its range will be extracted from the bam and appended.
+
+    :param bam: path to a bam file
+    :type bam: str
+    :param reference: target reference of format 'name' or 'name:minimum-maximum'
+    :type reference: str
+    :param categories: a list of transposon categories
+    :type categories: list[str]
+    :param tag: the two letter sam tag containing the transposon associated with each read
+    :type tag: str
+
+    :return: a generator of category tuples and loci tuple generators
+    :rtype: generator[((str, str, str, str), generator[((int, int, str))])]
+    """
     for block in _read_bam_ref_strand_loci(bam, reference, '+', categories, tag=tag):
         yield block
     for block in _read_bam_ref_strand_loci(bam, reference, '-', categories, tag=tag):
         yield block
 
 
-def extract_bam_references(*args):
-    bam_refs = [_read_bam_reference_lengths(bam) for bam in args]
-    assert all(ref == bam_refs[0] for ref in bam_refs)
-    references = ['{0}:0-{1}'.format(k, v) for k, v in bam_refs[0].items()]
-    return references
-
-
 def extract_bam_reads(bams, categories, references=None, tag='ME'):
+    """
+    Extract reads from one or more bam file(s) and categories reads by their reference, strand, associated transposon,
+    and source bam file.
+    If a reference is specified by name only, its range will be extracted from the bam and appended.
+
+    :param bams: path(s) to a one or more bam file(s)
+    :type bams: str | list[str]
+    :param references: target reference(s) of format 'name' or 'name:minimum-maximum'
+    :type references: str | list[str]
+    :param categories: target transposon categories
+    :type categories: str | list[str]
+    :param tag: the two letter sam tag containing the transposon associated with each read
+    :type tag: str
+
+    :return: a generator of category tuples and loci tuple generators
+    :rtype: generator[((str, str, str, str), generator[((int, int, str))])]
+    """
     if isinstance(bams, str):
         bams = [bams]
 
