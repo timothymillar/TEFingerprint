@@ -22,25 +22,29 @@ def _loci_melter(array):
     :return: a generator of melted loci
     :rtype: generator[(int, int)]
     """
-    array_starts = np.array(array['start'])
-    array_stops = np.array(array['stop'])
-    array_starts.sort()
-    array_stops.sort()
+    if len(array) == 1:
+        yield array['start'], array['stop']
 
-    start = array_starts[0]
-    stop = array_stops[0]
+    else:
+        array_starts = np.array(array['start'])
+        array_stops = np.array(array['stop'])
+        array_starts.sort()
+        array_stops.sort()
 
-    for i in range(1, len(array_starts)):
-        if array_starts[i] <= stop:
-            if array_stops[i] > stop:
-                stop = array_stops[i]
+        start = array_starts[0]
+        stop = array_stops[0]
+
+        for i in range(1, len(array_starts)):
+            if array_starts[i] <= stop:
+                if array_stops[i] > stop:
+                    stop = array_stops[i]
+                else:
+                    pass
             else:
-                pass
-        else:
-            yield start, stop
-            start = array_starts[i]
-            stop = array_stops[i]
-    yield start, stop
+                yield start, stop
+                start = array_starts[i]
+                stop = array_stops[i]
+        yield start, stop
 
 
 def merge(*args):
@@ -375,7 +379,10 @@ class ComparativeBins(_Loci):
             dictionary[group[0:3]] = np.append(dictionary[group[0:3]], loci)
 
         for group, loci in dictionary.items():
-            dictionary[group] = np.fromiter(_loci_melter(loci), dtype=ComparativeBins._DTYPE_LOCI)
+            if len(loci) == 0:
+                dictionary[group] = np.empty(0, dtype=ComparativeBins._DTYPE_LOCI)
+            else:
+                dictionary[group] = np.fromiter(_loci_melter(loci), dtype=ComparativeBins._DTYPE_LOCI)
 
         bins = ComparativeBins()
         bins._update_dict(dictionary)
@@ -394,14 +401,21 @@ class ComparativeBins(_Loci):
             pass
         else:
             for key, loci in self.items():
-                reference = key[0]
-                minimum, maximum = tuple(map(int, reference.split(':')[1].split('-')))
-                difs = ((loci['start'][1:] - loci['stop'][:-1]) - 1) / 2
-                difs[difs > value] = value
-                loci['start'][1:] = loci['start'][1:] - np.floor(difs)
-                loci['stop'][:-1] = loci['stop'][:-1] + np.ceil(difs)
-                loci['start'][0] = max(loci['start'][0] - value, minimum)
-                loci['stop'][-1] = min(loci['stop'][-1] + value, maximum)
+                if len(loci) == 0:
+                    pass
+                elif len(loci) == 1:
+                    minimum, maximum = tuple(map(int, reference.split(':')[1].split('-')))
+                    loci['start'][0] = max(loci['start'][0] - value, minimum)
+                    loci['stop'][-1] = min(loci['stop'][-1] + value, maximum)
+                else:
+                    reference = key[0]
+                    minimum, maximum = tuple(map(int, reference.split(':')[1].split('-')))
+                    difs = ((loci['start'][1:] - loci['stop'][:-1]) - 1) / 2
+                    difs[difs > value] = value
+                    loci['start'][1:] = loci['start'][1:] - np.floor(difs)
+                    loci['stop'][:-1] = loci['stop'][:-1] + np.ceil(difs)
+                    loci['start'][0] = max(loci['start'][0] - value, minimum)
+                    loci['stop'][-1] = min(loci['stop'][-1] + value, maximum)
 
     def compare(self, *args):
         """
