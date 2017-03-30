@@ -31,7 +31,7 @@ def fingerprint(bams=None,
 def _comparison_worker(bams, reference, categories, mate_element_tag, min_reads, eps, min_eps, hierarchical, bin_buffer):
     reads = merge(*[ReadLoci.from_bam(bam, reference, categories, tag=mate_element_tag) for bam in bams])
     fprint = reads.fingerprint(min_reads, eps, min_eps=min_eps, hierarchical=hierarchical)
-    bins = ComparativeBins.from_union(fprint)
+    bins = ComparativeBins.from_fingerprints(fprint)
     bins.buffer(bin_buffer)
     return bins.compare(reads)
 

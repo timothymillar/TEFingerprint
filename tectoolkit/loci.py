@@ -356,9 +356,9 @@ class FingerPrint(_Loci):
 class ComparativeBins(_Loci):
 
     @classmethod
-    def from_union(cls, *args):
+    def from_fingerprints(cls, *args):
         """
-        Constructs a set of comparative bins form one or more inheriting from :class:`_Loci`.
+        Constructs a set of comparative bins form one or more instances of :class:`FingerPrint`.
 
         :param args: Objects to be merged
         :type args: iterable[:class:`_Loci`]
@@ -366,13 +366,13 @@ class ComparativeBins(_Loci):
         :return: Bins to be used for comparisons
         :rtype: :class:`ComparativeBins`
         """
-        for arg in args:
-            assert isinstance(arg, _Loci)
-        groups = list(set([group[0:3] for arg in args for group in arg.groups()]))
+        base = merge(*args)
+        assert isinstance(base, FingerPrint)
+
+        groups = list(set([group[0:3] for group in base.groups()]))
         dictionary = {group: np.empty(0, dtype=ComparativeBins._DTYPE_LOCI) for group in groups}
-        for arg in args:
-            for group, loci in arg.items():
-                dictionary[group[0:3]] = np.append(dictionary[group[0:3]], loci)
+        for group, loci in base.items():
+            dictionary[group[0:3]] = np.append(dictionary[group[0:3]], loci)
 
         for group, loci in dictionary.items():
             dictionary[group] = np.fromiter(_loci_melter(loci), dtype=ComparativeBins._DTYPE_LOCI)
@@ -403,16 +403,17 @@ class ComparativeBins(_Loci):
                 loci['start'][0] = max(loci['start'][0] - value, minimum)
                 loci['stop'][-1] = min(loci['stop'][-1] + value, maximum)
 
-    def compare(self, reads):
+    def compare(self, *args):
         """
         Compare the read counts within each bin using reads from multiple sources (bam files).
 
-        :param reads: Reads to be compared
-        :type reads: :class:`ReadLoci`
+        :param args: Reads to be compared
+        :type args: iterable[:class:`ReadLoci`]
 
         :return: A comparison of read counts by source within each bin
         :rtype: :class:`Comparison`
         """
+        reads = merge(*args)
         assert isinstance(reads, ReadLoci)
         sources = np.array(list({group[3] for group in list(reads.groups())}))
         sources.sort()
