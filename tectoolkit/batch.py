@@ -112,3 +112,7 @@ def comparison(bams=None,
     else:
         with Pool(cores) as pool:
             return loci.merge(*pool.starmap(_comparison_worker, jobs))
+
+
+if __name__ == '__main__':
+    pass

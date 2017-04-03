@@ -221,3 +221,7 @@ class ComparisonProgram(object):
         if args.bin_buffer == [None]:
             args.bin_buffer = args.epsilon
         return args
+
+
+if __name__ == '__main__':
+    pass

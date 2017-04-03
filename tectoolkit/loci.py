@@ -630,3 +630,7 @@ class Comparison(_Loci):
         """
         array = self.as_flat_array()
         return '\n'.join((self._format_flat_gff_feature(record) for record in array))
+
+
+if __name__ == '__main__':
+    pass

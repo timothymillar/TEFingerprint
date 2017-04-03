@@ -187,3 +187,7 @@ def extract_bam_reads(bams, categories, references=None, tag='ME'):
     for bam, reference in jobs:
         for block in _read_bam_ref_loci(bam, reference, categories, tag=tag):
             yield block
+
+
+if __name__ == '__main__':
+    pass
