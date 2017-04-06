@@ -234,7 +234,7 @@ class FingerprintComparison(object):
         self.fingerprints = fingerprints
         for f in fingerprints:
             assert type(f) == Fingerprint
-        assert len({f.strand for f in fingerprints if f.strand is not None}) == 1
+        assert len({f.strand for f in fingerprints if f.strand is not None}) <= 1
         assert len({(f.reference,
                      f.family,
                      f.eps[0],
