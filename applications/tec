@@ -9,6 +9,7 @@ from tectoolkit.preprocess import PreProcessProgram
 from tectoolkit.programs import FingerprintProgram as FingerprintProgram2
 from tectoolkit.programs import ComparisonProgram as ComparisonProgram2
 
+
 def parse_program_arg(arg):
     """"""
     parser = argparse.ArgumentParser('Identify program to run')

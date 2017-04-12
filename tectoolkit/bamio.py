@@ -82,8 +82,6 @@ def _parse_read_loci(strings):
 
     :param strings: A collection of SAM formatted strings
     :type strings: iterable[str]
-    :param strand: Strand ('+' or '-') of all reads
-    :type strand: str
 
     :return: An iterable of mapped SAM read positions and names
     :rtype: generator[(int, int, str)]
