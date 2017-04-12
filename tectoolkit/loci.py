@@ -513,6 +513,7 @@ class ComparativeBins(_Loci):
                 if len(loci) == 0:
                     pass
                 elif len(loci) == 1:
+                    reference = key[0]
                     minimum, maximum = tuple(map(int, reference.split(':')[1].split('-')))
                     loci['start'][0] = max(loci['start'][0] - value, minimum)
                     loci['stop'][-1] = min(loci['stop'][-1] + value, maximum)
