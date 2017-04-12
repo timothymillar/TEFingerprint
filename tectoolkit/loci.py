@@ -220,7 +220,10 @@ class _Loci(object):
         :return: gff formatted string
         :rtype: str
         """
-        identifier = '_'.join([str(record[field]) for field in ('reference', 'strand', 'category', 'start')])
+        identifier = "{0}_{1}_{2}_{3}".format(record['reference'].split(':')[0],
+                                              record['strand'],
+                                              record['category'],
+                                              record['start'])
         attributes = '{0}={1}'.format('category', record['category'])
         attributes = 'ID=' + identifier + ';' + attributes
         template = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}"
@@ -435,7 +438,10 @@ class FingerPrint(_Loci):
         :return: gff formatted string
         :rtype: str
         """
-        identifier = '_'.join([str(record[field]) for field in ('reference', 'strand', 'category', 'start')])
+        identifier = "{0}_{1}_{2}_{3}".format(record['reference'].split(':')[0],
+                                              record['strand'],
+                                              record['category'],
+                                              record['start'])
         attributes = ';'.join(['{0}={1}'.format(slot, record[slot]) for slot in ('category', 'source')])
         attributes = 'ID=' + identifier + ';' + attributes
         template = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}"
@@ -620,7 +626,10 @@ class Comparison(_Loci):
         :return: gff formatted string
         :rtype: str
         """
-        identifier = '_'.join([str(record[field]) for field in ('reference', 'strand', 'category', 'start')])
+        identifier = "{0}_{1}_{2}_{3}".format(record['reference'].split(':')[0],
+                                              record['strand'],
+                                              record['category'],
+                                              record['start'])
         attributes = '{0}={1}'.format('category', record['category'])
         attributes += ';' + ';'.join(['{0}={1}'.format(slot, ','.join(map(str, record[slot])))
                                       for slot in ('sources', 'counts')])
@@ -666,7 +675,10 @@ class Comparison(_Loci):
         :return: gff formatted string
         :rtype: str
         """
-        identifier = '_'.join([str(record[field]) for field in ('reference', 'strand', 'category', 'start')])
+        identifier = "{0}_{1}_{2}_{3}".format(record['reference'].split(':')[0],
+                                              record['strand'],
+                                              record['category'],
+                                              record['start'])
         attributes = ';'.join(['{0}={1}'.format(slot, record[slot]) for slot in ('category', 'source', 'count')])
         attributes = 'ID=' + identifier + ';' + attributes
         template = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}"
