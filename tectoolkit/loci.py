@@ -87,6 +87,10 @@ class _Loci(object):
 
     _LOCI_DEFAULT_VALUES = (0, 0)
 
+    _DTYPE_KEY = np.dtype([('reference', np.str_, 256),
+                           ('strand', np.str_, 1),
+                           ('category', np.str_, 256)])
+
     _DTYPE_ARRAY = np.dtype([('reference', np.str_, 256),
                              ('strand', np.str_, 1),
                              ('category', np.str_, 256),
@@ -164,6 +168,47 @@ class _Loci(object):
         array.sort(order=('reference', 'start', 'stop'))
         return array
 
+    @classmethod
+    def from_dict(cls, dictionary):
+        """
+        Creat from a dictionary with the correct keys and dtype
+
+        :param dictionary: dictionary of key-loci pairs
+        :type dictionary: dict[tuple(...), :class:`np.array`[...]
+
+        :return: instance of :class:`_Loci`
+        """
+        d = {}
+        for key, loci in dictionary.items():
+            key = tuple(np.array([key], dtype=cls._DTYPE_KEY)[0])  # forces key through correct numpy types
+            assert loci.dtype == cls._DTYPE_LOCI
+            d[key] = loci
+        result = cls()
+        result._update_dict(d)
+        return result
+
+    @classmethod
+    def from_array(cls, array):
+        """
+        Create from an array with the correct dtype
+
+        :param array: numpy array
+        :type array: :class:`np.array`[...]
+
+        :return: instance of :class:`_Loci`
+        """
+        assert array.dtype == cls._DTYPE_ARRAY
+        key_instances = array[list(cls._DTYPE_KEY.names)]
+        keys = np.unique(key_instances)
+        d = {}
+        for key in keys:
+            loci = array[list(cls._DTYPE_LOCI.names)][key_instances == key]
+            key = tuple(key)
+            d[key] = loci
+        result = cls()
+        result._update_dict(d)
+        return result
+
     @staticmethod
     def _format_gff_feature(record):
         """
@@ -223,6 +268,11 @@ class ReadLoci(_Loci):
     _DTYPE_LOCI = np.dtype([('start', np.int64), ('stop', np.int64), ('name', np.str_, 254)])
 
     _LOCI_DEFAULT_VALUES = (0, 0, '')
+
+    _DTYPE_KEY = np.dtype([('reference', np.str_, 256),
+                           ('strand', np.str_, 1),
+                           ('category', np.str_, 256),
+                           ('source', np.str_, 256)])
 
     _DTYPE_ARRAY = np.dtype([('reference', np.str_, 256),
                              ('strand', np.str_, 1),
@@ -362,6 +412,11 @@ class FingerPrint(_Loci):
     Where 'start' and 'stop' are respectively the lower and upper coordinates that define a segment of the reference.
     Coordinates are inclusive, 1 based integers (i.e, use the SAM coordinate system).
     """
+    _DTYPE_KEY = np.dtype([('reference', np.str_, 256),
+                           ('strand', np.str_, 1),
+                           ('category', np.str_, 256),
+                           ('source', np.str_, 256)])
+
     _DTYPE_ARRAY = np.dtype([('reference', np.str_, 256),
                              ('strand', np.str_, 1),
                              ('category', np.str_, 256),
@@ -530,6 +585,10 @@ class Comparison(_Loci):
                             ('counts', np.object)])
 
     _LOCI_DEFAULT_VALUES = (0, 0, None, None)
+
+    _DTYPE_KEY = np.dtype([('reference', np.str_, 256),
+                           ('strand', np.str_, 1),
+                           ('category', np.str_, 256)])
 
     _DTYPE_ARRAY = np.dtype([('reference', np.str_, 256),
                              ('strand', np.str_, 1),
