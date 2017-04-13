@@ -130,7 +130,7 @@ class TestReadLoci:
         pass
 
     def test_tips(self):
-        """"""
+        """Test for method to extract the tips of loci as a dict"""
         dictionary = {('chr1:0-100', '+', 'Copia', 'bam1'): np.array([(1, 2, 'a'), (2, 3, 'b')],
                                                                      dtype=loci.ReadLoci._DTYPE_LOCI),
                       ('chr1:0-100', '-', 'Copia', 'bam1'): np.array([(1, 2, 'c'), (2, 3, 'd')],
@@ -154,7 +154,7 @@ class TestReadLoci:
             npt.assert_array_equal(query[key], answer[key])
 
     def test_fingerprint(self):
-        """"""
+        """Test for fingerprinting a single group of loci"""
         query = {('chr1:0-3000', '+', 'Gypsy', 'bam1'): np.array([(0,    0, 'Gypsy27_uniqueID'),
                                                                   (0,    0, 'Gypsy27_uniqueID'),
                                                                   (0,   60, 'Gypsy27_uniqueID'),
@@ -263,4 +263,96 @@ class TestReadLoci:
                                                                  (1662, 1917)], dtype=loci.FingerPrint._DTYPE_LOCI)})
         assert repr(query) == repr(answer)  # this only works because single entry in each dict
 
+    def test_as_gff(self):
+        """"""
+        query = loci.ReadLoci.from_dict({('chr1:0-3000',
+                                          '+',
+                                          'Gypsy',
+                                          'bam1'): np.array([(0, 20, 'name1'),
+                                                             (21, 30, 'name2'),
+                                                             (42, 100, 'name3')], dtype=loci.ReadLoci._DTYPE_LOCI)})
+        answer = '\n'.join(['chr1\t.\t.\t0\t20\t.\t+\t.\tID=name1;category=Gypsy;source=bam1',
+                            'chr1\t.\t.\t21\t30\t.\t+\t.\tID=name2;category=Gypsy;source=bam1',
+                            'chr1\t.\t.\t42\t100\t.\t+\t.\tID=name3;category=Gypsy;source=bam1'])
+        assert query.as_gff() == answer
 
+
+class TestFingerPrint:
+    """Tests for class FingerPrint"""
+    def test_as_gff(self):
+        """"""
+        query = loci.FingerPrint.from_dict({('chr1:0-3000',
+                                             '+',
+                                             'Gypsy',
+                                             'bam1'): np.array([(0, 577),
+                                                                (879, 1234),
+                                                                (1662, 1917)], dtype=loci.FingerPrint._DTYPE_LOCI),
+                                            ('chr1:0-3000',
+                                             '-',
+                                             'Gypsy',
+                                             'bam1'): np.array([], dtype=loci.FingerPrint._DTYPE_LOCI)
+                                            })
+        answer = '\n'.join(['chr1\t.\t.\t0\t577\t.\t+\t.\tID=chr1_+_Gypsy_0;category=Gypsy;source=bam1',
+                            'chr1\t.\t.\t879\t1234\t.\t+\t.\tID=chr1_+_Gypsy_879;category=Gypsy;source=bam1',
+                            'chr1\t.\t.\t1662\t1917\t.\t+\t.\tID=chr1_+_Gypsy_1662;category=Gypsy;source=bam1'])
+        assert query.as_gff() == answer
+
+
+class TestComparativeBins:
+    """Tests for class ComparativeBins"""
+    def test_from_fingerprints(self):
+        """"""
+        fprint1 = loci.FingerPrint.from_dict({('chr1:0-300',
+                                               '+',
+                                               'Gypsy',
+                                               'bam1'): np.array([(0, 10),
+                                                                  (21, 30)],
+                                                                 dtype=loci.FingerPrint._DTYPE_LOCI)})
+        fprint2 = loci.FingerPrint.from_dict({('chr1:0-300',
+                                               '+',
+                                               'Gypsy',
+                                               'bam2'): np.array([(10, 20),
+                                                                  (35, 40)],
+                                                                 dtype=loci.FingerPrint._DTYPE_LOCI)})
+        query = loci.ComparativeBins.from_fingerprints(fprint1, fprint2)
+        answer = loci.ComparativeBins.from_dict({('chr1:0-300',
+                                                  '+',
+                                                  'Gypsy'): np.array([(0, 20),
+                                                                      (21, 30),
+                                                                      (35, 40)],
+                                                                     dtype=loci.ComparativeBins._DTYPE_LOCI)})
+        assert repr(query) == repr(answer)
+
+    def test_buffer(self):
+        """"""
+        query = loci.ComparativeBins.from_dict({('chr1:0-300',
+                                                 '+',
+                                                 'Gypsy'): np.array([(10, 20),
+                                                                     (51, 60),
+                                                                     (160, 180),
+                                                                     (200, 300)],
+                                                                    dtype=loci.ComparativeBins._DTYPE_LOCI)})
+        query.buffer(20)
+        answer = loci.ComparativeBins.from_dict({('chr1:0-300',
+                                                  '+',
+                                                  'Gypsy'): np.array([(0, 35),
+                                                                      (36, 80),
+                                                                      (140, 190),
+                                                                      (191, 300)],
+                                                                     dtype=loci.ComparativeBins._DTYPE_LOCI)})
+        assert repr(query) == repr(answer)
+
+    def test_as_gff(self):
+        """"""
+        pass
+
+    def test_compare(self):
+        """"""
+        pass
+
+
+class TestComparison:
+    """Tests for class Comparison"""
+    def test_as_gff(self):
+        """"""
+        pass
