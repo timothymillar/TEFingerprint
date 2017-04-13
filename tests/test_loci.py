@@ -121,3 +121,146 @@ class TestLoci:
                             'chr2\t.\t.\t1\t2\t.\t+\t.\tID=chr2_+_Copia_1;category=Copia',
                             'chr2\t.\t.\t2\t3\t.\t+\t.\tID=chr2_+_Copia_2;category=Copia'])
         assert query.as_gff() == answer
+
+
+class TestReadLoci:
+    """Tests for class ReadLoci"""
+    def test_from_bam(self):
+        """"""
+        pass
+
+    def test_tips(self):
+        """"""
+        dictionary = {('chr1:0-100', '+', 'Copia', 'bam1'): np.array([(1, 2, 'a'), (2, 3, 'b')],
+                                                                     dtype=loci.ReadLoci._DTYPE_LOCI),
+                      ('chr1:0-100', '-', 'Copia', 'bam1'): np.array([(1, 2, 'c'), (2, 3, 'd')],
+                                                                     dtype=loci.ReadLoci._DTYPE_LOCI),
+                      ('chr1:0-100', '+', 'Gypsy', 'bam1'): np.array([(1, 2, 'e'), (2, 3, 'f')],
+                                                                     dtype=loci.ReadLoci._DTYPE_LOCI),
+                      ('chr1:0-100', '-', 'Gypsy', 'bam1'): np.array([(1, 2, 'g'), (2, 3, 'h')],
+                                                                     dtype=loci.ReadLoci._DTYPE_LOCI),
+                      ('chr2:0-100', '+', 'Copia', 'bam1'): np.array([(1, 2, 'i'), (2, 3, 'j')],
+                                                                     dtype=loci.ReadLoci._DTYPE_LOCI)}
+        query = loci.ReadLoci.from_dict(dictionary)
+        query = query.tips()
+
+        answer = {('chr1:0-100', '+', 'Copia', 'bam1'): np.array([2, 3]),
+                  ('chr1:0-100', '-', 'Copia', 'bam1'): np.array([1, 2]),
+                  ('chr1:0-100', '+', 'Gypsy', 'bam1'): np.array([2, 3]),
+                  ('chr1:0-100', '-', 'Gypsy', 'bam1'): np.array([1, 2]),
+                  ('chr2:0-100', '+', 'Copia', 'bam1'): np.array([2, 3])}
+        assert set(query.keys()) == set(answer.keys())
+        for key in query.keys():
+            npt.assert_array_equal(query[key], answer[key])
+
+    def test_fingerprint(self):
+        """"""
+        query = {('chr1:0-3000', '+', 'Gypsy', 'bam1'): np.array([(0,    0, 'Gypsy27_uniqueID'),
+                                                                  (0,    0, 'Gypsy27_uniqueID'),
+                                                                  (0,   60, 'Gypsy27_uniqueID'),
+                                                                  (0,   61, 'Gypsy27_uniqueID'),
+                                                                  (0,   61, 'Gypsy27_uniqueID'),
+                                                                  (0,   61, 'Gypsy27_uniqueID'),
+                                                                  (0,   76, 'Gypsy27_uniqueID'),
+                                                                  (0,   78, 'Gypsy27_uniqueID'),
+                                                                  (0,  122, 'Gypsy27_uniqueID'),
+                                                                  (0,  122, 'Gypsy27_uniqueID'),
+                                                                  (0,  141, 'Gypsy27_uniqueID'),
+                                                                  (0,  183, 'Gypsy27_uniqueID'),
+                                                                  (0,  251, 'Gypsy27_uniqueID'),
+                                                                  (0,  260, 'Gypsy27_uniqueID'),
+                                                                  (0,  260, 'Gypsy27_uniqueID'),
+                                                                  (0,  263, 'Gypsy27_uniqueID'),
+                                                                  (0,  263, 'Gypsy27_uniqueID'),
+                                                                  (0,  267, 'Gypsy27_uniqueID'),
+                                                                  (0,  267, 'Gypsy27_uniqueID'),
+                                                                  (0,  288, 'Gypsy27_uniqueID'),
+                                                                  (0,  288, 'Gypsy27_uniqueID'),
+                                                                  (0,  295, 'Gypsy27_uniqueID'),
+                                                                  (0,  300, 'Gypsy27_uniqueID'),
+                                                                  (0,  310, 'Gypsy27_uniqueID'),
+                                                                  (0,  310, 'Gypsy27_uniqueID'),
+                                                                  (0,  317, 'Gypsy27_uniqueID'),
+                                                                  (0,  317, 'Gypsy27_uniqueID'),
+                                                                  (0,  334, 'Gypsy27_uniqueID'),
+                                                                  (0,  334, 'Gypsy27_uniqueID'),
+                                                                  (0,  335, 'Gypsy27_uniqueID'),
+                                                                  (0,  338, 'Gypsy27_uniqueID'),
+                                                                  (0,  338, 'Gypsy27_uniqueID'),
+                                                                  (0,  338, 'Gypsy27_uniqueID'),
+                                                                  (0,  338, 'Gypsy27_uniqueID'),
+                                                                  (0,  340, 'Gypsy27_uniqueID'),
+                                                                  (0,  342, 'Gypsy27_uniqueID'),
+                                                                  (0,  342, 'Gypsy27_uniqueID'),
+                                                                  (0,  344, 'Gypsy27_uniqueID'),
+                                                                  (0,  344, 'Gypsy27_uniqueID'),
+                                                                  (0,  358, 'Gypsy27_uniqueID'),
+                                                                  (0,  367, 'Gypsy27_uniqueID'),
+                                                                  (0,  370, 'Gypsy27_uniqueID'),
+                                                                  (0,  370, 'Gypsy27_uniqueID'),
+                                                                  (0,  377, 'Gypsy27_uniqueID'),
+                                                                  (0,  387, 'Gypsy27_uniqueID'),
+                                                                  (0,  402, 'Gypsy27_uniqueID'),
+                                                                  (0,  403, 'Gypsy27_uniqueID'),
+                                                                  (0,  410, 'Gypsy27_uniqueID'),
+                                                                  (0,  410, 'Gypsy27_uniqueID'),
+                                                                  (0,  410, 'Gypsy27_uniqueID'),
+                                                                  (0,  418, 'Gypsy27_uniqueID'),
+                                                                  (0,  418, 'Gypsy27_uniqueID'),
+                                                                  (0,  424, 'Gypsy27_uniqueID'),
+                                                                  (0,  424, 'Gypsy27_uniqueID'),
+                                                                  (0,  577, 'Gypsy27_uniqueID'),
+                                                                  (0,  857, 'Gypsy27_uniqueID'),
+                                                                  (0,  879, 'Gypsy27_uniqueID'),
+                                                                  (0,  921, 'Gypsy27_uniqueID'),
+                                                                  (0,  921, 'Gypsy27_uniqueID'),
+                                                                  (0, 1007, 'Gypsy27_uniqueID'),
+                                                                  (0, 1031, 'Gypsy27_uniqueID'),
+                                                                  (0, 1051, 'Gypsy27_uniqueID'),
+                                                                  (0, 1051, 'Gypsy27_uniqueID'),
+                                                                  (0, 1059, 'Gypsy27_uniqueID'),
+                                                                  (0, 1071, 'Gypsy27_uniqueID'),
+                                                                  (0, 1071, 'Gypsy27_uniqueID'),
+                                                                  (0, 1080, 'Gypsy27_uniqueID'),
+                                                                  (0, 1094, 'Gypsy27_uniqueID'),
+                                                                  (0, 1094, 'Gypsy27_uniqueID'),
+                                                                  (0, 1110, 'Gypsy27_uniqueID'),
+                                                                  (0, 1110, 'Gypsy27_uniqueID'),
+                                                                  (0, 1113, 'Gypsy27_uniqueID'),
+                                                                  (0, 1113, 'Gypsy27_uniqueID'),
+                                                                  (0, 1183, 'Gypsy27_uniqueID'),
+                                                                  (0, 1189, 'Gypsy27_uniqueID'),
+                                                                  (0, 1200, 'Gypsy27_uniqueID'),
+                                                                  (0, 1200, 'Gypsy27_uniqueID'),
+                                                                  (0, 1217, 'Gypsy27_uniqueID'),
+                                                                  (0, 1234, 'Gypsy27_uniqueID'),
+                                                                  (0, 1234, 'Gypsy27_uniqueID'),
+                                                                  (0, 1591, 'Gypsy27_uniqueID'),
+                                                                  (0, 1620, 'Gypsy27_uniqueID'),
+                                                                  (0, 1620, 'Gypsy27_uniqueID'),
+                                                                  (0, 1662, 'Gypsy27_uniqueID'),
+                                                                  (0, 1686, 'Gypsy27_uniqueID'),
+                                                                  (0, 1707, 'Gypsy27_uniqueID'),
+                                                                  (0, 1755, 'Gypsy27_uniqueID'),
+                                                                  (0, 1828, 'Gypsy27_uniqueID'),
+                                                                  (0, 1828, 'Gypsy27_uniqueID'),
+                                                                  (0, 1848, 'Gypsy27_uniqueID'),
+                                                                  (0, 1848, 'Gypsy27_uniqueID'),
+                                                                  (0, 1848, 'Gypsy27_uniqueID'),
+                                                                  (0, 1848, 'Gypsy27_uniqueID'),
+                                                                  (0, 1851, 'Gypsy27_uniqueID'),
+                                                                  (0, 1851, 'Gypsy27_uniqueID'),
+                                                                  (0, 1852, 'Gypsy27_uniqueID'),
+                                                                  (0, 1917, 'Gypsy27_uniqueID')],
+                                                                 dtype=loci.ReadLoci._DTYPE_LOCI)}
+        query = loci.ReadLoci.from_dict(query)
+        query = query.fingerprint(10, eps=200, min_eps=10, hierarchical=True)
+        answer = loci.FingerPrint.from_dict({('chr1:0-3000',
+                                              '+',
+                                              'Gypsy',
+                                              'bam1'): np.array([(0, 577),
+                                                                 (879, 1234),
+                                                                 (1662, 1917)], dtype=loci.FingerPrint._DTYPE_LOCI)})
+        assert repr(query) == repr(answer)  # this only works because single entry in each dict
+
+
