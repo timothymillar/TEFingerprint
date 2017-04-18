@@ -665,7 +665,7 @@ class Comparison(_Loci):
         return array
 
     @staticmethod
-    def _format_flat_gff_feature(record):
+    def _format_flat_gff_feature(record, sample_numbers):
         """
         Worker method to format a single array entry as a single gff formatted string.
 
@@ -675,10 +675,11 @@ class Comparison(_Loci):
         :return: gff formatted string
         :rtype: str
         """
-        identifier = "{0}_{1}_{2}_{3}".format(record['reference'].split(':')[0],
-                                              record['strand'],
-                                              record['category'],
-                                              record['start'])
+        identifier = "{0}_{1}_{2}_{3}_{4}".format(record['reference'].split(':')[0],
+                                                  record['strand'],
+                                                  record['category'],
+                                                  record['start'],
+                                                  sample_numbers[record['source']])
         attributes = ';'.join(['{0}={1}'.format(slot, record[slot]) for slot in ('category', 'source', 'count')])
         attributes = 'ID=' + identifier + ';' + attributes
         template = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}"
@@ -701,7 +702,8 @@ class Comparison(_Loci):
         :rtype: str
         """
         array = self.as_flat_array()
-        return '\n'.join((self._format_flat_gff_feature(record) for record in array))
+        sample_numbers = {k: v for v, k in enumerate(np.sort(np.unique(array['source'])))}
+        return '\n'.join((self._format_flat_gff_feature(record, sample_numbers) for record in array))
 
 
 if __name__ == '__main__':
