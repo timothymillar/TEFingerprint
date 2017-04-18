@@ -118,7 +118,10 @@ def _parse_filter_string(string):
 
 
 def _matches_filter(feature, filt):
-    return _FILTER_DISPATCH[filt['operator']](feature[filt['attribute']], filt['value'])
+    # split attribute values in case it is a comma separated list
+    values = feature[filt['attribute']].split(',')
+    # check if any values meet filter requirement
+    return any([_FILTER_DISPATCH[filt['operator']](value, filt['value']) for value in values])
 
 
 def read_gff(file):
