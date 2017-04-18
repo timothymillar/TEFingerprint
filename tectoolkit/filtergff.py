@@ -6,7 +6,7 @@ import numpy as np
 
 
 class FilterGffProgram(object):
-    """Main class for the filter_gff program"""
+    """Main class for the filter gff program"""
     def __init__(self, arguments):
         """
         Init method for :class:`FilterGffProgram`.
@@ -14,13 +14,16 @@ class FilterGffProgram(object):
         :param arguments: A list of commandline arguments to be parsed for the filter_gff program
         """
         self.args = self.parse_args(arguments)
-        feature_strings = read_gff(self.args.input_gff[0])
+        with open(self.args.input_gff[0], 'r') as f:
+            feature_strings = f.read().splitlines()
         result = filter_features(feature_strings,
                                  column_filters=self.args.column_filters,
                                  attribute_filters=self.args.attribute_filters)
+        result = '\n'.join(result)
         print(result)
 
-    def parse_args(self, args):
+    @staticmethod
+    def parse_args(args):
         """
         Defines an argument parser to handle commandline inputs for the filter_gff program.
 
@@ -64,14 +67,44 @@ class FilterGffProgram(object):
 
 
 def _parse_gff_columns(string):
+    """
+    Parses a string containing a single gff3 feature and returns a dictionary of the first eight columns.
+
+    :param string: a one line string containing a single gff3 feature
+    :type string: str
+
+    :return: a dictionary containing data from the first eight gff columns
+    :rtype: dict[str, str]
+    """
     return dict(zip(['seqid', 'source', 'type', 'start', 'end', 'score', 'strand', 'phase'], string.split('\t')[:-1]))
 
 
 def _parse_gff_attributes(string):
+    """
+    Parses a string containing a single gff3 feature and returns a dictionary of attributes from the attributes column.
+
+    :param string: a one line string containing a single gff3 feature
+    :type string: str
+
+    :return: a dictionary containing attribute data from the attributes column
+    :rtype: dict[str, str]
+    """
     return {k: v for k, v in [item.split('=') for item in string.split('\t')[-1].split(';')]}
 
 
 def _equivalence_filter(x, y):
+    """
+    Tests a pair of strings for equivalence by attempting to convert them to floats and
+    falling back to string comparison.
+
+    :param x: string
+    :type x: str
+    :param y: string
+    :type y: str
+
+    :return: boolean
+    :rtype: bool
+    """
     try:
         return float(x) == float(y)
     except ValueError:
@@ -79,12 +112,25 @@ def _equivalence_filter(x, y):
 
 
 def _non_equivalence_filter(x, y):
+    """
+    Tests a pair of strings for non-equivalence by attempting to convert them to floats and
+    falling back to string comparison.
+
+    :param x: string
+    :type x: str
+    :param y: string
+    :type y: str
+
+    :return: boolean
+    :rtype: bool
+    """
     try:
         return float(x) != float(y)
     except ValueError:
         return x != y
 
 
+# Function dispatch based on operator passed by user
 _FILTER_DISPATCH = {'==': _equivalence_filter,
                     '=': _equivalence_filter,
                     '!=': _non_equivalence_filter,
@@ -96,7 +142,7 @@ _FILTER_DISPATCH = {'==': _equivalence_filter,
 
 def _parse_filter_string(string):
     """
-    Parse a filter string to identify the attribute, operator and value
+    Parse a filter string to identify the attribute, operator and value.
 
     :param string: A valid filter string in the form '<attribute><operator><value>'
     :type string: str
@@ -118,19 +164,46 @@ def _parse_filter_string(string):
 
 
 def _matches_filter(feature, filt):
+    """
+    Check if feature meats requirement of filter.
+
+    :param feature: A dictionary of attribute-value pairs
+    :type feature: dict[str, str]
+    :param filt: A dictionary with keys 'attribute', 'operator' and 'value'
+    :param filt: dict[str, str]
+
+    :return:
+    """
     # split attribute values in case it is a comma separated list
     values = feature[filt['attribute']].split(',')
     # check if any values meet filter requirement
     return any([_FILTER_DISPATCH[filt['operator']](value, filt['value']) for value in values])
 
 
-def read_gff(file):
-    with open(file, 'r') as f:
-        feature_strings = f.read().splitlines()
-    return feature_strings
-
-
 def filter_features(feature_strings, column_filters=None, attribute_filters=None):
+    """
+    Filter a list of gff3 formatted feature strings. Filters may be applied to feature attributes or
+    standardised gff3 columns (excluding the attributes column).
+
+    A filter is a dictionary with the keys 'attribute', 'operator' and 'value' where attribute is the
+    target 'attribute' to filter on, 'value' is the value to compare the attribute against and
+    'operator' determines the comparison to be performed.
+
+    If multiple filters are specified, a feature must meet the requirement of each of them to be selected.
+
+    In the case that an attribute contains a comma-separated list of values, the feature is selected if
+    any of the values meet the requirement of the filter.
+
+    :param feature_strings: a list of gff3 formatted feature strings
+    :type feature_strings: list[str]
+    :param column_filters: filters to apply to first 8 gff columns
+    :type column_filters: list[dict[str, str]]
+    :param attribute_filters: filters to apply to attributes
+    :type attribute_filters: list[dict[str, str]]
+
+    :return: a subset of gff3 formatted feature strings
+    :rtype: list[str]
+    """
     if column_filters is None:
         column_filters = []
     if attribute_filters is None:
@@ -149,6 +222,6 @@ def filter_features(feature_strings, column_filters=None, attribute_filters=None
         for filt in attribute_filters:
             match = np.array([_matches_filter(attr, filt) for attr in attributes], dtype=bool)
             keep = np.logical_and(keep, match)
-    return '\n'.join(np.array(feature_strings)[keep])
+    return (np.array(feature_strings)[keep]).tolist()
 
 
