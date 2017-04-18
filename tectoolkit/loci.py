@@ -557,6 +557,7 @@ class ComparativeBins(_Loci):
 
             sample_tips = [tips_dict[(*group, sample)] for sample in sources]
             group_results['counts'] = [np.array([np.sum(np.logical_and(tips >= start, tips <= stop)) for tips in sample_tips]) for start, stop in bins]
+            group_results['proportions'] = [np.round(a / np.sum(a), 3) for a in group_results['counts']]
 
             results[group] = group_results
 
@@ -589,9 +590,10 @@ class Comparison(_Loci):
     _DTYPE_LOCI = np.dtype([('start', np.int64),
                             ('stop', np.int64),
                             ('sources', np.object),
-                            ('counts', np.object)])
+                            ('counts', np.object),
+                            ('proportions', np.object)])
 
-    _LOCI_DEFAULT_VALUES = (0, 0, None, None)
+    _LOCI_DEFAULT_VALUES = (0, 0, None, None, None)
 
     _DTYPE_KEY = np.dtype([('reference', np.str_, 256),
                            ('strand', np.str_, 1),
@@ -603,7 +605,8 @@ class Comparison(_Loci):
                              ('start', np.int64),
                              ('stop', np.int64),
                              ('sources', np.object),
-                             ('counts', np.object)])
+                             ('counts', np.object),
+                             ('proportions', np.object)])
 
     _DTYPE_FLAT_ARRAY = np.dtype([('reference', np.str_, 256),
                                   ('strand', np.str_, 1),
@@ -611,9 +614,10 @@ class Comparison(_Loci):
                                   ('start', np.int64),
                                   ('stop', np.int64),
                                   ('source', np.str_, 256),
-                                  ('count', np.int64)])
+                                  ('count', np.int64),
+                                  ('proportion', np.float64)])
 
-    _LOCI_FLAT_DEFAULT_VALUES = (0, 0, '', 0)
+    _LOCI_FLAT_DEFAULT_VALUES = (0, 0, '', 0, 0.0)
 
     @staticmethod
     def _format_gff_feature(record):
@@ -632,7 +636,7 @@ class Comparison(_Loci):
                                               record['start'])
         attributes = '{0}={1}'.format('category', record['category'])
         attributes += ';' + ';'.join(['{0}={1}'.format(slot, ','.join(map(str, record[slot])))
-                                      for slot in ('sources', 'counts')])
+                                      for slot in ('sources', 'counts', 'proportions')])
         attributes = 'ID=' + identifier + ';' + attributes
         template = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}"
         return template.format(record['reference'].split(':')[0],
@@ -657,9 +661,10 @@ class Comparison(_Loci):
         for key, loci in self.items():
             for locus in loci:
                 sub_array = np.empty(len(locus['sources']), self._DTYPE_FLAT_ARRAY)
-                sub_array.fill((*key, locus['start'], locus['stop'], '', 0))
+                sub_array.fill((*key, locus['start'], locus['stop'], '', 0, 0.0))
                 sub_array['source'] = locus['sources']
                 sub_array['count'] = locus['counts']
+                sub_array['proportion'] = locus['proportions']
                 array = np.append(array, sub_array)
         array.sort(order=('reference', 'start', 'stop'))
         return array
@@ -680,7 +685,10 @@ class Comparison(_Loci):
                                                   record['category'],
                                                   record['start'],
                                                   sample_numbers[record['source']])
-        attributes = ';'.join(['{0}={1}'.format(slot, record[slot]) for slot in ('category', 'source', 'count')])
+        attributes = ';'.join(['{0}={1}'.format(slot, record[slot]) for slot in ('category',
+                                                                                 'source',
+                                                                                 'count',
+                                                                                 'proportion')])
         attributes = 'ID=' + identifier + ';' + attributes
         template = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}"
         return template.format(record['reference'].split(':')[0],
