@@ -5,6 +5,7 @@ import argparse
 from tectoolkit.fingerprint import FingerprintProgram
 from tectoolkit.compare import CompareProgram
 from tectoolkit.filter_gff import FilterGffProgram
+from tectoolkit.filtergff import FilterGffProgram as FilterGffProgram2
 from tectoolkit.preprocess import PreProcessProgram
 from tectoolkit.programs import FingerprintProgram as FingerprintProgram2
 from tectoolkit.programs import ComparisonProgram as ComparisonProgram2
@@ -15,7 +16,13 @@ def parse_program_arg(arg):
     parser = argparse.ArgumentParser('Identify program to run')
     parser.add_argument('program',
                         type=str,
-                        choices=("fingerprint", "fingerprint2", "compare", "compare2", "filter_gff", "preprocess"))
+                        choices=("fingerprint",
+                                 "fingerprint2",
+                                 "compare",
+                                 "compare2",
+                                 "filter_gff",
+                                 "filter_gff2",
+                                 "preprocess"))
     return parser.parse_args(arg)
 
 
@@ -41,6 +48,8 @@ def main():
     elif program == "filter_gff":
         job = FilterGffProgram(sys.argv[2:])
         job.run()
+    elif program == "filter_gff2":
+        FilterGffProgram2(sys.argv[2:])
     elif program == "preprocess":
         job = PreProcessProgram.from_cli(sys.argv[2:])
         job.run()
