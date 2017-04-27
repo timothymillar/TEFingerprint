@@ -3,6 +3,7 @@
 import numpy as np
 from tectoolkit import bamio
 from tectoolkit import cluster
+from collections import namedtuple
 
 
 def _loci_melter(array):
@@ -86,6 +87,8 @@ class _Loci(object):
     _DTYPE_LOCI = np.dtype([('start', np.int64), ('stop', np.int64)])
 
     _LOCI_DEFAULT_VALUES = (0, 0)
+
+    _Key = namedtuple('_Key', 'reference strand category')
 
     _DTYPE_KEY = np.dtype([('reference', np.str_, 256),
                            ('strand', np.str_, 1),
@@ -302,6 +305,8 @@ class ReadLoci(_Loci):
 
     _LOCI_DEFAULT_VALUES = (0, 0, '')
 
+    _Key = namedtuple('_Key', 'reference strand category source')
+
     _DTYPE_KEY = np.dtype([('reference', np.str_, 256),
                            ('strand', np.str_, 1),
                            ('category', np.str_, 256),
@@ -336,7 +341,7 @@ class ReadLoci(_Loci):
         :rtype: :class:`ReadLoci`
         """
         reads = ReadLoci()
-        reads._update_dict({group: np.fromiter(loci, dtype=cls._DTYPE_LOCI)
+        reads._update_dict({ReadLoci._Key(*group): np.fromiter(loci, dtype=cls._DTYPE_LOCI)
                             for group, loci in bamio.extract_bam_reads(bams,
                                                                        categories,
                                                                        references=references,
@@ -353,7 +358,7 @@ class ReadLoci(_Loci):
         """
         d = {}
         for group, loci in self.items():
-            if group[1] == '+':
+            if group.strand == '+':
                 d[group] = loci["stop"]
             else:
                 d[group] = loci["start"]
@@ -450,6 +455,8 @@ class FingerPrint(_Loci):
                            ('category', np.str_, 256),
                            ('source', np.str_, 256)])
 
+    _Key = namedtuple('_Key', 'reference strand category source')
+
     _DTYPE_ARRAY = np.dtype([('reference', np.str_, 256),
                              ('strand', np.str_, 1),
                              ('category', np.str_, 256),
@@ -515,24 +522,31 @@ class ComparativeBins(_Loci):
         :return: Bins to be used for comparisons
         :rtype: :class:`ComparativeBins`
         """
-        base = merge(*args)
-        assert isinstance(base, FingerPrint)
+        # Merge multiple FingerPrints objects
+        fingerprints = merge(*args)
+        assert isinstance(fingerprints, FingerPrint)
 
-        groups = list(set([group[0:3] for group in base.groups()]))
-        dictionary = {group: np.empty(0, dtype=ComparativeBins._DTYPE_LOCI) for group in groups}
-        for group, loci in base.items():
-            dictionary[group[0:3]] = np.append(dictionary[group[0:3]], loci)
+        # Use the Fingerprint keys to make ComparativeBins keys
+        keys = list(set([(key.reference, key.strand, key.category) for key in fingerprints.groups()]))
+        keys = [cls._Key(*key) for key in keys]
 
-        for group, loci in dictionary.items():
+        # Create and empty ComparativeBins object using the derived keys
+        dictionary = {key: np.empty(0, dtype=ComparativeBins._DTYPE_LOCI) for key in keys}
+
+        # Populate the ComparativeBins object with loci from FingerPrint object
+        for key, loci in fingerprints.items():
+            dictionary[key[0:3]] = np.append(dictionary[key[0:3]], loci)
+
+        # Melt overlapping loci within the ComparativeBins object to produce bins
+        for key, loci in dictionary.items():
             if len(loci) == 0:
-                dictionary[group] = np.empty(0, dtype=ComparativeBins._DTYPE_LOCI)
+                dictionary[key] = np.empty(0, dtype=ComparativeBins._DTYPE_LOCI)
             else:
-                dictionary[group] = np.fromiter(_loci_melter(loci), dtype=ComparativeBins._DTYPE_LOCI)
+                dictionary[key] = np.fromiter(_loci_melter(loci), dtype=ComparativeBins._DTYPE_LOCI)
 
         bins = ComparativeBins()
         bins._update_dict(dictionary)
         return bins
-
 
     def compare(self, *args):
         """
