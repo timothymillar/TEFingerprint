@@ -116,6 +116,7 @@ class ComparisonProgram(object):
                                   eps=self.args.epsilon[0],
                                   min_eps=self.args.min_eps[0],
                                   hierarchical=self.args.hierarchical_clustering[0],
+                                  fingerprint_buffer=self.args.fingerprint_buffer[0],
                                   bin_buffer=self.args.bin_buffer[0],
                                   cores=self.args.threads[0])
         if self.args.long_form[0] is True:
@@ -196,14 +197,18 @@ class ComparisonProgram(object):
                             nargs=1,
                             help='The maximum distance allowable between neighbouring clusters (of the same family '
                                  'and opposite strands) to be associated with one another as a pair')
-        parser.add_argument('-b', '--bin_buffer',
+        parser.add_argument('-b', '--fingerprint_buffer',
                             type=int,
-                            default=[None],
+                            default=[0],
                             nargs=1,
-                            help='Additional buffer to be added to margins of comparative bins. '
+                            help='Additional buffer to be added to margins of fingerprints. '
                                  'This is used avoid identifying small clusters as unique, when these is only '
-                                 'slight miss-match in read positions across samples (i.e. false positives). '
-                                 'By default this will use the same value as epsilon.')
+                                 'slight miss-match in read positions across samples (i.e. false positives). ')
+        parser.add_argument('--bin_buffer',
+                            type=int,
+                            default=[0],
+                            nargs=1,
+                            help='Additional buffer to be added to margins of comparative bins. ')
         parser.add_argument('--long_form',
                             type=bool,
                             default=[False],
@@ -218,8 +223,6 @@ class ComparisonProgram(object):
         args = parser.parse_args(args)
         if args.references == [None]:
             args.references = bamio.extract_bam_references(*args.input_bams)
-        if args.bin_buffer == [None]:
-            args.bin_buffer = args.epsilon
         return args
 
 
