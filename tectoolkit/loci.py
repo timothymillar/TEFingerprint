@@ -151,6 +151,36 @@ class _Loci(object):
         """
         self._dict.update(dictionary)
 
+    def buffer(self, value):
+        """
+        Expand each locus by a set amount in both directions (mutates data in place).
+        Loci can not be expanded beyond the bounds of their reference and will not overlap neighbouring loci within
+        their group.
+
+        :param value: the (maximum) amount to expand loci in both directions
+        :type value: int
+        """
+        if value <= 0:
+            pass
+        else:
+            for key, loci in self.items():
+                if len(loci) == 0:
+                    pass
+                elif len(loci) == 1:
+                    reference = key[0]
+                    minimum, maximum = tuple(map(int, reference.split(':')[1].split('-')))
+                    loci['start'][0] = max(loci['start'][0] - value, minimum)
+                    loci['stop'][-1] = min(loci['stop'][-1] + value, maximum)
+                else:
+                    reference = key[0]
+                    minimum, maximum = tuple(map(int, reference.split(':')[1].split('-')))
+                    difs = ((loci['start'][1:] - loci['stop'][:-1]) - 1) / 2
+                    difs[difs > value] = value
+                    loci['start'][1:] = loci['start'][1:] - np.floor(difs)
+                    loci['stop'][:-1] = loci['stop'][:-1] + np.ceil(difs)
+                    loci['start'][0] = max(loci['start'][0] - value, minimum)
+                    loci['stop'][-1] = min(loci['stop'][-1] + value, maximum)
+
     def as_array(self):
         """
         Convert all loci to a structured array sorted by location.
@@ -503,35 +533,6 @@ class ComparativeBins(_Loci):
         bins._update_dict(dictionary)
         return bins
 
-    def buffer(self, value):
-        """
-        Expand each locus by a set amount in both directions (mutates data in place).
-        Loci can not be expanded beyond the bounds of their reference and will not overlap neighbouring loci within
-        their group.
-
-        :param value: the (maximum) amount to expand loci in both directions
-        :type value: int
-        """
-        if value <= 0:
-            pass
-        else:
-            for key, loci in self.items():
-                if len(loci) == 0:
-                    pass
-                elif len(loci) == 1:
-                    reference = key[0]
-                    minimum, maximum = tuple(map(int, reference.split(':')[1].split('-')))
-                    loci['start'][0] = max(loci['start'][0] - value, minimum)
-                    loci['stop'][-1] = min(loci['stop'][-1] + value, maximum)
-                else:
-                    reference = key[0]
-                    minimum, maximum = tuple(map(int, reference.split(':')[1].split('-')))
-                    difs = ((loci['start'][1:] - loci['stop'][:-1]) - 1) / 2
-                    difs[difs > value] = value
-                    loci['start'][1:] = loci['start'][1:] - np.floor(difs)
-                    loci['stop'][:-1] = loci['stop'][:-1] + np.ceil(difs)
-                    loci['start'][0] = max(loci['start'][0] - value, minimum)
-                    loci['stop'][-1] = min(loci['stop'][-1] + value, maximum)
 
     def compare(self, *args):
         """
