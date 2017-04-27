@@ -526,24 +526,28 @@ class ComparativeBins(_Loci):
         fingerprints = merge(*args)
         assert isinstance(fingerprints, FingerPrint)
 
-        # Use the Fingerprint keys to make ComparativeBins keys
-        keys = list(set([(key.reference, key.strand, key.category) for key in fingerprints.groups()]))
-        keys = [cls._Key(*key) for key in keys]
+        # Dictionary to store loci
+        dictionary = {}
 
-        # Create and empty ComparativeBins object using the derived keys
-        dictionary = {key: np.empty(0, dtype=ComparativeBins._DTYPE_LOCI) for key in keys}
+        for fingerprint_key, loci in fingerprints.items():
 
-        # Populate the ComparativeBins object with loci from FingerPrint object
-        for key, loci in fingerprints.items():
-            dictionary[key[0:3]] = np.append(dictionary[key[0:3]], loci)
+            # Use the Fingerprint key to make a ComparativeBins key
+            bin_key = cls._Key(fingerprint_key.reference, fingerprint_key.strand, fingerprint_key.category)
 
-        # Melt overlapping loci within the ComparativeBins object to produce bins
+            # Populate the dictionary with loci from FingerPrint object
+            if bin_key not in dictionary.keys():
+                dictionary[bin_key] = loci
+            else:
+                dictionary[bin_key] = np.append(dictionary[bin_key], loci)
+
+        # Melt overlapping loci within each dictionary item object to produce bins
         for key, loci in dictionary.items():
             if len(loci) == 0:
                 dictionary[key] = np.empty(0, dtype=ComparativeBins._DTYPE_LOCI)
             else:
                 dictionary[key] = np.fromiter(_loci_melter(loci), dtype=ComparativeBins._DTYPE_LOCI)
 
+        # Create a new ComparativeBins object and populate with the dictionary
         bins = ComparativeBins()
         bins._update_dict(dictionary)
         return bins
