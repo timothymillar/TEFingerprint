@@ -144,18 +144,19 @@ class TestReadLoci:
         query = loci.ReadLoci.from_dict(dictionary)
         query = query.tips()
 
-        answer = {('chr1:0-100', '+', 'Copia', 'bam1'): np.array([2, 3]),
-                  ('chr1:0-100', '-', 'Copia', 'bam1'): np.array([1, 2]),
-                  ('chr1:0-100', '+', 'Gypsy', 'bam1'): np.array([2, 3]),
-                  ('chr1:0-100', '-', 'Gypsy', 'bam1'): np.array([1, 2]),
-                  ('chr2:0-100', '+', 'Copia', 'bam1'): np.array([2, 3])}
+        answer = {loci.ReadLoci._new_key('chr1:0-100', '+', 'Copia', 'bam1'): np.array([2, 3]),
+                  loci.ReadLoci._new_key('chr1:0-100', '-', 'Copia', 'bam1'): np.array([1, 2]),
+                  loci.ReadLoci._new_key('chr1:0-100', '+', 'Gypsy', 'bam1'): np.array([2, 3]),
+                  loci.ReadLoci._new_key('chr1:0-100', '-', 'Gypsy', 'bam1'): np.array([1, 2]),
+                  loci.ReadLoci._new_key('chr2:0-100', '+', 'Copia', 'bam1'): np.array([2, 3])}
         assert set(query.keys()) == set(answer.keys())
         for key in query.keys():
             npt.assert_array_equal(query[key], answer[key])
 
     def test_fingerprint(self):
-        """Test for fingerprinting a single group of loci"""
-        query = {('chr1:0-3000', '+', 'Gypsy', 'bam1'): np.array([(0,    0, 'Gypsy27_uniqueID'),
+        """Test for fingerprinting of read loci when one strand is empty (no reads)"""
+        query = {('chr1:0-3000', '-', 'Gypsy', 'bam1'): np.array([], dtype=loci.ReadLoci._DTYPE_LOCI),
+                 ('chr1:0-3000', '+', 'Gypsy', 'bam1'): np.array([(0,    0, 'Gypsy27_uniqueID'),
                                                                   (0,    0, 'Gypsy27_uniqueID'),
                                                                   (0,   60, 'Gypsy27_uniqueID'),
                                                                   (0,   61, 'Gypsy27_uniqueID'),
@@ -256,12 +257,18 @@ class TestReadLoci:
         query = loci.ReadLoci.from_dict(query)
         query = query.fingerprint(10, eps=200, min_eps=10, hierarchical=True)
         answer = loci.FingerPrint.from_dict({('chr1:0-3000',
+                                              '-',
+                                              'Gypsy',
+                                              'bam1'): np.array([], dtype=loci.FingerPrint._DTYPE_LOCI),
+                                             ('chr1:0-3000',
                                               '+',
                                               'Gypsy',
                                               'bam1'): np.array([(0, 577),
                                                                  (879, 1234),
                                                                  (1662, 1917)], dtype=loci.FingerPrint._DTYPE_LOCI)})
-        assert repr(query) == repr(answer)  # this only works because single entry in each dict
+        assert set(query.keys()) == set(answer.keys())
+        for key in query.keys():
+            npt.assert_array_equal(query[key], answer[key])
 
     def test_as_gff(self):
         """"""
@@ -340,7 +347,9 @@ class TestComparativeBins:
                                                                       (140, 190),
                                                                       (191, 300)],
                                                                      dtype=loci.ComparativeBins._DTYPE_LOCI)})
-        assert repr(query) == repr(answer)
+        assert set(query.keys()) == set(answer.keys())
+        for key in query.keys():
+            npt.assert_array_equal(query[key], answer[key])
 
     def test_as_gff(self):
         """"""

@@ -88,7 +88,7 @@ class _Loci(object):
 
     _LOCI_DEFAULT_VALUES = (0, 0)
 
-    _Key = namedtuple('_Key', 'reference strand category')
+    _new_key = namedtuple('Key', 'reference strand category')
 
     _DTYPE_KEY = np.dtype([('reference', np.str_, 256),
                            ('strand', np.str_, 1),
@@ -109,7 +109,10 @@ class _Loci(object):
     def __repr__(self):
         return repr(self._dict)
 
-    def groups(self):
+    def __getitem__(self, item):
+        return self._dict[self._new_key(*item)]
+
+    def keys(self):
         """
         Return the definition (key) for each group of loci.
 
@@ -213,7 +216,7 @@ class _Loci(object):
         """
         d = {}
         for key, loci in dictionary.items():
-            key = tuple(np.array([key], dtype=cls._DTYPE_KEY)[0])  # forces key through correct numpy types
+            key = cls._new_key(*key)  # use named tuple for keys
             assert loci.dtype == cls._DTYPE_LOCI
             d[key] = loci
         result = cls()
@@ -236,7 +239,7 @@ class _Loci(object):
         d = {}
         for key in keys:
             loci = array[list(cls._DTYPE_LOCI.names)][key_instances == key]
-            key = tuple(key)
+            key = cls._new_key(*key)
             d[key] = loci
         result = cls()
         result._update_dict(d)
@@ -305,7 +308,7 @@ class ReadLoci(_Loci):
 
     _LOCI_DEFAULT_VALUES = (0, 0, '')
 
-    _Key = namedtuple('_Key', 'reference strand category source')
+    _new_key = namedtuple('Key', 'reference strand category source')
 
     _DTYPE_KEY = np.dtype([('reference', np.str_, 256),
                            ('strand', np.str_, 1),
@@ -341,7 +344,7 @@ class ReadLoci(_Loci):
         :rtype: :class:`ReadLoci`
         """
         reads = ReadLoci()
-        reads._update_dict({ReadLoci._Key(*group): np.fromiter(loci, dtype=cls._DTYPE_LOCI)
+        reads._update_dict({ReadLoci._new_key(*group): np.fromiter(loci, dtype=cls._DTYPE_LOCI)
                             for group, loci in bamio.extract_bam_reads(bams,
                                                                        categories,
                                                                        references=references,
@@ -455,7 +458,7 @@ class FingerPrint(_Loci):
                            ('category', np.str_, 256),
                            ('source', np.str_, 256)])
 
-    _Key = namedtuple('_Key', 'reference strand category source')
+    _new_key = namedtuple('Key', 'reference strand category source')
 
     _DTYPE_ARRAY = np.dtype([('reference', np.str_, 256),
                              ('strand', np.str_, 1),
@@ -532,7 +535,7 @@ class ComparativeBins(_Loci):
         for fingerprint_key, loci in fingerprints.items():
 
             # Use the Fingerprint key to make a ComparativeBins key
-            bin_key = cls._Key(fingerprint_key.reference, fingerprint_key.strand, fingerprint_key.category)
+            bin_key = cls._new_key(fingerprint_key.reference, fingerprint_key.strand, fingerprint_key.category)
 
             # Populate the dictionary with loci from FingerPrint object
             if bin_key not in dictionary.keys():
@@ -564,7 +567,7 @@ class ComparativeBins(_Loci):
         """
         reads = merge(*args)
         assert isinstance(reads, ReadLoci)
-        sources = np.array(list({group[3] for group in list(reads.groups())}))
+        sources = np.array(list({group[3] for group in list(reads.keys())}))
         sources.sort()
         tips_dict = reads.tips()
         results = {}
