@@ -391,13 +391,75 @@ class TestComparativeBins:
         for key in query.keys():
             npt.assert_array_equal(query[key], answer[key])
 
-    def test_as_gff(self):
-        """"""
-        pass
-
     def test_compare(self):
-        """"""
-        pass
+        """Test the comparison of read counts based on comparative bins"""
+        bins = loci.ComparativeBins.from_dict({('chr1:0-3000',
+                                                '+',
+                                                'Gypsy'): np.array([(0, 20),
+                                                                    (21, 30),
+                                                                    (35, 40)],
+                                                                   dtype=loci.ComparativeBins._DTYPE_LOCI),
+                                               ('chr1:0-3000',
+                                                '+',
+                                                'Copia'): np.array([(0, 20),
+                                                                    (21, 30),
+                                                                    (35, 40)],
+                                                                   dtype=loci.ComparativeBins._DTYPE_LOCI)
+                                               })
+        reads = {('chr1:0-3000', '+', 'Gypsy', 'bam1'): np.array([(0,    0, 'Gypsy_uniqueID'),
+                                                                  (0,    2, 'Gypsy_uniqueID'),
+                                                                  (0,   20, 'Gypsy_uniqueID'),
+                                                                  (0,   21, 'Gypsy_uniqueID'),
+                                                                  (0,   27, 'Gypsy_uniqueID'),
+                                                                  (0,   28, 'Gypsy_uniqueID'),
+                                                                  (0,   28, 'Gypsy_uniqueID'),
+                                                                  (0,   30, 'Gypsy_uniqueID'),
+                                                                  (0,   33, 'Gypsy_uniqueID'),
+                                                                  (0,   35, 'Gypsy_uniqueID'),
+                                                                  (0,   36, 'Gypsy_uniqueID'),
+                                                                  (0,   40, 'Gypsy_uniqueID'),
+                                                                  (0,   70, 'Gypsy_uniqueID')],
+                                                                 dtype=loci.ReadLoci._DTYPE_LOCI),
+                 ('chr1:0-3000', '+', 'Gypsy', 'bam2'): np.array([(0,    2, 'Gypsy_uniqueID'),
+                                                                  (0,   21, 'Gypsy_uniqueID'),
+                                                                  (0,   27, 'Gypsy_uniqueID'),
+                                                                  (0,   28, 'Gypsy_uniqueID'),
+                                                                  (0,   28, 'Gypsy_uniqueID'),
+                                                                  (0,   30, 'Gypsy_uniqueID'),
+                                                                  (0,   70, 'Gypsy_uniqueID')],
+                                                                 dtype=loci.ReadLoci._DTYPE_LOCI),
+                 ('chr1:0-3000', '+', 'Copia', 'bam1'): np.array([(0, 0, 'Gypsy_uniqueID'),
+                                                                  (0, 2, 'Gypsy_uniqueID'),
+                                                                  (0, 20, 'Gypsy_uniqueID'),
+                                                                  (0, 21, 'Gypsy_uniqueID'),
+                                                                  (0, 27, 'Gypsy_uniqueID'),
+                                                                  (0, 28, 'Gypsy_uniqueID'),
+                                                                  (0, 28, 'Gypsy_uniqueID'),
+                                                                  (0, 30, 'Gypsy_uniqueID'),
+                                                                  (0, 33, 'Gypsy_uniqueID'),
+                                                                  (0, 35, 'Gypsy_uniqueID'),
+                                                                  (0, 36, 'Gypsy_uniqueID'),
+                                                                  (0, 40, 'Gypsy_uniqueID'),
+                                                                  (0, 70, 'Gypsy_uniqueID')],
+                                                                 dtype=loci.ReadLoci._DTYPE_LOCI),
+                 ('chr1:0-3000', '+', 'Copia', 'bam2'): np.array([],
+                                                                 dtype=loci.ReadLoci._DTYPE_LOCI)}
+        reads = loci.ReadLoci.from_dict(reads)
+        query = bins.compare(reads)
+
+        answer = {('chr1:0-3000', '+', 'Copia'): np.array([(0, 20, ['bam1', 'bam2'], [3, 0], [1.0, 0.0]),
+                                                           (21, 30, ['bam1', 'bam2'], [5, 0], [1.0, 0.0]),
+                                                           (35, 40, ['bam1', 'bam2'], [3, 0], [1.0, 0.0])],
+                                                          dtype=loci.Comparison._DTYPE_LOCI),
+                  ('chr1:0-3000', '+', 'Gypsy'): np.array([(0, 20, ['bam1', 'bam2'], [3, 1], [0.75, 0.25]),
+                                                           (21, 30, ['bam1', 'bam2'], [5, 5], [0.5, 0.5]),
+                                                           (35, 40, ['bam1', 'bam2'], [3, 0], [1.0, 0.0])],
+                                                          dtype=loci.Comparison._DTYPE_LOCI)}
+        answer = loci.Comparison.from_dict(answer)
+
+        assert set(query.keys()) == set(answer.keys())
+        for key in query.keys():
+            npt.assert_array_equal(query[key], answer[key])
 
 
 class TestComparison:

@@ -602,7 +602,6 @@ class ComparativeBins(_Loci):
             group_results['proportions'] = [np.round(a / np.sum(a), 3) for a in group_results['counts']]
 
             results[group] = group_results
-
         comparison = Comparison()
         comparison._dict = results
         return comparison
