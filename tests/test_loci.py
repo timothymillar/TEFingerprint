@@ -464,6 +464,98 @@ class TestComparativeBins:
 
 class TestComparison:
     """Tests for class Comparison"""
+    def test_as_array(self):
+        """"""
+        query = {('chr1:0-3000', '+', 'Copia'): np.array([(0, 20, ['bam1', 'bam2'], [3, 0], [1.0, 0.0]),
+                                                          (21, 30, ['bam1', 'bam2'], [5, 0], [1.0, 0.0]),
+                                                          (35, 40, ['bam1', 'bam2'], [3, 0], [1.0, 0.0])],
+                                                         dtype=loci.Comparison._DTYPE_LOCI),
+                 ('chr1:0-3000', '+', 'Gypsy'): np.array([(0, 20, ['bam1', 'bam2'], [3, 1], [0.75, 0.25]),
+                                                          (21, 30, ['bam1', 'bam2'], [5, 5], [0.5, 0.5]),
+                                                          (35, 40, ['bam1', 'bam2'], [3, 0], [1.0, 0.0])],
+                                                         dtype=loci.Comparison._DTYPE_LOCI)}
+        query = loci.Comparison.from_dict(query)
+
+        answer = np.array([('chr1:0-3000', '+', 'Copia', 0, 20, ['bam1', 'bam2'], [3, 0], [1.0, 0.0]),
+                           ('chr1:0-3000', '+', 'Gypsy', 0, 20, ['bam1', 'bam2'], [3, 1], [0.75, 0.25]),
+                           ('chr1:0-3000', '+', 'Copia', 21, 30, ['bam1', 'bam2'], [5, 0], [1.0, 0.0]),
+                           ('chr1:0-3000', '+', 'Gypsy', 21, 30, ['bam1', 'bam2'], [5, 5], [0.5, 0.5]),
+                           ('chr1:0-3000', '+', 'Copia', 35, 40, ['bam1', 'bam2'], [3, 0], [1.0, 0.0]),
+                           ('chr1:0-3000', '+', 'Gypsy', 35, 40, ['bam1', 'bam2'], [3, 0], [1.0, 0.0])],
+                          dtype=loci.Comparison._DTYPE_ARRAY)
+
+        npt.assert_array_equal(query.as_array(), answer)
+
     def test_as_gff(self):
         """"""
-        pass
+        query = {('chr1:0-3000', '+', 'Copia'): np.array([(0, 20, ['bam1', 'bam2'], [3, 0], [1.0, 0.0]),
+                                                          (21, 30, ['bam1', 'bam2'], [5, 0], [1.0, 0.0]),
+                                                          (35, 40, ['bam1', 'bam2'], [3, 0], [1.0, 0.0])],
+                                                         dtype=loci.Comparison._DTYPE_LOCI),
+                 ('chr1:0-3000', '+', 'Gypsy'): np.array([(0, 20, ['bam1', 'bam2'], [3, 1], [0.75, 0.25]),
+                                                          (21, 30, ['bam1', 'bam2'], [5, 5], [0.5, 0.5]),
+                                                          (35, 40, ['bam1', 'bam2'], [3, 0], [1.0, 0.0])],
+                                                         dtype=loci.Comparison._DTYPE_LOCI)}
+        query = loci.Comparison.from_dict(query)
+
+        answer = '\n'.join(['chr1\t.\t.\t0\t20\t.\t+\t.\tID=chr1_+_Copia_0;category=Copia;sources=bam1,bam2;counts=3,0;proportions=1.0,0.0',
+                            'chr1\t.\t.\t0\t20\t.\t+\t.\tID=chr1_+_Gypsy_0;category=Gypsy;sources=bam1,bam2;counts=3,1;proportions=0.75,0.25',
+                            'chr1\t.\t.\t21\t30\t.\t+\t.\tID=chr1_+_Copia_21;category=Copia;sources=bam1,bam2;counts=5,0;proportions=1.0,0.0',
+                            'chr1\t.\t.\t21\t30\t.\t+\t.\tID=chr1_+_Gypsy_21;category=Gypsy;sources=bam1,bam2;counts=5,5;proportions=0.5,0.5',
+                            'chr1\t.\t.\t35\t40\t.\t+\t.\tID=chr1_+_Copia_35;category=Copia;sources=bam1,bam2;counts=3,0;proportions=1.0,0.0',
+                            'chr1\t.\t.\t35\t40\t.\t+\t.\tID=chr1_+_Gypsy_35;category=Gypsy;sources=bam1,bam2;counts=3,0;proportions=1.0,0.0'])
+        assert query.as_gff() == answer
+
+    def test_flat_array(self):
+        """"""
+        query = {('chr1:0-3000', '+', 'Copia'): np.array([(0, 20, ['bam1', 'bam2'], [3, 0], [1.0, 0.0]),
+                                                          (21, 30, ['bam1', 'bam2'], [5, 0], [1.0, 0.0]),
+                                                          (35, 40, ['bam1', 'bam2'], [3, 0], [1.0, 0.0])],
+                                                         dtype=loci.Comparison._DTYPE_LOCI),
+                 ('chr1:0-3000', '+', 'Gypsy'): np.array([(0, 20, ['bam1', 'bam2'], [3, 1], [0.75, 0.25]),
+                                                          (21, 30, ['bam1', 'bam2'], [5, 5], [0.5, 0.5]),
+                                                          (35, 40, ['bam1', 'bam2'], [3, 0], [1.0, 0.0])],
+                                                         dtype=loci.Comparison._DTYPE_LOCI)}
+        query = loci.Comparison.from_dict(query)
+
+        answer = np.array([('chr1:0-3000', '+', 'Copia', 0, 20, 'bam1', 3, 1.0),
+                           ('chr1:0-3000', '+', 'Copia', 0, 20, 'bam2', 0, 0.0),
+                           ('chr1:0-3000', '+', 'Gypsy', 0, 20, 'bam1', 3, 0.75),
+                           ('chr1:0-3000', '+', 'Gypsy', 0, 20, 'bam2', 1, 0.25),
+                           ('chr1:0-3000', '+', 'Copia', 21, 30, 'bam1', 5, 1.0),
+                           ('chr1:0-3000', '+', 'Copia', 21, 30, 'bam2', 0, 0.0),
+                           ('chr1:0-3000', '+', 'Gypsy', 21, 30, 'bam1', 5, 0.5),
+                           ('chr1:0-3000', '+', 'Gypsy', 21, 30, 'bam2', 5, 0.5),
+                           ('chr1:0-3000', '+', 'Copia', 35, 40, 'bam1', 3, 1.0),
+                           ('chr1:0-3000', '+', 'Copia', 35, 40, 'bam2', 0, 0.0),
+                           ('chr1:0-3000', '+', 'Gypsy', 35, 40, 'bam1', 3, 1.0),
+                           ('chr1:0-3000', '+', 'Gypsy', 35, 40, 'bam2', 0, 0.0)],
+                          dtype=loci.Comparison._DTYPE_FLAT_ARRAY)
+
+        npt.assert_array_equal(query.as_flat_array(), answer)
+
+    def test_as_flat_gff(self):
+        """"""
+        query = {('chr1:0-3000', '+', 'Copia'): np.array([(0, 20, ['bam1', 'bam2'], [3, 0], [1.0, 0.0]),
+                                                          (21, 30, ['bam1', 'bam2'], [5, 0], [1.0, 0.0]),
+                                                          (35, 40, ['bam1', 'bam2'], [3, 0], [1.0, 0.0])],
+                                                         dtype=loci.Comparison._DTYPE_LOCI),
+                 ('chr1:0-3000', '+', 'Gypsy'): np.array([(0, 20, ['bam1', 'bam2'], [3, 1], [0.75, 0.25]),
+                                                          (21, 30, ['bam1', 'bam2'], [5, 5], [0.5, 0.5]),
+                                                          (35, 40, ['bam1', 'bam2'], [3, 0], [1.0, 0.0])],
+                                                         dtype=loci.Comparison._DTYPE_LOCI)}
+        query = loci.Comparison.from_dict(query)
+
+        answer = '\n'.join(['chr1\t.\t.\t0\t20\t.\t+\t.\tID=chr1_+_Copia_0_0;category=Copia;source=bam1;count=3;proportion=1.0',
+                            'chr1\t.\t.\t0\t20\t.\t+\t.\tID=chr1_+_Copia_0_1;category=Copia;source=bam2;count=0;proportion=0.0',
+                            'chr1\t.\t.\t0\t20\t.\t+\t.\tID=chr1_+_Gypsy_0_0;category=Gypsy;source=bam1;count=3;proportion=0.75',
+                            'chr1\t.\t.\t0\t20\t.\t+\t.\tID=chr1_+_Gypsy_0_1;category=Gypsy;source=bam2;count=1;proportion=0.25',
+                            'chr1\t.\t.\t21\t30\t.\t+\t.\tID=chr1_+_Copia_21_0;category=Copia;source=bam1;count=5;proportion=1.0',
+                            'chr1\t.\t.\t21\t30\t.\t+\t.\tID=chr1_+_Copia_21_1;category=Copia;source=bam2;count=0;proportion=0.0',
+                            'chr1\t.\t.\t21\t30\t.\t+\t.\tID=chr1_+_Gypsy_21_0;category=Gypsy;source=bam1;count=5;proportion=0.5',
+                            'chr1\t.\t.\t21\t30\t.\t+\t.\tID=chr1_+_Gypsy_21_1;category=Gypsy;source=bam2;count=5;proportion=0.5',
+                            'chr1\t.\t.\t35\t40\t.\t+\t.\tID=chr1_+_Copia_35_0;category=Copia;source=bam1;count=3;proportion=1.0',
+                            'chr1\t.\t.\t35\t40\t.\t+\t.\tID=chr1_+_Copia_35_1;category=Copia;source=bam2;count=0;proportion=0.0',
+                            'chr1\t.\t.\t35\t40\t.\t+\t.\tID=chr1_+_Gypsy_35_0;category=Gypsy;source=bam1;count=3;proportion=1.0',
+                            'chr1\t.\t.\t35\t40\t.\t+\t.\tID=chr1_+_Gypsy_35_1;category=Gypsy;source=bam2;count=0;proportion=0.0'])
+        assert query.as_flat_gff() == answer
