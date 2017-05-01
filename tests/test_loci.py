@@ -37,6 +37,16 @@ def test_loci_melter(query, answer):
 
 class TestLoci:
     """Tests for class _Loci"""
+    def test_keys(self):
+        """Test that keys are created from dict correctly and returned correctly"""
+        query = {('chr1:0-100', '+', 'Copia'): np.array([(1, 2), (2, 3), (3, 4), (4, 5), (5, 6)],
+                                                        dtype=loci._Loci._DTYPE_LOCI),
+                 ('chr1:0-100', '-', 'Copia'): np.array([(1, 2), (2, 3), (3, 4), (4, 5), (5, 6)],
+                                                        dtype=loci._Loci._DTYPE_LOCI)}
+        query = loci._Loci.from_dict(query)
+        answer = {loci._Loci._new_key('chr1:0-100', '+', 'Copia'), loci._Loci._new_key('chr1:0-100', '-', 'Copia')}
+        assert set(query.keys()) == answer
+
     def test_split(self):
         """Split into separate _Loci objects based on keys"""
         dictionary = {('chr1:0-100', '+', 'Copia'): np.array([(1, 2), (2, 3), (3, 4), (4, 5), (5, 6)],
@@ -57,6 +67,55 @@ class TestLoci:
                                                              dtype=loci._Loci._DTYPE_LOCI)}
         query = loci._Loci.from_dict(dictionary)
         assert len(list(query.split())) == 8
+
+    def test_append(self):
+        """Tests that loci arrays are added or appended in the result of a key clash"""
+        query1 = {('chr1:0-100', '+', 'Copia'): np.array([(1, 2), (2, 3), (3, 4)],  # clashing key
+                                                         dtype=loci._Loci._DTYPE_LOCI),
+                  ('chr1:0-100', '-', 'Gypsy'): np.array([(1, 2), (2, 3), (3, 4), (4, 5), (5, 6)],
+                                                         dtype=loci._Loci._DTYPE_LOCI)}
+        query1 = loci._Loci.from_dict(query1)
+
+        query2 = {('chr1:0-100', '+', 'Copia'): np.array([(4, 5), (5, 6)],  # clashing key
+                                                         dtype=loci._Loci._DTYPE_LOCI),
+                  ('chr1:0-100', '-', 'vLINE'): np.array([(1, 2), (2, 3), (3, 4), (4, 5), (5, 6)],
+                                                         dtype=loci._Loci._DTYPE_LOCI)}
+        query2 = loci._Loci.from_dict(query2)
+
+        query = query1.append(query2)
+
+        answer = {('chr1:0-100', '+', 'Copia'): np.array([(1, 2), (2, 3), (3, 4), (4, 5), (5, 6)],
+                                                         dtype=loci._Loci._DTYPE_LOCI),
+                  ('chr1:0-100', '-', 'Gypsy'): np.array([(1, 2), (2, 3), (3, 4), (4, 5), (5, 6)],
+                                                         dtype=loci._Loci._DTYPE_LOCI),
+                  ('chr1:0-100', '-', 'vLINE'): np.array([(1, 2), (2, 3), (3, 4), (4, 5), (5, 6)],
+                                                         dtype=loci._Loci._DTYPE_LOCI)}
+        answer = loci._Loci.from_dict(answer)
+
+        assert set(query.keys()) == set(answer.keys())
+        for key in query.keys():
+            npt.assert_array_equal(query[key], answer[key])
+
+    def test_buffer(self):
+        """Test that loci are buffered correctly"""
+        query = loci._Loci.from_dict({('chr1:0-300',
+                                       '+',
+                                       'Gypsy'): np.array([(10, 20),
+                                                           (51, 60),
+                                                           (160, 180),
+                                                           (200, 300)],
+                                                          dtype=loci._Loci._DTYPE_LOCI)})
+        query.buffer(20)
+        answer = loci._Loci.from_dict({('chr1:0-300',
+                                        '+',
+                                        'Gypsy'): np.array([(0, 35),
+                                                            (36, 80),
+                                                            (140, 190),
+                                                            (191, 300)],
+                                                           dtype=loci._Loci._DTYPE_LOCI)})
+        assert set(query.keys()) == set(answer.keys())
+        for key in query.keys():
+            npt.assert_array_equal(query[key], answer[key])
 
     def test_as_array(self):
         """"""
@@ -327,27 +386,6 @@ class TestComparativeBins:
                                                   'Gypsy'): np.array([(0, 20),
                                                                       (21, 30),
                                                                       (35, 40)],
-                                                                     dtype=loci.ComparativeBins._DTYPE_LOCI)})
-        assert set(query.keys()) == set(answer.keys())
-        for key in query.keys():
-            npt.assert_array_equal(query[key], answer[key])
-
-    def test_buffer(self):
-        """"""
-        query = loci.ComparativeBins.from_dict({('chr1:0-300',
-                                                 '+',
-                                                 'Gypsy'): np.array([(10, 20),
-                                                                     (51, 60),
-                                                                     (160, 180),
-                                                                     (200, 300)],
-                                                                    dtype=loci.ComparativeBins._DTYPE_LOCI)})
-        query.buffer(20)
-        answer = loci.ComparativeBins.from_dict({('chr1:0-300',
-                                                  '+',
-                                                  'Gypsy'): np.array([(0, 35),
-                                                                      (36, 80),
-                                                                      (140, 190),
-                                                                      (191, 300)],
                                                                      dtype=loci.ComparativeBins._DTYPE_LOCI)})
         assert set(query.keys()) == set(answer.keys())
         for key in query.keys():
