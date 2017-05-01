@@ -328,7 +328,9 @@ class TestComparativeBins:
                                                                       (21, 30),
                                                                       (35, 40)],
                                                                      dtype=loci.ComparativeBins._DTYPE_LOCI)})
-        assert repr(query) == repr(answer)
+        assert set(query.keys()) == set(answer.keys())
+        for key in query.keys():
+            npt.assert_array_equal(query[key], answer[key])
 
     def test_buffer(self):
         """"""

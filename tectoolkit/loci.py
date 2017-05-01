@@ -63,7 +63,7 @@ def merge(*args):
     assert len(set(map(type, args))) == 1
     merged = type(args[0])()
     for arg in args:
-        merged._update_dict(arg._dict)
+        merged.append(arg, inplace=True)
     return merged
 
 
@@ -151,11 +151,31 @@ class _Loci(object):
             child._dict[group] = loci
             yield child
 
-    def _update_dict(self, dictionary):
+    def append(self, x, inplace=False):
         """
-        Update the wrapped dictionary.
+        Append a Loci object.
+
+        :param x: the Loci object to append
+        :param inplace: if true, loci are appended in place rather than returning a new object
+        :type inplace: bool
         """
-        self._dict.update(dictionary)
+        assert type(self) == type(x)
+        keys = self.keys()
+        if inplace:
+            for key, loci in x.items():
+                if key in keys:
+                    self._dict[key] = np.append(self[key], loci)
+                else:
+                    self._dict[key] = loci
+        else:
+            result = type(self)()
+            result._dict = self._dict.copy()
+            for key, loci in x.items():
+                if key in keys:
+                    result._dict[key] = np.append(result[key], loci)
+                else:
+                    result._dict[key] = loci
+            return result
 
     def buffer(self, value):
         """
@@ -220,7 +240,7 @@ class _Loci(object):
             assert loci.dtype == cls._DTYPE_LOCI
             d[key] = loci
         result = cls()
-        result._update_dict(d)
+        result._dict = d
         return result
 
     @classmethod
@@ -242,7 +262,7 @@ class _Loci(object):
             key = cls._new_key(*key)
             d[key] = loci
         result = cls()
-        result._update_dict(d)
+        result._dict = d
         return result
 
     @staticmethod
@@ -344,11 +364,11 @@ class ReadLoci(_Loci):
         :rtype: :class:`ReadLoci`
         """
         reads = ReadLoci()
-        reads._update_dict({ReadLoci._new_key(*group): np.fromiter(loci, dtype=cls._DTYPE_LOCI)
-                            for group, loci in bamio.extract_bam_reads(bams,
-                                                                       categories,
-                                                                       references=references,
-                                                                       tag=tag)})
+        reads._dict = {ReadLoci._new_key(*group): np.fromiter(loci, dtype=cls._DTYPE_LOCI)
+                       for group, loci in bamio.extract_bam_reads(bams,
+                                                                  categories,
+                                                                  references=references,
+                                                                  tag=tag)}
         return reads
 
     def tips(self):
@@ -407,7 +427,7 @@ class ReadLoci(_Loci):
             dictionary[group] = positions
 
         fprint = FingerPrint()
-        fprint._update_dict(dictionary)
+        fprint._dict = dictionary
         return fprint
 
     @staticmethod
@@ -552,7 +572,7 @@ class ComparativeBins(_Loci):
 
         # Create a new ComparativeBins object and populate with the dictionary
         bins = ComparativeBins()
-        bins._update_dict(dictionary)
+        bins._dict = dictionary
         return bins
 
     def compare(self, *args):
@@ -584,7 +604,7 @@ class ComparativeBins(_Loci):
             results[group] = group_results
 
         comparison = Comparison()
-        comparison._update_dict(results)
+        comparison._dict = results
         return comparison
 
 
