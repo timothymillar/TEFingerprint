@@ -57,7 +57,7 @@ def append(*args):
     :type args: iterable[:class:`_Loci`]
 
     :return: Merged object
-    :rtype: :class:`_Loci`
+    :rtype: :class:`GenomeLoci`
     """
     assert len(set(map(type, args))) == 1
     merged = type(args[0])()
@@ -66,7 +66,7 @@ def append(*args):
     return merged
 
 
-class _Loci(object):
+class GenomeLoci(object):
     """
     A collection of categorised univariate loci.
 
@@ -303,7 +303,7 @@ class _Loci(object):
         return '\n'.join((self._format_gff_feature(record) for record in array))
 
 
-class ReadLoci(_Loci):
+class ReadLoci(GenomeLoci):
     """
     A collection of named sam reads, categorised by origin.
 
@@ -454,7 +454,7 @@ class ReadLoci(_Loci):
                                attributes)
 
 
-class FingerPrint(_Loci):
+class FingerPrint(GenomeLoci):
     """
     A collection of categorised univariate loci comprising a density based fingerprint.
 
@@ -515,7 +515,7 @@ class FingerPrint(_Loci):
                                attributes)
 
 
-class ComparativeBins(_Loci):
+class ComparativeBins(GenomeLoci):
     """
     A collection of categorised univariate bins (loci) derived from the union of fingerprint loci from multiple sources.
     Bins can be used to compare read counts from multiple sources (i.e. bam files).
@@ -606,7 +606,7 @@ class ComparativeBins(_Loci):
         return comparison
 
 
-class Comparison(_Loci):
+class Comparison(GenomeLoci):
     """
     A collection of categorised univariate loci. Each locus contains read counts for each of the sources used in the
     comparison.

@@ -29,9 +29,9 @@ def test_loci_melter(query, answer):
      * Adjacent loci do not get merged: (7, 9) & (10, 12) -->  (*, 9) & (10, *)
      * Locus may span a single base: (13, 13) --> (13, 13)
     """
-    query = np.array(query, dtype=loci._Loci._DTYPE_LOCI)
-    query = np.fromiter(loci._loci_melter(query), dtype=loci._Loci._DTYPE_LOCI)
-    answer = np.array(answer, dtype=loci._Loci._DTYPE_LOCI)
+    query = np.array(query, dtype=loci.GenomeLoci._DTYPE_LOCI)
+    query = np.fromiter(loci._loci_melter(query), dtype=loci.GenomeLoci._DTYPE_LOCI)
+    answer = np.array(answer, dtype=loci.GenomeLoci._DTYPE_LOCI)
     npt.assert_array_equal(query, answer)
 
 
@@ -40,57 +40,57 @@ class TestLoci:
     def test_keys(self):
         """Test that keys are created from dict correctly and returned correctly"""
         query = {('chr1:0-100', '+', 'Copia'): np.array([(1, 2), (2, 3), (3, 4), (4, 5), (5, 6)],
-                                                        dtype=loci._Loci._DTYPE_LOCI),
+                                                        dtype=loci.GenomeLoci._DTYPE_LOCI),
                  ('chr1:0-100', '-', 'Copia'): np.array([(1, 2), (2, 3), (3, 4), (4, 5), (5, 6)],
-                                                        dtype=loci._Loci._DTYPE_LOCI)}
-        query = loci._Loci.from_dict(query)
-        answer = {loci._Loci._new_key('chr1:0-100', '+', 'Copia'), loci._Loci._new_key('chr1:0-100', '-', 'Copia')}
+                                                        dtype=loci.GenomeLoci._DTYPE_LOCI)}
+        query = loci.GenomeLoci.from_dict(query)
+        answer = {loci.GenomeLoci._new_key('chr1:0-100', '+', 'Copia'), loci.GenomeLoci._new_key('chr1:0-100', '-', 'Copia')}
         assert set(query.keys()) == answer
 
     def test_split(self):
         """Split into separate _Loci objects based on keys"""
         dictionary = {('chr1:0-100', '+', 'Copia'): np.array([(1, 2), (2, 3), (3, 4), (4, 5), (5, 6)],
-                                                             dtype=loci._Loci._DTYPE_LOCI),
+                                                             dtype=loci.GenomeLoci._DTYPE_LOCI),
                       ('chr1:0-100', '-', 'Copia'): np.array([(1, 2), (2, 3), (3, 4), (4, 5), (5, 6)],
-                                                             dtype=loci._Loci._DTYPE_LOCI),
+                                                             dtype=loci.GenomeLoci._DTYPE_LOCI),
                       ('chr1:0-100', '+', 'Gypsy'): np.array([(1, 2), (2, 3), (3, 4), (4, 5), (5, 6)],
-                                                             dtype=loci._Loci._DTYPE_LOCI),
+                                                             dtype=loci.GenomeLoci._DTYPE_LOCI),
                       ('chr1:0-100', '-', 'Gypsy'): np.array([(1, 2), (2, 3), (3, 4), (4, 5), (5, 6)],
-                                                             dtype=loci._Loci._DTYPE_LOCI),
+                                                             dtype=loci.GenomeLoci._DTYPE_LOCI),
                       ('chr2:0-100', '+', 'Copia'): np.array([(1, 2), (2, 3), (3, 4), (4, 5), (5, 6)],
-                                                             dtype=loci._Loci._DTYPE_LOCI),
+                                                             dtype=loci.GenomeLoci._DTYPE_LOCI),
                       ('chr2:0-100', '-', 'Copia'): np.array([(1, 2), (2, 3), (3, 4), (4, 5), (5, 6)],
-                                                             dtype=loci._Loci._DTYPE_LOCI),
+                                                             dtype=loci.GenomeLoci._DTYPE_LOCI),
                       ('chr2:0-100', '+', 'Gypsy'): np.array([(1, 2), (2, 3), (3, 4), (4, 5), (5, 6)],
-                                                             dtype=loci._Loci._DTYPE_LOCI),
+                                                             dtype=loci.GenomeLoci._DTYPE_LOCI),
                       ('chr2:0-100', '-', 'Gypsy'): np.array([(1, 2), (2, 3), (3, 4), (4, 5), (5, 6)],
-                                                             dtype=loci._Loci._DTYPE_LOCI)}
-        query = loci._Loci.from_dict(dictionary)
+                                                             dtype=loci.GenomeLoci._DTYPE_LOCI)}
+        query = loci.GenomeLoci.from_dict(dictionary)
         assert len(list(query.split())) == 8
 
     def test_append(self):
         """Tests that loci arrays are added or appended in the result of a key clash"""
         query1 = {('chr1:0-100', '+', 'Copia'): np.array([(1, 2), (2, 3), (3, 4)],  # clashing key
-                                                         dtype=loci._Loci._DTYPE_LOCI),
+                                                         dtype=loci.GenomeLoci._DTYPE_LOCI),
                   ('chr1:0-100', '-', 'Gypsy'): np.array([(1, 2), (2, 3), (3, 4), (4, 5), (5, 6)],
-                                                         dtype=loci._Loci._DTYPE_LOCI)}
-        query1 = loci._Loci.from_dict(query1)
+                                                         dtype=loci.GenomeLoci._DTYPE_LOCI)}
+        query1 = loci.GenomeLoci.from_dict(query1)
 
         query2 = {('chr1:0-100', '+', 'Copia'): np.array([(4, 5), (5, 6)],  # clashing key
-                                                         dtype=loci._Loci._DTYPE_LOCI),
+                                                         dtype=loci.GenomeLoci._DTYPE_LOCI),
                   ('chr1:0-100', '-', 'vLINE'): np.array([(1, 2), (2, 3), (3, 4), (4, 5), (5, 6)],
-                                                         dtype=loci._Loci._DTYPE_LOCI)}
-        query2 = loci._Loci.from_dict(query2)
+                                                         dtype=loci.GenomeLoci._DTYPE_LOCI)}
+        query2 = loci.GenomeLoci.from_dict(query2)
 
         query = query1.append(query2)
 
         answer = {('chr1:0-100', '+', 'Copia'): np.array([(1, 2), (2, 3), (3, 4), (4, 5), (5, 6)],
-                                                         dtype=loci._Loci._DTYPE_LOCI),
+                                                         dtype=loci.GenomeLoci._DTYPE_LOCI),
                   ('chr1:0-100', '-', 'Gypsy'): np.array([(1, 2), (2, 3), (3, 4), (4, 5), (5, 6)],
-                                                         dtype=loci._Loci._DTYPE_LOCI),
+                                                         dtype=loci.GenomeLoci._DTYPE_LOCI),
                   ('chr1:0-100', '-', 'vLINE'): np.array([(1, 2), (2, 3), (3, 4), (4, 5), (5, 6)],
-                                                         dtype=loci._Loci._DTYPE_LOCI)}
-        answer = loci._Loci.from_dict(answer)
+                                                         dtype=loci.GenomeLoci._DTYPE_LOCI)}
+        answer = loci.GenomeLoci.from_dict(answer)
 
         assert set(query.keys()) == set(answer.keys())
         for key in query.keys():
@@ -99,26 +99,26 @@ class TestLoci:
     def test_append_inplace(self):
         """Tests that loci arrays are added or appended inplace"""
         query = {('chr1:0-100', '+', 'Copia'): np.array([(1, 2), (2, 3), (3, 4)],  # clashing key
-                                                        dtype=loci._Loci._DTYPE_LOCI),
+                                                        dtype=loci.GenomeLoci._DTYPE_LOCI),
                  ('chr1:0-100', '-', 'Gypsy'): np.array([(1, 2), (2, 3), (3, 4), (4, 5), (5, 6)],
-                                                        dtype=loci._Loci._DTYPE_LOCI)}
-        query = loci._Loci.from_dict(query)
+                                                        dtype=loci.GenomeLoci._DTYPE_LOCI)}
+        query = loci.GenomeLoci.from_dict(query)
 
         query2 = {('chr1:0-100', '+', 'Copia'): np.array([(4, 5), (5, 6)],  # clashing key
-                                                         dtype=loci._Loci._DTYPE_LOCI),
+                                                         dtype=loci.GenomeLoci._DTYPE_LOCI),
                   ('chr1:0-100', '-', 'vLINE'): np.array([(1, 2), (2, 3), (3, 4), (4, 5), (5, 6)],
-                                                         dtype=loci._Loci._DTYPE_LOCI)}
-        query2 = loci._Loci.from_dict(query2)
+                                                         dtype=loci.GenomeLoci._DTYPE_LOCI)}
+        query2 = loci.GenomeLoci.from_dict(query2)
 
         query.append(query2, inplace=True)
 
         answer = {('chr1:0-100', '+', 'Copia'): np.array([(1, 2), (2, 3), (3, 4), (4, 5), (5, 6)],
-                                                         dtype=loci._Loci._DTYPE_LOCI),
+                                                         dtype=loci.GenomeLoci._DTYPE_LOCI),
                   ('chr1:0-100', '-', 'Gypsy'): np.array([(1, 2), (2, 3), (3, 4), (4, 5), (5, 6)],
-                                                         dtype=loci._Loci._DTYPE_LOCI),
+                                                         dtype=loci.GenomeLoci._DTYPE_LOCI),
                   ('chr1:0-100', '-', 'vLINE'): np.array([(1, 2), (2, 3), (3, 4), (4, 5), (5, 6)],
-                                                         dtype=loci._Loci._DTYPE_LOCI)}
-        answer = loci._Loci.from_dict(answer)
+                                                         dtype=loci.GenomeLoci._DTYPE_LOCI)}
+        answer = loci.GenomeLoci.from_dict(answer)
 
         assert set(query.keys()) == set(answer.keys())
         for key in query.keys():
@@ -126,37 +126,37 @@ class TestLoci:
 
     def test_buffer(self):
         """Test that loci are buffered correctly"""
-        query = loci._Loci.from_dict({('chr1:0-300',
-                                       '+',
-                                       'Gypsy'): np.array([(10, 20),
-                                                           (51, 60),
-                                                           (160, 180),
-                                                           (200, 300)],
-                                                          dtype=loci._Loci._DTYPE_LOCI),
-                                      ('chr2:0-300',
-                                       '+',
-                                       'Gypsy'): np.array([(10, 20)],
-                                                          dtype=loci._Loci._DTYPE_LOCI),
-                                      ('chr3:0-300',
-                                       '+',
-                                       'Gypsy'): np.array([],
-                                                          dtype=loci._Loci._DTYPE_LOCI)})
+        query = loci.GenomeLoci.from_dict({('chr1:0-300',
+                                            '+',
+                                            'Gypsy'): np.array([(10, 20),
+                                                                (51, 60),
+                                                                (160, 180),
+                                                                (200, 300)],
+                                                               dtype=loci.GenomeLoci._DTYPE_LOCI),
+                                           ('chr2:0-300',
+                                            '+',
+                                            'Gypsy'): np.array([(10, 20)],
+                                                               dtype=loci.GenomeLoci._DTYPE_LOCI),
+                                           ('chr3:0-300',
+                                            '+',
+                                            'Gypsy'): np.array([],
+                                                               dtype=loci.GenomeLoci._DTYPE_LOCI)})
         query.buffer(20)
-        answer = loci._Loci.from_dict({('chr1:0-300',
-                                        '+',
-                                        'Gypsy'): np.array([(0, 35),
-                                                            (36, 80),
-                                                            (140, 190),
-                                                            (191, 300)],
-                                                           dtype=loci._Loci._DTYPE_LOCI),
-                                       ('chr2:0-300',
-                                        '+',
-                                        'Gypsy'): np.array([(0, 40)],
-                                                           dtype=loci._Loci._DTYPE_LOCI),
-                                       ('chr3:0-300',
-                                        '+',
-                                        'Gypsy'): np.array([],
-                                                           dtype=loci._Loci._DTYPE_LOCI)})
+        answer = loci.GenomeLoci.from_dict({('chr1:0-300',
+                                             '+',
+                                             'Gypsy'): np.array([(0, 35),
+                                                                 (36, 80),
+                                                                 (140, 190),
+                                                                 (191, 300)],
+                                                                dtype=loci.GenomeLoci._DTYPE_LOCI),
+                                            ('chr2:0-300',
+                                             '+',
+                                             'Gypsy'): np.array([(0, 40)],
+                                                                dtype=loci.GenomeLoci._DTYPE_LOCI),
+                                            ('chr3:0-300',
+                                             '+',
+                                             'Gypsy'): np.array([],
+                                                                dtype=loci.GenomeLoci._DTYPE_LOCI)})
         assert set(query.keys()) == set(answer.keys())
         for key in query.keys():
             npt.assert_array_equal(query[key], answer[key])
@@ -164,22 +164,22 @@ class TestLoci:
     def test_as_array(self):
         """"""
         dictionary = {('chr1:0-100', '+', 'Copia'): np.array([(1, 2), (2, 3)],
-                                                             dtype=loci._Loci._DTYPE_LOCI),
+                                                             dtype=loci.GenomeLoci._DTYPE_LOCI),
                       ('chr1:0-100', '-', 'Copia'): np.array([(1, 2), (2, 3)],
-                                                             dtype=loci._Loci._DTYPE_LOCI),
+                                                             dtype=loci.GenomeLoci._DTYPE_LOCI),
                       ('chr1:0-100', '+', 'Gypsy'): np.array([(1, 2), (2, 3)],
-                                                             dtype=loci._Loci._DTYPE_LOCI),
+                                                             dtype=loci.GenomeLoci._DTYPE_LOCI),
                       ('chr1:0-100', '-', 'Gypsy'): np.array([(1, 2), (2, 3)],
-                                                             dtype=loci._Loci._DTYPE_LOCI),
+                                                             dtype=loci.GenomeLoci._DTYPE_LOCI),
                       ('chr2:0-100', '+', 'Copia'): np.array([(1, 2), (2, 3)],
-                                                             dtype=loci._Loci._DTYPE_LOCI),
+                                                             dtype=loci.GenomeLoci._DTYPE_LOCI),
                       ('chr2:0-100', '-', 'Copia'): np.array([(1, 2), (2, 3)],
-                                                             dtype=loci._Loci._DTYPE_LOCI),
+                                                             dtype=loci.GenomeLoci._DTYPE_LOCI),
                       ('chr2:0-100', '+', 'Gypsy'): np.array([(1, 2), (2, 3)],
-                                                             dtype=loci._Loci._DTYPE_LOCI),
+                                                             dtype=loci.GenomeLoci._DTYPE_LOCI),
                       ('chr2:0-100', '-', 'Gypsy'): np.array([(1, 2), (2, 3)],
-                                                             dtype=loci._Loci._DTYPE_LOCI)}
-        query = loci._Loci.from_dict(dictionary)
+                                                             dtype=loci.GenomeLoci._DTYPE_LOCI)}
+        query = loci.GenomeLoci.from_dict(dictionary)
 
         answer = np.array([('chr1:0-100', '+', 'Copia', 1, 2),
                            ('chr1:0-100', '+', 'Copia', 2, 3),
@@ -196,22 +196,22 @@ class TestLoci:
                            ('chr2:0-100', '+', 'Gypsy', 1, 2),
                            ('chr2:0-100', '+', 'Gypsy', 2, 3),
                            ('chr2:0-100', '-', 'Gypsy', 1, 2),
-                           ('chr2:0-100', '-', 'Gypsy', 2, 3)], dtype=loci._Loci._DTYPE_ARRAY)
+                           ('chr2:0-100', '-', 'Gypsy', 2, 3)], dtype=loci.GenomeLoci._DTYPE_ARRAY)
         npt.assert_array_equal(np.sort(query.as_array()), np.sort(answer))
 
     def test_as_gff(self):
         """"""
         dictionary = {('chr1:0-100', '+', 'Copia'): np.array([(1, 2), (2, 3)],
-                                                             dtype=loci._Loci._DTYPE_LOCI),
+                                                             dtype=loci.GenomeLoci._DTYPE_LOCI),
                       ('chr1:0-100', '-', 'Copia'): np.array([(1, 2), (2, 3)],
-                                                             dtype=loci._Loci._DTYPE_LOCI),
+                                                             dtype=loci.GenomeLoci._DTYPE_LOCI),
                       ('chr1:0-100', '+', 'Gypsy'): np.array([(1, 2), (2, 3)],
-                                                             dtype=loci._Loci._DTYPE_LOCI),
+                                                             dtype=loci.GenomeLoci._DTYPE_LOCI),
                       ('chr1:0-100', '-', 'Gypsy'): np.array([(1, 2), (2, 3)],
-                                                             dtype=loci._Loci._DTYPE_LOCI),
+                                                             dtype=loci.GenomeLoci._DTYPE_LOCI),
                       ('chr2:0-100', '+', 'Copia'): np.array([(1, 2), (2, 3)],
-                                                             dtype=loci._Loci._DTYPE_LOCI)}
-        query = loci._Loci.from_dict(dictionary)
+                                                             dtype=loci.GenomeLoci._DTYPE_LOCI)}
+        query = loci.GenomeLoci.from_dict(dictionary)
 
         answer = '\n'.join(['chr1\t.\t.\t1\t2\t.\t+\t.\tID=chr1_+_Copia_1;category=Copia',
                             'chr1\t.\t.\t1\t2\t.\t+\t.\tID=chr1_+_Gypsy_1;category=Gypsy',
