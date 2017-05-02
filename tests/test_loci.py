@@ -373,6 +373,29 @@ class TestReadLoci:
         for key in query.keys():
             npt.assert_array_equal(query[key], answer[key])
 
+    def test_as_array(self):
+        query = loci.ReadLoci.from_dict({('chr1:0-3000',
+                                          '+',
+                                          'Gypsy',
+                                          'bam1'): np.array([(0, 20, 'name1'),
+                                                             (21, 30, 'name2'),
+                                                             (42, 100, 'name3')], dtype=loci.ReadLoci._DTYPE_LOCI),
+                                         ('chr1:0-3000',
+                                          '-',
+                                          'Gypsy',
+                                          'bam1'): np.array([(0, 20, 'name4'),
+                                                             (21, 30, 'name5'),
+                                                             (42, 100, 'name6')], dtype=loci.ReadLoci._DTYPE_LOCI)})
+        answer = np.array([('chr1:0-3000', '+', 'Gypsy', 'bam1', 0, 20, 'name1'),
+                           ('chr1:0-3000', '-', 'Gypsy', 'bam1', 0, 20, 'name4'),
+                           ('chr1:0-3000', '+', 'Gypsy', 'bam1', 21, 30, 'name2'),
+                           ('chr1:0-3000', '-', 'Gypsy', 'bam1', 21, 30, 'name5'),
+                           ('chr1:0-3000', '+', 'Gypsy', 'bam1', 42, 100, 'name3'),
+                           ('chr1:0-3000', '-', 'Gypsy', 'bam1', 42, 100, 'name6')],
+                          dtype=loci.ReadLoci._DTYPE_ARRAY)
+
+        npt.assert_array_equal(np.sort(query.as_array()), np.sort(answer))
+
     def test_as_gff(self):
         """"""
         query = loci.ReadLoci.from_dict({('chr1:0-3000',
@@ -380,15 +403,61 @@ class TestReadLoci:
                                           'Gypsy',
                                           'bam1'): np.array([(0, 20, 'name1'),
                                                              (21, 30, 'name2'),
-                                                             (42, 100, 'name3')], dtype=loci.ReadLoci._DTYPE_LOCI)})
+                                                             (42, 100, 'name3')], dtype=loci.ReadLoci._DTYPE_LOCI),
+                                         ('chr1:0-3000',
+                                          '-',
+                                          'Gypsy',
+                                          'bam1'): np.array([(0, 20, 'name4'),
+                                                             (21, 30, 'name5'),
+                                                             (42, 100, 'name6')], dtype=loci.ReadLoci._DTYPE_LOCI)})
         answer = '\n'.join(['chr1\t.\t.\t0\t20\t.\t+\t.\tID=name1;category=Gypsy;source=bam1',
+                            'chr1\t.\t.\t0\t20\t.\t-\t.\tID=name4;category=Gypsy;source=bam1',
                             'chr1\t.\t.\t21\t30\t.\t+\t.\tID=name2;category=Gypsy;source=bam1',
-                            'chr1\t.\t.\t42\t100\t.\t+\t.\tID=name3;category=Gypsy;source=bam1'])
+                            'chr1\t.\t.\t21\t30\t.\t-\t.\tID=name5;category=Gypsy;source=bam1',
+                            'chr1\t.\t.\t42\t100\t.\t+\t.\tID=name3;category=Gypsy;source=bam1',
+                            'chr1\t.\t.\t42\t100\t.\t-\t.\tID=name6;category=Gypsy;source=bam1'])
         assert query.as_gff() == answer
 
 
 class TestFingerPrint:
     """Tests for class FingerPrint"""
+    def test_as_array(self):
+        """"""
+        query = loci.FingerPrint.from_dict({('chr1:0-3000',
+                                             '+',
+                                             'Gypsy',
+                                             'bam1'): np.array([(0, 577),
+                                                                (879, 1234),
+                                                                (1662, 1917)], dtype=loci.FingerPrint._DTYPE_LOCI),
+                                            ('chr1:0-3000',
+                                             '-',
+                                             'Gypsy',
+                                             'bam1'): np.array([(20, 570),
+                                                                (870, 1230),
+                                                                (1662, 1917)], dtype=loci.FingerPrint._DTYPE_LOCI),
+                                            ('chr2:0-4000',
+                                             '+',
+                                             'Gypsy',
+                                             'bam1'): np.array([(0, 577),
+                                                                (879, 1234),
+                                                                (1662, 1917)], dtype=loci.FingerPrint._DTYPE_LOCI),
+                                            ('chr2:0-4000',
+                                             '-',
+                                             'Gypsy',
+                                             'bam1'): np.array([], dtype=loci.FingerPrint._DTYPE_LOCI)
+                                            })
+        answer = np.array([('chr1:0-3000', '+', 'Gypsy', 'bam1', 0, 577),
+                           ('chr1:0-3000', '-', 'Gypsy', 'bam1', 20, 570),
+                           ('chr1:0-3000', '-', 'Gypsy', 'bam1', 870, 1230),
+                           ('chr1:0-3000', '+', 'Gypsy', 'bam1', 879, 1234),
+                           ('chr1:0-3000', '+', 'Gypsy', 'bam1', 1662, 1917),
+                           ('chr1:0-3000', '-', 'Gypsy', 'bam1', 1662, 1917),
+                           ('chr2:0-4000', '+', 'Gypsy', 'bam1', 0, 577),
+                           ('chr2:0-4000', '+', 'Gypsy', 'bam1', 879, 1234),
+                           ('chr2:0-4000', '+', 'Gypsy', 'bam1', 1662, 1917)],
+                          dtype=loci.FingerPrint._DTYPE_ARRAY)
+        npt.assert_array_equal(np.sort(query.as_array()), np.sort(answer))
+
     def test_as_gff(self):
         """"""
         query = loci.FingerPrint.from_dict({('chr1:0-3000',
@@ -400,11 +469,29 @@ class TestFingerPrint:
                                             ('chr1:0-3000',
                                              '-',
                                              'Gypsy',
+                                             'bam1'): np.array([(20, 570),
+                                                                (870, 1230),
+                                                                (1662, 1917)], dtype=loci.FingerPrint._DTYPE_LOCI),
+                                            ('chr2:0-4000',
+                                             '+',
+                                             'Gypsy',
+                                             'bam1'): np.array([(0, 577),
+                                                                (879, 1234),
+                                                                (1662, 1917)], dtype=loci.FingerPrint._DTYPE_LOCI),
+                                            ('chr2:0-4000',
+                                             '-',
+                                             'Gypsy',
                                              'bam1'): np.array([], dtype=loci.FingerPrint._DTYPE_LOCI)
                                             })
         answer = '\n'.join(['chr1\t.\t.\t0\t577\t.\t+\t.\tID=chr1_+_Gypsy_0;category=Gypsy;source=bam1',
+                            'chr1\t.\t.\t20\t570\t.\t-\t.\tID=chr1_-_Gypsy_20;category=Gypsy;source=bam1',
+                            'chr1\t.\t.\t870\t1230\t.\t-\t.\tID=chr1_-_Gypsy_870;category=Gypsy;source=bam1',
                             'chr1\t.\t.\t879\t1234\t.\t+\t.\tID=chr1_+_Gypsy_879;category=Gypsy;source=bam1',
-                            'chr1\t.\t.\t1662\t1917\t.\t+\t.\tID=chr1_+_Gypsy_1662;category=Gypsy;source=bam1'])
+                            'chr1\t.\t.\t1662\t1917\t.\t+\t.\tID=chr1_+_Gypsy_1662;category=Gypsy;source=bam1',
+                            'chr1\t.\t.\t1662\t1917\t.\t-\t.\tID=chr1_-_Gypsy_1662;category=Gypsy;source=bam1',
+                            'chr2\t.\t.\t0\t577\t.\t+\t.\tID=chr2_+_Gypsy_0;category=Gypsy;source=bam1',
+                            'chr2\t.\t.\t879\t1234\t.\t+\t.\tID=chr2_+_Gypsy_879;category=Gypsy;source=bam1',
+                            'chr2\t.\t.\t1662\t1917\t.\t+\t.\tID=chr2_+_Gypsy_1662;category=Gypsy;source=bam1'])
         assert query.as_gff() == answer
 
 
@@ -504,6 +591,70 @@ class TestComparativeBins:
         assert set(query.keys()) == set(answer.keys())
         for key in query.keys():
             npt.assert_array_equal(query[key], answer[key])
+
+    def test_as_array(self):
+        """"""
+        dictionary = {('chr1:0-100', '+', 'Copia'): np.array([(1, 2), (2, 3)],
+                                                             dtype=loci.ComparativeBins._DTYPE_LOCI),
+                      ('chr1:0-100', '-', 'Copia'): np.array([(1, 2), (2, 3)],
+                                                             dtype=loci.ComparativeBins._DTYPE_LOCI),
+                      ('chr1:0-100', '+', 'Gypsy'): np.array([(1, 2), (2, 3)],
+                                                             dtype=loci.ComparativeBins._DTYPE_LOCI),
+                      ('chr1:0-100', '-', 'Gypsy'): np.array([(1, 2), (2, 3)],
+                                                             dtype=loci.ComparativeBins._DTYPE_LOCI),
+                      ('chr2:0-100', '+', 'Copia'): np.array([(1, 2), (2, 3)],
+                                                             dtype=loci.ComparativeBins._DTYPE_LOCI),
+                      ('chr2:0-100', '-', 'Copia'): np.array([(1, 2), (2, 3)],
+                                                             dtype=loci.ComparativeBins._DTYPE_LOCI),
+                      ('chr2:0-100', '+', 'Gypsy'): np.array([(1, 2), (2, 3)],
+                                                             dtype=loci.ComparativeBins._DTYPE_LOCI),
+                      ('chr2:0-100', '-', 'Gypsy'): np.array([(1, 2), (2, 3)],
+                                                             dtype=loci.ComparativeBins._DTYPE_LOCI)}
+        query = loci.ComparativeBins.from_dict(dictionary)
+
+        answer = np.array([('chr1:0-100', '+', 'Copia', 1, 2),
+                           ('chr1:0-100', '+', 'Copia', 2, 3),
+                           ('chr1:0-100', '-', 'Copia', 1, 2),
+                           ('chr1:0-100', '-', 'Copia', 2, 3),
+                           ('chr1:0-100', '+', 'Gypsy', 1, 2),
+                           ('chr1:0-100', '+', 'Gypsy', 2, 3),
+                           ('chr1:0-100', '-', 'Gypsy', 1, 2),
+                           ('chr1:0-100', '-', 'Gypsy', 2, 3),
+                           ('chr2:0-100', '+', 'Copia', 1, 2),
+                           ('chr2:0-100', '+', 'Copia', 2, 3),
+                           ('chr2:0-100', '-', 'Copia', 1, 2),
+                           ('chr2:0-100', '-', 'Copia', 2, 3),
+                           ('chr2:0-100', '+', 'Gypsy', 1, 2),
+                           ('chr2:0-100', '+', 'Gypsy', 2, 3),
+                           ('chr2:0-100', '-', 'Gypsy', 1, 2),
+                           ('chr2:0-100', '-', 'Gypsy', 2, 3)], dtype=loci.ComparativeBins._DTYPE_ARRAY)
+        npt.assert_array_equal(np.sort(query.as_array()), np.sort(answer))
+
+    def test_as_gff(self):
+        """"""
+        dictionary = {('chr1:0-100', '+', 'Copia'): np.array([(1, 2), (2, 3)],
+                                                             dtype=loci.ComparativeBins._DTYPE_LOCI),
+                      ('chr1:0-100', '-', 'Copia'): np.array([(1, 2), (2, 3)],
+                                                             dtype=loci.ComparativeBins._DTYPE_LOCI),
+                      ('chr1:0-100', '+', 'Gypsy'): np.array([(1, 2), (2, 3)],
+                                                             dtype=loci.ComparativeBins._DTYPE_LOCI),
+                      ('chr1:0-100', '-', 'Gypsy'): np.array([(1, 2), (2, 3)],
+                                                             dtype=loci.ComparativeBins._DTYPE_LOCI),
+                      ('chr2:0-100', '+', 'Copia'): np.array([(1, 2), (2, 3)],
+                                                             dtype=loci.ComparativeBins._DTYPE_LOCI)}
+        query = loci.ComparativeBins.from_dict(dictionary)
+
+        answer = '\n'.join(['chr1\t.\t.\t1\t2\t.\t+\t.\tID=chr1_+_Copia_1;category=Copia',
+                            'chr1\t.\t.\t1\t2\t.\t+\t.\tID=chr1_+_Gypsy_1;category=Gypsy',
+                            'chr1\t.\t.\t1\t2\t.\t-\t.\tID=chr1_-_Copia_1;category=Copia',
+                            'chr1\t.\t.\t1\t2\t.\t-\t.\tID=chr1_-_Gypsy_1;category=Gypsy',
+                            'chr1\t.\t.\t2\t3\t.\t+\t.\tID=chr1_+_Copia_2;category=Copia',
+                            'chr1\t.\t.\t2\t3\t.\t+\t.\tID=chr1_+_Gypsy_2;category=Gypsy',
+                            'chr1\t.\t.\t2\t3\t.\t-\t.\tID=chr1_-_Copia_2;category=Copia',
+                            'chr1\t.\t.\t2\t3\t.\t-\t.\tID=chr1_-_Gypsy_2;category=Gypsy',
+                            'chr2\t.\t.\t1\t2\t.\t+\t.\tID=chr2_+_Copia_1;category=Copia',
+                            'chr2\t.\t.\t2\t3\t.\t+\t.\tID=chr2_+_Copia_2;category=Copia'])
+        assert query.as_gff() == answer
 
 
 class TestComparison:
