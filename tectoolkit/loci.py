@@ -48,11 +48,10 @@ def _loci_melter(array):
         yield start, stop
 
 
-def merge(*args):
+def append(*args):
     """
-    Combine multiple objects with superclass :class:`_Loci`.
+    Combine multiple objects of superclass :class:`_Loci`.
     Every object must be of the same type.
-    Loci with the same group are overwritten.
 
     :param args: Objects to be merged
     :type args: iterable[:class:`_Loci`]
@@ -546,7 +545,7 @@ class ComparativeBins(_Loci):
         :rtype: :class:`ComparativeBins`
         """
         # Merge multiple FingerPrints objects
-        fingerprints = merge(*args)
+        fingerprints = append(*args)
         assert isinstance(fingerprints, FingerPrint)
 
         # Dictionary to store loci
@@ -585,7 +584,7 @@ class ComparativeBins(_Loci):
         :return: A comparison of read counts by source within each bin
         :rtype: :class:`Comparison`
         """
-        reads = merge(*args)
+        reads = append(*args)
         assert isinstance(reads, ReadLoci)
         sources = np.array(list({group[3] for group in list(reads.keys())}))
         sources.sort()

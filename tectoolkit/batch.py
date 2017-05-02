@@ -7,8 +7,8 @@ from tectoolkit import loci
 
 def _fingerprint_worker(bams, categories, reference, transposon_tag, min_reads, eps, min_eps, hierarchical):
     """Worker function for batch fingerprinting"""
-    reads = loci.merge(*[loci.ReadLoci.from_bam(bam, categories, references=reference, tag=transposon_tag)
-                         for bam in bams])
+    reads = loci.append(*[loci.ReadLoci.from_bam(bam, categories, references=reference, tag=transposon_tag)
+                          for bam in bams])
     return reads.fingerprint(min_reads, eps, min_eps=min_eps, hierarchical=hierarchical)
 
 
@@ -49,16 +49,16 @@ def fingerprint(bams=None,
     jobs = product([bams], [categories], references, [transposon_tag], [min_reads], [eps], [min_eps], [hierarchical])
 
     if cores == 1:
-        return loci.merge(*[_fingerprint_worker(*job) for job in jobs])
+        return loci.append(*[_fingerprint_worker(*job) for job in jobs])
     else:
         with Pool(cores) as pool:
-            return loci.merge(*pool.starmap(_fingerprint_worker, jobs))
+            return loci.append(*pool.starmap(_fingerprint_worker, jobs))
 
 
 def _comparison_worker(bams, categories, reference, transposon_tag, min_reads, eps, min_eps, hierarchical, fingerprint_buffer, bin_buffer):
     """Worker function for batch fingerprint comparisons"""
-    reads = loci.merge(*[loci.ReadLoci.from_bam(bam, categories, references=reference, tag=transposon_tag)
-                         for bam in bams])
+    reads = loci.append(*[loci.ReadLoci.from_bam(bam, categories, references=reference, tag=transposon_tag)
+                          for bam in bams])
     fprint = reads.fingerprint(min_reads, eps, min_eps=min_eps, hierarchical=hierarchical)
     fprint.buffer(fingerprint_buffer)
     bins = loci.ComparativeBins.from_fingerprints(fprint)
@@ -109,10 +109,10 @@ def comparison(bams=None,
     jobs = product([bams], [categories], references, [transposon_tag], [min_reads], [eps], [min_eps], [hierarchical], [fingerprint_buffer],  [bin_buffer])
 
     if cores == 1:
-        return loci.merge(*[_comparison_worker(*job) for job in jobs])
+        return loci.append(*[_comparison_worker(*job) for job in jobs])
     else:
         with Pool(cores) as pool:
-            return loci.merge(*pool.starmap(_comparison_worker, jobs))
+            return loci.append(*pool.starmap(_comparison_worker, jobs))
 
 
 if __name__ == '__main__':
