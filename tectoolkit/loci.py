@@ -140,10 +140,10 @@ class GenomeLoci(object):
 
     def split(self):
         """
-        Split object of :class:`_Loci` by its constituent groups.
+        Split object of :class:`GenomeLoci` by its constituent groups.
 
-        :return: An object of :class:`_Loci` for each grouping of loci
-        :rtype: generator[:class:`_Loci`]
+        :return: An object of :class:`GenomeLoci` for each grouping of loci
+        :rtype: generator[:class:`GenomeLoci`]
         """
         for group, loci in self.items():
             child = type(self)()
@@ -231,7 +231,7 @@ class GenomeLoci(object):
         :param dictionary: dictionary of key-loci pairs
         :type dictionary: dict[tuple(...), :class:`np.array`[...]
 
-        :return: instance of :class:`_Loci`
+        :return: instance of :class:`GenomeLoci`
         """
         d = {}
         for key, loci in dictionary.items():
@@ -250,7 +250,7 @@ class GenomeLoci(object):
         :param array: numpy array
         :type array: :class:`np.array`[...]
 
-        :return: instance of :class:`_Loci`
+        :return: instance of :class:`GenomeLoci`
         """
         assert array.dtype == cls._DTYPE_ARRAY
         key_instances = array[list(cls._DTYPE_KEY.names)]
@@ -539,7 +539,7 @@ class ComparativeBins(GenomeLoci):
         Constructs a set of comparative bins form one or more instances of :class:`FingerPrint`.
 
         :param args: Objects to be merged
-        :type args: iterable[:class:`_Loci`]
+        :type args: iterable[:class:`GenomeLoci`]
 
         :return: Bins to be used for comparisons
         :rtype: :class:`ComparativeBins`

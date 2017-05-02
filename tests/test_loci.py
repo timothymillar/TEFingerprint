@@ -35,8 +35,8 @@ def test_loci_melter(query, answer):
     npt.assert_array_equal(query, answer)
 
 
-class TestLoci:
-    """Tests for class _Loci"""
+class TestGenomeLoci:
+    """Tests for class GenomeLoci"""
     def test_keys(self):
         """Test that keys are created from dict correctly and returned correctly"""
         query = {('chr1:0-100', '+', 'Copia'): np.array([(1, 2), (2, 3), (3, 4), (4, 5), (5, 6)],
@@ -48,7 +48,7 @@ class TestLoci:
         assert set(query.keys()) == answer
 
     def test_split(self):
-        """Split into separate _Loci objects based on keys"""
+        """Split into separate GenomeLoci objects based on keys"""
         dictionary = {('chr1:0-100', '+', 'Copia'): np.array([(1, 2), (2, 3), (3, 4), (4, 5), (5, 6)],
                                                              dtype=loci.GenomeLoci._DTYPE_LOCI),
                       ('chr1:0-100', '-', 'Copia'): np.array([(1, 2), (2, 3), (3, 4), (4, 5), (5, 6)],
