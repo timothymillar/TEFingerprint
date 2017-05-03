@@ -659,6 +659,20 @@ class Comparison(GenomeLoci):
 
     _LOCI_FLAT_DEFAULT_VALUES = (0, 0, '', 0, 0.0)
 
+    # Colours from R scheme "blues9"
+    _GFF_COLOURS = {0.0: '#C6DBEF',
+                    1.0: '#C6DBEF',
+                    2.0: '#C6DBEF',
+                    3.0: '#C6DBEF',
+                    4.0: '#C6DBEF',
+                    5.0: '#C6DBEF',
+                    6.0: '#9ECAE1',
+                    7.0: '#6BAED6',
+                    8.0: '#2171B5',
+                    9.0: '#08306B',
+                    10.0: '#08306B'}
+
+
     @staticmethod
     def _format_gff_feature(record):
         """
@@ -674,10 +688,11 @@ class Comparison(GenomeLoci):
                                               record['strand'],
                                               record['category'],
                                               record['start'])
+        color = Comparison._GFF_COLOURS[np.floor(np.max(record['proportions']) * 10)]
         attributes = '{0}={1}'.format('category', record['category'])
         attributes += ';' + ';'.join(['{0}={1}'.format(slot, ','.join(map(str, record[slot])))
                                       for slot in ('sources', 'counts', 'proportions')])
-        attributes = 'ID=' + identifier + ';' + attributes
+        attributes = 'ID=' + identifier + ';' + attributes + ';color=' + color
         template = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}"
         return template.format(record['reference'].split(':')[0],
                                '.',
@@ -725,11 +740,12 @@ class Comparison(GenomeLoci):
                                                   record['category'],
                                                   record['start'],
                                                   sample_numbers[record['source']])
+        color = Comparison._GFF_COLOURS[np.floor(record['proportion'] * 10)]
         attributes = ';'.join(['{0}={1}'.format(slot, record[slot]) for slot in ('category',
                                                                                  'source',
                                                                                  'count',
                                                                                  'proportion')])
-        attributes = 'ID=' + identifier + ';' + attributes
+        attributes = 'ID=' + identifier + ';' + attributes + ';color=' + color
         template = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}"
         return template.format(record['reference'].split(':')[0],
                                '.',
