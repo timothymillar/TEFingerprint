@@ -1,6 +1,7 @@
 #! /usr/bin/env python
 
 import re
+import sys
 import argparse
 import numpy as np
 
@@ -225,3 +226,5 @@ def filter_features(feature_strings, column_filters=None, attribute_filters=None
     return (np.array(feature_strings)[keep]).tolist()
 
 
+if __name__ == '__main__':
+    FilterGffProgram(sys.argv)

@@ -301,4 +301,4 @@ def tag_danglers(dangler_bam, dangler_strings, output_bam, tag):
 
 
 if __name__ == '__main__':
-    pass
+    PreProcessProgram.from_cli(sys.argv)
