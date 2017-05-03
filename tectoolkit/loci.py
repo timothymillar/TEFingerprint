@@ -66,6 +66,13 @@ def append(*args):
     return merged
 
 
+# define named tuple classes in main scope to avoid pickle error
+# see: https://stackoverflow.com/questions/4677012/python-cant-pickle-type-x-attribute-lookup-failed
+_new_genome_loci_key = namedtuple('GenomeLociKey', 'reference strand category')
+_new_read_loci_key = namedtuple('ReadLociKey', 'reference strand category source')
+_new_finger_print_key = namedtuple('FingerPrintKey', 'reference strand category source')
+
+
 class GenomeLoci(object):
     """
     A collection of categorised univariate loci.
@@ -87,7 +94,7 @@ class GenomeLoci(object):
 
     _LOCI_DEFAULT_VALUES = (0, 0)
 
-    _new_key = namedtuple('Key', 'reference strand category')
+    _new_key = _new_genome_loci_key
 
     _DTYPE_KEY = np.dtype([('reference', np.str_, 256),
                            ('strand', np.str_, 1),
@@ -327,7 +334,7 @@ class ReadLoci(GenomeLoci):
 
     _LOCI_DEFAULT_VALUES = (0, 0, '')
 
-    _new_key = namedtuple('Key', 'reference strand category source')
+    _new_key = _new_read_loci_key
 
     _DTYPE_KEY = np.dtype([('reference', np.str_, 256),
                            ('strand', np.str_, 1),
@@ -477,7 +484,7 @@ class FingerPrint(GenomeLoci):
                            ('category', np.str_, 256),
                            ('source', np.str_, 256)])
 
-    _new_key = namedtuple('Key', 'reference strand category source')
+    _new_key = _new_finger_print_key
 
     _DTYPE_ARRAY = np.dtype([('reference', np.str_, 256),
                              ('strand', np.str_, 1),
