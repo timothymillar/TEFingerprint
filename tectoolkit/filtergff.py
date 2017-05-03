@@ -175,10 +175,16 @@ def _matches_filter(feature, filt):
 
     :return:
     """
-    # split attribute values in case it is a comma separated list
-    values = feature[filt['attribute']].split(',')
-    # check if any values meet filter requirement
-    return any([_FILTER_DISPATCH[filt['operator']](value, filt['value']) for value in values])
+    try:
+        feature[filt['attribute']]
+    except KeyError:
+        # attribute is not present so feature does not match filter
+        return False
+    else:
+        # split attribute values in case it is a comma separated list
+        values = feature[filt['attribute']].split(',')
+        # check if any values meet filter requirement
+        return any([_FILTER_DISPATCH[filt['operator']](value, filt['value']) for value in values])
 
 
 def filter_features(feature_strings, column_filters=None, attribute_filters=None):
