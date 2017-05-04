@@ -212,18 +212,22 @@ class TestGenomeLoci:
                       ('chr2:0-100', '+', 'Copia'): np.array([(1, 2), (2, 3)],
                                                              dtype=loci.GenomeLoci._DTYPE_LOCI)}
         query = loci.GenomeLoci.from_dict(dictionary)
+        query = query.as_gff().splitlines()
+        query.sort()
 
-        answer = '\n'.join(['chr1\t.\t.\t1\t2\t.\t+\t.\tID=chr1_+_Copia_1;category=Copia',
-                            'chr1\t.\t.\t1\t2\t.\t+\t.\tID=chr1_+_Gypsy_1;category=Gypsy',
-                            'chr1\t.\t.\t1\t2\t.\t-\t.\tID=chr1_-_Copia_1;category=Copia',
-                            'chr1\t.\t.\t1\t2\t.\t-\t.\tID=chr1_-_Gypsy_1;category=Gypsy',
-                            'chr1\t.\t.\t2\t3\t.\t+\t.\tID=chr1_+_Copia_2;category=Copia',
-                            'chr1\t.\t.\t2\t3\t.\t+\t.\tID=chr1_+_Gypsy_2;category=Gypsy',
-                            'chr1\t.\t.\t2\t3\t.\t-\t.\tID=chr1_-_Copia_2;category=Copia',
-                            'chr1\t.\t.\t2\t3\t.\t-\t.\tID=chr1_-_Gypsy_2;category=Gypsy',
-                            'chr2\t.\t.\t1\t2\t.\t+\t.\tID=chr2_+_Copia_1;category=Copia',
-                            'chr2\t.\t.\t2\t3\t.\t+\t.\tID=chr2_+_Copia_2;category=Copia'])
-        assert query.as_gff() == answer
+        answer = ['chr1\t.\t.\t1\t2\t.\t+\t.\tID=chr1_+_Copia_1;category=Copia',
+                  'chr1\t.\t.\t1\t2\t.\t+\t.\tID=chr1_+_Gypsy_1;category=Gypsy',
+                  'chr1\t.\t.\t1\t2\t.\t-\t.\tID=chr1_-_Copia_1;category=Copia',
+                  'chr1\t.\t.\t1\t2\t.\t-\t.\tID=chr1_-_Gypsy_1;category=Gypsy',
+                  'chr1\t.\t.\t2\t3\t.\t+\t.\tID=chr1_+_Copia_2;category=Copia',
+                  'chr1\t.\t.\t2\t3\t.\t+\t.\tID=chr1_+_Gypsy_2;category=Gypsy',
+                  'chr1\t.\t.\t2\t3\t.\t-\t.\tID=chr1_-_Copia_2;category=Copia',
+                  'chr1\t.\t.\t2\t3\t.\t-\t.\tID=chr1_-_Gypsy_2;category=Gypsy',
+                  'chr2\t.\t.\t1\t2\t.\t+\t.\tID=chr2_+_Copia_1;category=Copia',
+                  'chr2\t.\t.\t2\t3\t.\t+\t.\tID=chr2_+_Copia_2;category=Copia']
+        answer.sort()
+
+        assert query == answer
 
 
 class TestReadLoci:
@@ -410,13 +414,18 @@ class TestReadLoci:
                                           'bam1'): np.array([(0, 20, 'name4'),
                                                              (21, 30, 'name5'),
                                                              (42, 100, 'name6')], dtype=loci.ReadLoci._DTYPE_LOCI)})
-        answer = '\n'.join(['chr1\t.\t.\t0\t20\t.\t+\t.\tID=name1;category=Gypsy;source=bam1',
-                            'chr1\t.\t.\t0\t20\t.\t-\t.\tID=name4;category=Gypsy;source=bam1',
-                            'chr1\t.\t.\t21\t30\t.\t+\t.\tID=name2;category=Gypsy;source=bam1',
-                            'chr1\t.\t.\t21\t30\t.\t-\t.\tID=name5;category=Gypsy;source=bam1',
-                            'chr1\t.\t.\t42\t100\t.\t+\t.\tID=name3;category=Gypsy;source=bam1',
-                            'chr1\t.\t.\t42\t100\t.\t-\t.\tID=name6;category=Gypsy;source=bam1'])
-        assert query.as_gff() == answer
+        query = query.as_gff().splitlines()
+        query.sort()
+
+        answer = ['chr1\t.\t.\t0\t20\t.\t+\t.\tID=name1;category=Gypsy;source=bam1',
+                  'chr1\t.\t.\t0\t20\t.\t-\t.\tID=name4;category=Gypsy;source=bam1',
+                  'chr1\t.\t.\t21\t30\t.\t+\t.\tID=name2;category=Gypsy;source=bam1',
+                  'chr1\t.\t.\t21\t30\t.\t-\t.\tID=name5;category=Gypsy;source=bam1',
+                  'chr1\t.\t.\t42\t100\t.\t+\t.\tID=name3;category=Gypsy;source=bam1',
+                  'chr1\t.\t.\t42\t100\t.\t-\t.\tID=name6;category=Gypsy;source=bam1']
+        answer.sort()
+
+        assert query == answer
 
 
 class TestFingerPrint:
@@ -483,16 +492,21 @@ class TestFingerPrint:
                                              'Gypsy',
                                              'bam1'): np.array([], dtype=loci.FingerPrint._DTYPE_LOCI)
                                             })
-        answer = '\n'.join(['chr1\t.\t.\t0\t577\t.\t+\t.\tID=chr1_+_Gypsy_0;category=Gypsy;source=bam1',
-                            'chr1\t.\t.\t20\t570\t.\t-\t.\tID=chr1_-_Gypsy_20;category=Gypsy;source=bam1',
-                            'chr1\t.\t.\t870\t1230\t.\t-\t.\tID=chr1_-_Gypsy_870;category=Gypsy;source=bam1',
-                            'chr1\t.\t.\t879\t1234\t.\t+\t.\tID=chr1_+_Gypsy_879;category=Gypsy;source=bam1',
-                            'chr1\t.\t.\t1662\t1917\t.\t+\t.\tID=chr1_+_Gypsy_1662;category=Gypsy;source=bam1',
-                            'chr1\t.\t.\t1662\t1917\t.\t-\t.\tID=chr1_-_Gypsy_1662;category=Gypsy;source=bam1',
-                            'chr2\t.\t.\t0\t577\t.\t+\t.\tID=chr2_+_Gypsy_0;category=Gypsy;source=bam1',
-                            'chr2\t.\t.\t879\t1234\t.\t+\t.\tID=chr2_+_Gypsy_879;category=Gypsy;source=bam1',
-                            'chr2\t.\t.\t1662\t1917\t.\t+\t.\tID=chr2_+_Gypsy_1662;category=Gypsy;source=bam1'])
-        assert query.as_gff() == answer
+        query = query.as_gff().splitlines()
+        query.sort()
+
+        answer = ['chr1\t.\t.\t0\t577\t.\t+\t.\tID=chr1_+_Gypsy_0;category=Gypsy;source=bam1',
+                  'chr1\t.\t.\t20\t570\t.\t-\t.\tID=chr1_-_Gypsy_20;category=Gypsy;source=bam1',
+                  'chr1\t.\t.\t870\t1230\t.\t-\t.\tID=chr1_-_Gypsy_870;category=Gypsy;source=bam1',
+                  'chr1\t.\t.\t879\t1234\t.\t+\t.\tID=chr1_+_Gypsy_879;category=Gypsy;source=bam1',
+                  'chr1\t.\t.\t1662\t1917\t.\t+\t.\tID=chr1_+_Gypsy_1662;category=Gypsy;source=bam1',
+                  'chr1\t.\t.\t1662\t1917\t.\t-\t.\tID=chr1_-_Gypsy_1662;category=Gypsy;source=bam1',
+                  'chr2\t.\t.\t0\t577\t.\t+\t.\tID=chr2_+_Gypsy_0;category=Gypsy;source=bam1',
+                  'chr2\t.\t.\t879\t1234\t.\t+\t.\tID=chr2_+_Gypsy_879;category=Gypsy;source=bam1',
+                  'chr2\t.\t.\t1662\t1917\t.\t+\t.\tID=chr2_+_Gypsy_1662;category=Gypsy;source=bam1']
+        answer.sort()
+
+        assert query == answer
 
 
 class TestComparativeBins:
@@ -643,18 +657,22 @@ class TestComparativeBins:
                       ('chr2:0-100', '+', 'Copia'): np.array([(1, 2), (2, 3)],
                                                              dtype=loci.ComparativeBins._DTYPE_LOCI)}
         query = loci.ComparativeBins.from_dict(dictionary)
+        query = query.as_gff().splitlines()
+        query.sort()
 
-        answer = '\n'.join(['chr1\t.\t.\t1\t2\t.\t+\t.\tID=chr1_+_Copia_1;category=Copia',
-                            'chr1\t.\t.\t1\t2\t.\t+\t.\tID=chr1_+_Gypsy_1;category=Gypsy',
-                            'chr1\t.\t.\t1\t2\t.\t-\t.\tID=chr1_-_Copia_1;category=Copia',
-                            'chr1\t.\t.\t1\t2\t.\t-\t.\tID=chr1_-_Gypsy_1;category=Gypsy',
-                            'chr1\t.\t.\t2\t3\t.\t+\t.\tID=chr1_+_Copia_2;category=Copia',
-                            'chr1\t.\t.\t2\t3\t.\t+\t.\tID=chr1_+_Gypsy_2;category=Gypsy',
-                            'chr1\t.\t.\t2\t3\t.\t-\t.\tID=chr1_-_Copia_2;category=Copia',
-                            'chr1\t.\t.\t2\t3\t.\t-\t.\tID=chr1_-_Gypsy_2;category=Gypsy',
-                            'chr2\t.\t.\t1\t2\t.\t+\t.\tID=chr2_+_Copia_1;category=Copia',
-                            'chr2\t.\t.\t2\t3\t.\t+\t.\tID=chr2_+_Copia_2;category=Copia'])
-        assert query.as_gff() == answer
+        answer = ['chr1\t.\t.\t1\t2\t.\t+\t.\tID=chr1_+_Copia_1;category=Copia',
+                  'chr1\t.\t.\t1\t2\t.\t+\t.\tID=chr1_+_Gypsy_1;category=Gypsy',
+                  'chr1\t.\t.\t1\t2\t.\t-\t.\tID=chr1_-_Copia_1;category=Copia',
+                  'chr1\t.\t.\t1\t2\t.\t-\t.\tID=chr1_-_Gypsy_1;category=Gypsy',
+                  'chr1\t.\t.\t2\t3\t.\t+\t.\tID=chr1_+_Copia_2;category=Copia',
+                  'chr1\t.\t.\t2\t3\t.\t+\t.\tID=chr1_+_Gypsy_2;category=Gypsy',
+                  'chr1\t.\t.\t2\t3\t.\t-\t.\tID=chr1_-_Copia_2;category=Copia',
+                  'chr1\t.\t.\t2\t3\t.\t-\t.\tID=chr1_-_Gypsy_2;category=Gypsy',
+                  'chr2\t.\t.\t1\t2\t.\t+\t.\tID=chr2_+_Copia_1;category=Copia',
+                  'chr2\t.\t.\t2\t3\t.\t+\t.\tID=chr2_+_Copia_2;category=Copia']
+        answer.sort()
+
+        assert query == answer
 
 
 class TestComparison:
@@ -679,7 +697,7 @@ class TestComparison:
                            ('chr1:0-3000', '+', 'Gypsy', 35, 40, ['bam1', 'bam2'], [3, 0], [1.0, 0.0])],
                           dtype=loci.Comparison._DTYPE_ARRAY)
 
-        npt.assert_array_equal(query.as_array(), answer)
+        npt.assert_array_equal(np.sort(query.as_array()), np.sort(answer))
 
     def test_as_gff(self):
         """"""
@@ -692,14 +710,18 @@ class TestComparison:
                                                           (35, 40, ['bam1', 'bam2'], [3, 0], [1.0, 0.0])],
                                                          dtype=loci.Comparison._DTYPE_LOCI)}
         query = loci.Comparison.from_dict(query)
+        query = query.as_gff().splitlines()
+        query.sort()
 
-        answer = '\n'.join(['chr1\t.\t.\t0\t20\t.\t+\t.\tID=chr1_+_Copia_0;category=Copia;sources=bam1,bam2;counts=3,0;proportions=1.0,0.0;color=#08306B',
-                            'chr1\t.\t.\t0\t20\t.\t+\t.\tID=chr1_+_Gypsy_0;category=Gypsy;sources=bam1,bam2;counts=3,1;proportions=0.75,0.25;color=#6BAED6',
-                            'chr1\t.\t.\t21\t30\t.\t+\t.\tID=chr1_+_Copia_21;category=Copia;sources=bam1,bam2;counts=5,0;proportions=1.0,0.0;color=#08306B',
-                            'chr1\t.\t.\t21\t30\t.\t+\t.\tID=chr1_+_Gypsy_21;category=Gypsy;sources=bam1,bam2;counts=5,5;proportions=0.5,0.5;color=#C6DBEF',
-                            'chr1\t.\t.\t35\t40\t.\t+\t.\tID=chr1_+_Copia_35;category=Copia;sources=bam1,bam2;counts=3,0;proportions=1.0,0.0;color=#08306B',
-                            'chr1\t.\t.\t35\t40\t.\t+\t.\tID=chr1_+_Gypsy_35;category=Gypsy;sources=bam1,bam2;counts=3,0;proportions=1.0,0.0;color=#08306B'])
-        assert query.as_gff() == answer
+        answer = ['chr1\t.\t.\t0\t20\t.\t+\t.\tID=chr1_+_Copia_0;category=Copia;sources=bam1,bam2;counts=3,0;proportions=1.0,0.0;color=#08306B',
+                  'chr1\t.\t.\t0\t20\t.\t+\t.\tID=chr1_+_Gypsy_0;category=Gypsy;sources=bam1,bam2;counts=3,1;proportions=0.75,0.25;color=#6BAED6',
+                  'chr1\t.\t.\t21\t30\t.\t+\t.\tID=chr1_+_Copia_21;category=Copia;sources=bam1,bam2;counts=5,0;proportions=1.0,0.0;color=#08306B',
+                  'chr1\t.\t.\t21\t30\t.\t+\t.\tID=chr1_+_Gypsy_21;category=Gypsy;sources=bam1,bam2;counts=5,5;proportions=0.5,0.5;color=#C6DBEF',
+                  'chr1\t.\t.\t35\t40\t.\t+\t.\tID=chr1_+_Copia_35;category=Copia;sources=bam1,bam2;counts=3,0;proportions=1.0,0.0;color=#08306B',
+                  'chr1\t.\t.\t35\t40\t.\t+\t.\tID=chr1_+_Gypsy_35;category=Gypsy;sources=bam1,bam2;counts=3,0;proportions=1.0,0.0;color=#08306B']
+        answer.sort()
+
+        assert query == answer
 
     def test_flat_array(self):
         """"""
@@ -727,7 +749,7 @@ class TestComparison:
                            ('chr1:0-3000', '+', 'Gypsy', 35, 40, 'bam2', 0, 0.0)],
                           dtype=loci.Comparison._DTYPE_FLAT_ARRAY)
 
-        npt.assert_array_equal(query.as_flat_array(), answer)
+        npt.assert_array_equal(np.sort(query.as_flat_array()), np.sort(answer))
 
     def test_as_flat_gff(self):
         """"""
@@ -740,17 +762,21 @@ class TestComparison:
                                                           (35, 40, ['bam1', 'bam2'], [3, 0], [1.0, 0.0])],
                                                          dtype=loci.Comparison._DTYPE_LOCI)}
         query = loci.Comparison.from_dict(query)
+        query = query.as_flat_gff().splitlines()
+        query.sort()
 
-        answer = '\n'.join(['chr1\t.\t.\t0\t20\t.\t+\t.\tID=chr1_+_Copia_0_0;category=Copia;source=bam1;count=3;proportion=1.0;color=#08306B',
-                            'chr1\t.\t.\t0\t20\t.\t+\t.\tID=chr1_+_Copia_0_1;category=Copia;source=bam2;count=0;proportion=0.0;color=#C6DBEF',
-                            'chr1\t.\t.\t0\t20\t.\t+\t.\tID=chr1_+_Gypsy_0_0;category=Gypsy;source=bam1;count=3;proportion=0.75;color=#6BAED6',
-                            'chr1\t.\t.\t0\t20\t.\t+\t.\tID=chr1_+_Gypsy_0_1;category=Gypsy;source=bam2;count=1;proportion=0.25;color=#C6DBEF',
-                            'chr1\t.\t.\t21\t30\t.\t+\t.\tID=chr1_+_Copia_21_0;category=Copia;source=bam1;count=5;proportion=1.0;color=#08306B',
-                            'chr1\t.\t.\t21\t30\t.\t+\t.\tID=chr1_+_Copia_21_1;category=Copia;source=bam2;count=0;proportion=0.0;color=#C6DBEF',
-                            'chr1\t.\t.\t21\t30\t.\t+\t.\tID=chr1_+_Gypsy_21_0;category=Gypsy;source=bam1;count=5;proportion=0.5;color=#C6DBEF',
-                            'chr1\t.\t.\t21\t30\t.\t+\t.\tID=chr1_+_Gypsy_21_1;category=Gypsy;source=bam2;count=5;proportion=0.5;color=#C6DBEF',
-                            'chr1\t.\t.\t35\t40\t.\t+\t.\tID=chr1_+_Copia_35_0;category=Copia;source=bam1;count=3;proportion=1.0;color=#08306B',
-                            'chr1\t.\t.\t35\t40\t.\t+\t.\tID=chr1_+_Copia_35_1;category=Copia;source=bam2;count=0;proportion=0.0;color=#C6DBEF',
-                            'chr1\t.\t.\t35\t40\t.\t+\t.\tID=chr1_+_Gypsy_35_0;category=Gypsy;source=bam1;count=3;proportion=1.0;color=#08306B',
-                            'chr1\t.\t.\t35\t40\t.\t+\t.\tID=chr1_+_Gypsy_35_1;category=Gypsy;source=bam2;count=0;proportion=0.0;color=#C6DBEF'])
-        assert query.as_flat_gff() == answer
+        answer = ['chr1\t.\t.\t0\t20\t.\t+\t.\tID=chr1_+_Copia_0_0;category=Copia;source=bam1;count=3;proportion=1.0;color=#08306B',
+                  'chr1\t.\t.\t0\t20\t.\t+\t.\tID=chr1_+_Copia_0_1;category=Copia;source=bam2;count=0;proportion=0.0;color=#C6DBEF',
+                  'chr1\t.\t.\t0\t20\t.\t+\t.\tID=chr1_+_Gypsy_0_0;category=Gypsy;source=bam1;count=3;proportion=0.75;color=#6BAED6',
+                  'chr1\t.\t.\t0\t20\t.\t+\t.\tID=chr1_+_Gypsy_0_1;category=Gypsy;source=bam2;count=1;proportion=0.25;color=#C6DBEF',
+                  'chr1\t.\t.\t21\t30\t.\t+\t.\tID=chr1_+_Copia_21_0;category=Copia;source=bam1;count=5;proportion=1.0;color=#08306B',
+                  'chr1\t.\t.\t21\t30\t.\t+\t.\tID=chr1_+_Copia_21_1;category=Copia;source=bam2;count=0;proportion=0.0;color=#C6DBEF',
+                  'chr1\t.\t.\t21\t30\t.\t+\t.\tID=chr1_+_Gypsy_21_0;category=Gypsy;source=bam1;count=5;proportion=0.5;color=#C6DBEF',
+                  'chr1\t.\t.\t21\t30\t.\t+\t.\tID=chr1_+_Gypsy_21_1;category=Gypsy;source=bam2;count=5;proportion=0.5;color=#C6DBEF',
+                  'chr1\t.\t.\t35\t40\t.\t+\t.\tID=chr1_+_Copia_35_0;category=Copia;source=bam1;count=3;proportion=1.0;color=#08306B',
+                  'chr1\t.\t.\t35\t40\t.\t+\t.\tID=chr1_+_Copia_35_1;category=Copia;source=bam2;count=0;proportion=0.0;color=#C6DBEF',
+                  'chr1\t.\t.\t35\t40\t.\t+\t.\tID=chr1_+_Gypsy_35_0;category=Gypsy;source=bam1;count=3;proportion=1.0;color=#08306B',
+                  'chr1\t.\t.\t35\t40\t.\t+\t.\tID=chr1_+_Gypsy_35_1;category=Gypsy;source=bam2;count=0;proportion=0.0;color=#C6DBEF']
+        answer.sort()
+
+        assert query == answer
