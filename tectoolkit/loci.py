@@ -3,7 +3,6 @@
 import numpy as np
 from tectoolkit import bamio
 from tectoolkit import cluster
-from collections import namedtuple
 
 
 def _loci_melter(array):
@@ -66,11 +65,56 @@ def append(*args):
     return merged
 
 
-# define named tuple classes in main scope to avoid pickle error
-# see: https://stackoverflow.com/questions/4677012/python-cant-pickle-type-x-attribute-lookup-failed
-_new_genome_loci_key = namedtuple('GenomeLociKey', 'reference strand category')
-_new_read_loci_key = namedtuple('ReadLociKey', 'reference strand category source')
-_new_finger_print_key = namedtuple('FingerPrintKey', 'reference strand category source')
+class LociKey(object):
+    """
+    A Loci Key is used to specify a specific 'reference', 'strand', 'category' of a genome
+    Where category is a category of transposon (e.g. a super-family).
+    An optional forth slot 'source' is used to record the data source (i.e. bam file) when appropriate.
+
+    This class is used as a dictionary key within instances of :class:`GenomeLoci` to label groups
+    of similar loci
+
+    :param reference: name of a reference chromosome with the form 'name:min-max'
+    :type reference: str
+    :param strand: strand of the reference chromosome '+' or '-'
+    :type strand: str
+    :param category: name of transposon category/family
+    :type category: str
+    :param source: optional name of source bam file
+    :type source: str
+    """
+    __slots__ = ['reference', 'strand', 'category', 'source']
+
+    def __init__(self, reference=None, strand=None, category=None, source=None):
+        self.reference = reference
+        self.strand = strand
+        self.category = category
+        self.source = source
+
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self.__slots__ == other.__slots__
+        return False
+
+    def __ne__(self, other):
+        """Define a non-equality test"""
+        return not self.__eq__(other)
+
+    def __hash__(self):
+        return hash((self.reference, self.strand, self.category, self.source))
+
+    def __iter__(self):
+        yield self.reference
+        yield self.strand
+        yield self.category
+        if self.source:
+            yield self.source
+
+    def __repr__(self):
+        if self.source:
+            return repr((self.reference, self.strand, self.category, self.source))
+        else:
+            return repr((self.reference, self.strand, self.category))
 
 
 class GenomeLoci(object):
@@ -94,8 +138,6 @@ class GenomeLoci(object):
 
     _LOCI_DEFAULT_VALUES = (0, 0)
 
-    _new_key = _new_genome_loci_key
-
     _DTYPE_KEY = np.dtype([('reference', np.str_, 256),
                            ('strand', np.str_, 1),
                            ('category', np.str_, 256)])
@@ -116,7 +158,10 @@ class GenomeLoci(object):
         return repr(self._dict)
 
     def __getitem__(self, item):
-        return self._dict[self._new_key(*item)]
+        if isinstance(item, LociKey):
+            return self._dict[item]
+        else:
+            return self._dict[LociKey(*item)]
 
     def keys(self):
         """
@@ -170,7 +215,7 @@ class GenomeLoci(object):
         if inplace:
             for key, loci in x.items():
                 if key in keys:
-                    self._dict[key] = np.append(self[key], loci)
+                    self._dict[key] = np.append(self._dict[key], loci)
                 else:
                     self._dict[key] = loci
         else:
@@ -178,7 +223,7 @@ class GenomeLoci(object):
             result._dict = self._dict.copy()
             for key, loci in x.items():
                 if key in keys:
-                    result._dict[key] = np.append(result[key], loci)
+                    result._dict[key] = np.append(result._dict[key], loci)
                 else:
                     result._dict[key] = loci
             return result
@@ -199,12 +244,12 @@ class GenomeLoci(object):
                 if len(loci) == 0:
                     pass
                 elif len(loci) == 1:
-                    reference = key[0]
+                    reference = key.reference
                     minimum, maximum = tuple(map(int, reference.split(':')[1].split('-')))
                     loci['start'][0] = max(loci['start'][0] - value, minimum)
                     loci['stop'][-1] = min(loci['stop'][-1] + value, maximum)
                 else:
-                    reference = key[0]
+                    reference = key.reference
                     minimum, maximum = tuple(map(int, reference.split(':')[1].split('-')))
                     difs = ((loci['start'][1:] - loci['stop'][:-1]) - 1) / 2
                     difs[difs > value] = value
@@ -242,7 +287,7 @@ class GenomeLoci(object):
         """
         d = {}
         for key, loci in dictionary.items():
-            key = cls._new_key(*key)  # use named tuple for keys
+            key = LociKey(*key)  # use named tuple for keys
             assert loci.dtype == cls._DTYPE_LOCI
             d[key] = loci
         result = cls()
@@ -265,7 +310,7 @@ class GenomeLoci(object):
         d = {}
         for key in keys:
             loci = array[list(cls._DTYPE_LOCI.names)][key_instances == key]
-            key = cls._new_key(*key)
+            key = LociKey(*key)
             d[key] = loci
         result = cls()
         result._dict = d
@@ -334,8 +379,6 @@ class ReadLoci(GenomeLoci):
 
     _LOCI_DEFAULT_VALUES = (0, 0, '')
 
-    _new_key = _new_read_loci_key
-
     _DTYPE_KEY = np.dtype([('reference', np.str_, 256),
                            ('strand', np.str_, 1),
                            ('category', np.str_, 256),
@@ -370,7 +413,7 @@ class ReadLoci(GenomeLoci):
         :rtype: :class:`ReadLoci`
         """
         reads = ReadLoci()
-        reads._dict = {ReadLoci._new_key(*group): np.fromiter(loci, dtype=cls._DTYPE_LOCI)
+        reads._dict = {LociKey(*group): np.fromiter(loci, dtype=cls._DTYPE_LOCI)
                        for group, loci in bamio.extract_bam_reads(bams,
                                                                   categories,
                                                                   references=references,
@@ -484,8 +527,6 @@ class FingerPrint(GenomeLoci):
                            ('category', np.str_, 256),
                            ('source', np.str_, 256)])
 
-    _new_key = _new_finger_print_key
-
     _DTYPE_ARRAY = np.dtype([('reference', np.str_, 256),
                              ('strand', np.str_, 1),
                              ('category', np.str_, 256),
@@ -561,7 +602,9 @@ class ComparativeBins(GenomeLoci):
         for fingerprint_key, loci in fingerprints.items():
 
             # Use the Fingerprint key to make a ComparativeBins key
-            bin_key = cls._new_key(fingerprint_key.reference, fingerprint_key.strand, fingerprint_key.category)
+            bin_key = LociKey(reference=fingerprint_key.reference,
+                              strand=fingerprint_key.strand,
+                              category=fingerprint_key.category)
 
             # Populate the dictionary with loci from FingerPrint object
             if bin_key not in dictionary.keys():
@@ -593,7 +636,7 @@ class ComparativeBins(GenomeLoci):
         """
         reads = append(*args)
         assert isinstance(reads, ReadLoci)
-        sources = np.array(list({group[3] for group in list(reads.keys())}))
+        sources = np.array(list({key.source for key in list(reads.keys())}))
         sources.sort()
         tips_dict = reads.tips()
         results = {}
@@ -603,7 +646,7 @@ class ComparativeBins(GenomeLoci):
             group_results['stop'] = bins['stop']
             group_results['sources'] = [sources for _ in bins]
 
-            sample_tips = [tips_dict[(*group, sample)] for sample in sources]
+            sample_tips = [tips_dict[LociKey(*group, sample)] for sample in sources]
             group_results['counts'] = [np.array([np.sum(np.logical_and(tips >= start, tips <= stop)) for tips in sample_tips]) for start, stop in bins]
             group_results['proportions'] = [np.round(a / np.sum(a), 3) for a in group_results['counts']]
 
@@ -678,7 +721,6 @@ class Comparison(GenomeLoci):
                     8.0: '#2171B5',
                     9.0: '#08306B',
                     10.0: '#08306B'}
-
 
     @staticmethod
     def _format_gff_feature(record):

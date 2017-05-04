@@ -44,7 +44,7 @@ class TestGenomeLoci:
                  ('chr1:0-100', '-', 'Copia'): np.array([(1, 2), (2, 3), (3, 4), (4, 5), (5, 6)],
                                                         dtype=loci.GenomeLoci._DTYPE_LOCI)}
         query = loci.GenomeLoci.from_dict(query)
-        answer = {loci.GenomeLoci._new_key('chr1:0-100', '+', 'Copia'), loci.GenomeLoci._new_key('chr1:0-100', '-', 'Copia')}
+        answer = {loci.LociKey('chr1:0-100', '+', 'Copia'), loci.LociKey('chr1:0-100', '-', 'Copia')}
         assert set(query.keys()) == answer
 
     def test_split(self):
@@ -247,11 +247,11 @@ class TestReadLoci:
         query = loci.ReadLoci.from_dict(dictionary)
         query = query.tips()
 
-        answer = {loci.ReadLoci._new_key('chr1:0-100', '+', 'Copia', 'bam1'): np.array([2, 3]),
-                  loci.ReadLoci._new_key('chr1:0-100', '-', 'Copia', 'bam1'): np.array([1, 2]),
-                  loci.ReadLoci._new_key('chr1:0-100', '+', 'Gypsy', 'bam1'): np.array([2, 3]),
-                  loci.ReadLoci._new_key('chr1:0-100', '-', 'Gypsy', 'bam1'): np.array([1, 2]),
-                  loci.ReadLoci._new_key('chr2:0-100', '+', 'Copia', 'bam1'): np.array([2, 3])}
+        answer = {loci.LociKey('chr1:0-100', '+', 'Copia', 'bam1'): np.array([2, 3]),
+                  loci.LociKey('chr1:0-100', '-', 'Copia', 'bam1'): np.array([1, 2]),
+                  loci.LociKey('chr1:0-100', '+', 'Gypsy', 'bam1'): np.array([2, 3]),
+                  loci.LociKey('chr1:0-100', '-', 'Gypsy', 'bam1'): np.array([1, 2]),
+                  loci.LociKey('chr2:0-100', '+', 'Copia', 'bam1'): np.array([2, 3])}
         assert set(query.keys()) == set(answer.keys())
         for key in query.keys():
             npt.assert_array_equal(query[key], answer[key])
