@@ -179,16 +179,35 @@ Additional arguments:
 
 ### Filter GFF
 
-Example usage:
+This script can be used to filter down the results of `fingerprint` or `compare`. Filters can be applied to attributes in the attribute column or to the first 8 standard gff3 columns. 
+
+Multiple filters may be combined, in which case a feature must pass all of them to be kept. 
+
+If an attribute contains a comma separated list of values e.g. `proportions=0.9,0.1,0.0` only one of the values must pass the filter for the feature to be retained.
+
+Filters take the form `'<column/attribute><operator><value>'` where:
+
+* `<column/attribute>` is the name of the column or attribute that the filter is applied to.
+* `<operator>` is one of the following operators `=`, `==`, `!=`, `<` `>`, `>=`, `<=` that describes the comparason being performed.
+* `<value>` is the value the each feature is compared to.
+
+Filters should be contained within quotes `''` so that the operator is not interpreted as a shell command.
+
+The following operators are only used for numerical comparisons: `<` `>`, `>=`, `<=`. 
+
+The operators `=`, `==` and `!=` will try to compare values as numerical (floating points) but will also check for equivalence or non-equivalence of string values. Note that `=`, `==` are identical.
+
+
+Example usage with two attribute filters:
 
 ```
 tef filter_gff comparison.gff \
-	-a `proportions>0.95` >
-	comparison_filtered.gff
+	-a 'counts>=10' 'proportions>0.95' \
+	> comparison_filtered.gff
 ```
 Where `comparison.gff ` is a gff file and `comparison_filtered.gff` is a filtered version of that file.
 
 Arguments:
 
-* `-c/--column_filters`
-* `-a/--attribute_filters`
+* `-c/--column_filters`: filters to apply to the first 8 standard gff3 columns. These should take the form `'<column><operator><value>'`
+* `-a/--attribute_filters`: filters to apply to the attributes column. These should take the form `'<attribute><operator><value>'`
