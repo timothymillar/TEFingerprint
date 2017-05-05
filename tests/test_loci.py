@@ -3,7 +3,7 @@
 import pytest
 import numpy as np
 import numpy.testing as npt
-from tectoolkit import loci
+from tefingerprint import loci
 
 
 @pytest.mark.parametrize("query,answer",

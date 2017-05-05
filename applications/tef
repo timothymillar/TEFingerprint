@@ -2,10 +2,10 @@
 
 import sys
 import argparse
-from tectoolkit.filtergff import FilterGffProgram
-from tectoolkit.preprocess import PreProcessProgram
-from tectoolkit.programs import FingerprintProgram
-from tectoolkit.programs import ComparisonProgram
+from tefingerprint.filtergff import FilterGffProgram
+from tefingerprint.preprocess import PreProcessProgram
+from tefingerprint.programs import FingerprintProgram
+from tefingerprint.programs import ComparisonProgram
 
 
 def parse_program_arg(arg):

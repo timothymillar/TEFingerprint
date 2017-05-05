@@ -1,8 +1,8 @@
 #! /usr/bin/env python
 
 import numpy as np
-from tectoolkit import bamio
-from tectoolkit import cluster
+from tefingerprint import bamio
+from tefingerprint import cluster
 
 
 def _loci_melter(array):

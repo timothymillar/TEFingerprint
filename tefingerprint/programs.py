@@ -1,8 +1,8 @@
 #! /usr/bin/env python
 
 import argparse
-from tectoolkit import batch
-from tectoolkit import bamio
+from tefingerprint import batch
+from tefingerprint import bamio
 
 
 class FingerprintProgram(object):

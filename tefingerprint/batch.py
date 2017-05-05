@@ -2,7 +2,7 @@
 
 from itertools import product
 from multiprocessing import Pool
-from tectoolkit import loci
+from tefingerprint import loci
 
 
 def _fingerprint_worker(bams, categories, reference, transposon_tag, min_reads, eps, min_eps, hierarchical):

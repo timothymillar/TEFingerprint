@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 
-from tectoolkit import bamio
+from tefingerprint import bamio
 import pytest
 
 
