@@ -68,13 +68,7 @@ class PreProcessProgram(object):
                             nargs=1,
                             default=[1],
                             help='Maximum number of cpu threads to be used')
-        try:
-            arguments = parser.parse_args(args)
-        except:
-            parser.print_help()
-            sys.exit(0)
-        else:
-            return arguments
+        return parser.parse_args(args)
 
     @staticmethod
     def from_cli(args):
@@ -307,4 +301,4 @@ def tag_danglers(dangler_bam, dangler_strings, output_bam, tag):
 
 
 if __name__ == '__main__':
-    pass
+    PreProcessProgram.from_cli(sys.argv)

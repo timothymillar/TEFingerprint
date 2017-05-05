@@ -3,7 +3,7 @@
 import pytest
 import numpy as np
 import numpy.testing as npt
-from tectoolkit.cluster import UDC, HUDC
+from tefingerprint.cluster import UDC, HUDC
 
 class TestUDC:
     """

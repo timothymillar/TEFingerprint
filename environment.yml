@@ -1,4 +1,4 @@
-name: tectoolkit
+name: tefingerprint
 dependencies:
 - numpy>=1.11.1
 - pip>=8.1.2
@@ -12,5 +12,3 @@ dependencies:
 - pip:
   - pysam>=0.9.1.4
   - pytest>=3.0.0
-  - gffutils>=0.8.7.1
-

@@ -47,10 +47,10 @@ class UDC(object):
         Combines overlapping slices assuming half-open intervals.
 
         :param slices: An array of paired integers representing the lower and upper values of a slice
-        :type slices: :class:`numpy.ndarray`[int, int]
+        :type slices: :class:`numpy.ndarray`[(int, int)]
 
         :return: An array of paired integers representing the lower and upper values of a slice
-        :rtype: :class:`numpy.ndarray`[int, int]
+        :rtype: :class:`numpy.ndarray`[(int, int)]
         """
         lowers, uppers = slices['lower'], slices['upper']
         lowers.sort()
@@ -87,7 +87,7 @@ class UDC(object):
         :param n: The maximum distance allowed in among points of each subcluster
 
         :return: An array of paired lower and upper indices for each subcluster found in the array
-        :rtype: :class:`numpy.ndarray`[int, int]
+        :rtype: :class:`numpy.ndarray`[(int, int)]
         """
         assert UDC._sorted_ascending(array)
         offset = n - 1
@@ -110,7 +110,7 @@ class UDC(object):
         :param n: The maximum distance allowed in among each set of n points
 
         :return: An array of paired lower and upper indices for each cluster found in the array
-        :rtype: :class:`numpy.ndarray`[int, int]
+        :rtype: :class:`numpy.ndarray`[(int, int)]
         """
         # sorted-ascending checked in method _subcluster
         slices = UDC._subcluster(array, eps, n)
@@ -328,7 +328,7 @@ class HUDC(UDC):
         This method is intimately tied to method 'hudc'.
 
         :param points: An array of points with the slots 'value', 'index' and 'eps
-        :type points: :class:`numpy.ndarray`[int, int, int]
+        :type points: :class:`numpy.ndarray`[(int, int, int)]
         :param base_eps: The maximum distance allowed in among each set of n points
         :type base_eps: int
         :param n: The minimum number of points allowed in each (sub)cluster
@@ -396,7 +396,7 @@ class HUDC(UDC):
         :type min_eps: int
 
         :return: An array of paired lower and upper indices for each cluster found in the array
-        :rtype: :class:`numpy.ndarray`[int, int]
+        :rtype: :class:`numpy.ndarray`[(int, int)]
         """
         assert HUDC._sorted_ascending(array)
 
