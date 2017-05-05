@@ -9,7 +9,7 @@ def read_file(file_name):
 
 
 setup(name='tectoolkit',
-      version='0.0.1',
+      version='0.0.2',
       author='Tim Millar',
       author_email='tim.millar@plantandfood.co.nz',
       url='https://github.com/PlantandFoodResearch/TECtoolkit',
