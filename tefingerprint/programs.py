@@ -87,12 +87,6 @@ class FingerprintProgram(object):
                             nargs=1,
                             help='By default hierarchical HUDC algorithm is used. If this is set to False, '
                                  'the non-hierarchical UDC algorithm is used and min_eps is inored.')
-        parser.add_argument('-j', '--join_distance',
-                            type=int,
-                            default=[0],
-                            nargs=1,
-                            help='The maximum distance allowable between neighbouring clusters (of the same family '
-                                 'and opposite strands) to be associated with one another as a pair')
         parser.add_argument('-t', '--threads',
                             type=int,
                             default=[1],
@@ -191,12 +185,6 @@ class ComparisonProgram(object):
                             nargs=1,
                             help='By default hierarchical HUDC algorithm is used. If this is set to False, '
                                  'the non-hierarchical UDC algorithm is used and min_eps is inored.')
-        parser.add_argument('-j', '--join_distance',
-                            type=int,
-                            default=[0],
-                            nargs=1,
-                            help='The maximum distance allowable between neighbouring clusters (of the same family '
-                                 'and opposite strands) to be associated with one another as a pair')
         parser.add_argument('-b', '--fingerprint_buffer',
                             type=int,
                             default=[0],

@@ -13,13 +13,10 @@ def parse_program_arg(arg):
     parser = argparse.ArgumentParser('Identify program to run')
     parser.add_argument('program',
                         type=str,
-                        choices=("fingerprint",
-                                 "fingerprint2",
+                        choices=("preprocess",
+                                 "fingerprint",
                                  "compare",
-                                 "compare2",
-                                 "filter_gff",
-                                 "filter_gff2",
-                                 "preprocess"))
+                                 "filter_gff"))
     return parser.parse_args(arg)
 
 
