@@ -56,7 +56,7 @@ def extract_bam_references(*args):
     """
     bam_refs = [_read_bam_reference_lengths(bam) for bam in args]
     assert all(ref == bam_refs[0] for ref in bam_refs)
-    references = ['{0}:0-{1}'.format(k, v) for k, v in bam_refs[0].items()]
+    references = ['{0}:1-{1}'.format(k, v) for k, v in bam_refs[0].items()]
     return references
 
 
@@ -119,7 +119,7 @@ def _read_bam_ref_strand_loci(bam, reference, strand, categories, tag='ME'):
     if ':' in reference:
         pass
     else:
-        reference += ':0-{0}'.format(_read_bam_reference_lengths(bam)[reference])
+        reference += ':1-{0}'.format(_read_bam_reference_lengths(bam)[reference])
     tag = '\t' + tag + ':[Zi]:'
     tags = np.array([re.split(tag, s)[1].split('\t')[0] for s in strings])
     for category in categories:
