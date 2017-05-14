@@ -100,10 +100,13 @@ class PreProcessProgram(object):
 
         # extract danglers from bam
         print('>>> Extracting dangler reads from: {0}'.format(temp_bam_1))
-        dangler_strings = extract_forward_danglers(temp_bam_1)
+        forward_dangler_strings = extract_forward_danglers(temp_bam_1)
+        reverse_dangler_strings = extract_reverse_danglers(temp_bam_1)
 
         # convert dangler strings to fastq
-        fastq_lines = '\n'.join((sam_strings_as_fastq(dangler_strings)))
+        fastq_lines = ''
+        fastq_lines += '\n' + '\n'.join((forward_danglers_as_fastq(forward_dangler_strings)))
+        fastq_lines += '\n' + '\n'.join((reverse_danglers_as_fastq(reverse_dangler_strings)))
 
         # extract soft clipped tails from bam
         print('>>> Extracting soft clipped tails from: {0}'.format(temp_bam_1))
@@ -134,7 +137,7 @@ class PreProcessProgram(object):
         index_bam(temp_bam_2)
 
         # tag danglers and write output file
-        sam_strings = dangler_strings + soft_clipped_forward_tails + soft_clipped_reverse_tails
+        sam_strings = forward_dangler_strings + reverse_dangler_strings + soft_clipped_forward_tails + soft_clipped_reverse_tails
         print('>>> Adding tags to mapped danglers at: {0}'.format(self.output_bam))
         tag_danglers(temp_bam_2, sam_strings, self.output_bam, self.mate_element_tag)
 
@@ -288,7 +291,7 @@ def forward_soft_clipped_tails_as_fastq(sam_strings, min_length=20):
                                           read['SEQ'][0: clip + 1],
                                           read['QUAL'][0: clip + 1])
 
-    return (format_fastq(read, clip) for read, clip in reads)
+    return [format_fastq(read, clip) for read, clip in reads]
 
 
 def extract_reverse_soft_clipped_tails(bam):
@@ -316,7 +319,7 @@ def reverse_soft_clipped_tails_as_fastq(sam_strings, min_length=20):
                                           reverse_complement(read['SEQ'][-clip:]),
                                           read['QUAL'][-clip:])
 
-    return (format_fastq(read, clip) for read, clip in reads)
+    return [format_fastq(read, clip) for read, clip in reads]
 
 
 def extract_forward_danglers(bam):
@@ -327,24 +330,49 @@ def extract_forward_danglers(bam):
     :type bam: str
 
     :return: sam formatted strings
-    :rtype: str
+    :rtype: list[str]
     """
-    return pysam.samtools.view('-F', '0x800', '-F', '0x100', '-F', '8', '-f', '4', bam).splitlines()
+    return pysam.samtools.view('-F', '16', '-F', '0x800', '-F', '0x100', '-F', '8', '-f', '4', bam).splitlines()
 
 
-def sam_strings_as_fastq(sam_strings):
+def forward_danglers_as_fastq(sam_strings):
     """
     Extracts unmapped reads with a mapped pair and writes them to a fastq file.
 
     :param sam_strings: sam formatted strings
-    :type sam_strings: str
-    :param output_fastq: fastq file of non-mapped reads with pair mapping to repeat-element
-    :type output_fastq: str
+    :type sam_strings: list[str]
     """
     reads = iter(parse_sam_string(string) for string in sam_strings)
-    fastq_lines = ("@{0}\n{1}\n+\n{2}".format(read['QNAME'],
+    fastq_lines = ["@{0}\n{1}\n+\n{2}".format(read['QNAME'],
                                               read['SEQ'],
-                                              read['QUAL']) for read in reads)
+                                              read['QUAL']) for read in reads]
+    return fastq_lines
+
+
+def extract_reverse_danglers(bam):
+    """
+    Extracts unmapped reads with a mapped pair.
+
+    :param bam: bam file of paired end reads aligned to repeat-element reference
+    :type bam: str
+
+    :return: sam formatted strings
+    :rtype: list[str]
+    """
+    return pysam.samtools.view('-f', '16', '-F', '0x800', '-F', '0x100', '-F', '8', '-f', '4', bam).splitlines()
+
+
+def reverse_danglers_as_fastq(sam_strings):
+    """
+    Extracts unmapped reads with a mapped pair and writes them to a fastq file.
+
+    :param sam_strings: sam formatted strings
+    :type sam_strings: list[str]
+    """
+    reads = iter(parse_sam_string(string) for string in sam_strings)
+    fastq_lines = ["@{0}\n{1}\n+\n{2}".format(read['QNAME'],
+                                              reverse_complement(read['SEQ']),
+                                              read['QUAL']) for read in reads]
     return fastq_lines
 
 
@@ -377,7 +405,7 @@ def tag_danglers(dangler_bam, sam_strings, output_bam, tag):
     :param dangler_bam: bam file of dangler reads aligned to reference genome
     :type dangler_bam: str
     :param sam_strings: sam formatted strings of non-mapped reads with pair mapping to repeat-element
-    :type sam_strings: str
+    :type sam_strings: list[str]
     :param output_bam: bam file of dangler reads aligned to reference genome and tagged with mate element
     :type output_bam: str
     """
