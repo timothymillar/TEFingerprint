@@ -317,7 +317,7 @@ def reverse_soft_clipped_tails_as_fastq(sam_strings, min_length=20):
     def format_fastq(read, clip):
         return '@{0}\n{1}\n+\n{2}'.format(read['QNAME'],
                                           reverse_complement(read['SEQ'][-clip:]),
-                                          read['QUAL'][-clip:])
+                                          reversed(read['QUAL'][-clip:]))
 
     return [format_fastq(read, clip) for read, clip in reads]
 
@@ -372,7 +372,7 @@ def reverse_danglers_as_fastq(sam_strings):
     reads = iter(parse_sam_string(string) for string in sam_strings)
     fastq_lines = ["@{0}\n{1}\n+\n{2}".format(read['QNAME'],
                                               reverse_complement(read['SEQ']),
-                                              read['QUAL']) for read in reads]
+                                              reversed(read['QUAL'])) for read in reads]
     return fastq_lines
 
 
