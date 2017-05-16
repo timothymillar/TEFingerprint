@@ -278,7 +278,7 @@ def extract_forward_danglers(bam):
     :return: sam formatted strings
     :rtype: list[str]
     """
-    return pysam.view('-F', '16', '-F', '0x800', '-F', '0x100', '-F', '8', '-f', '4', bam).splitlines()
+    return pysam.view('-F', '2304', '-F', '16', '-F', '8', '-f', '4', bam).splitlines()
 
 
 def forward_danglers_as_fastq(sam_strings):
@@ -310,7 +310,7 @@ def extract_reverse_danglers(bam):
     :return: sam formatted strings
     :rtype: list[str]
     """
-    return pysam.view('-f', '16', '-F', '0x800', '-F', '0x100', '-F', '8', '-f', '4', bam).splitlines()
+    return pysam.view('-F', '2304', '-f', '16', '-F', '8', '-f', '4', bam).splitlines()
 
 
 def reverse_danglers_as_fastq(sam_strings):
@@ -345,7 +345,7 @@ def extract_forward_read_of_mapped_pair(bam):
     :return: sam formatted strings
     :rtype: list[str]
     """
-    return pysam.view('-f', '2', '-F', '16', '-F', '4', '-F', '8', bam).splitlines()
+    return pysam.view('-F', '2304', '-f', '2', '-F', '16', '-F', '4', '-F', '8', bam).splitlines()
 
 
 def forward_soft_clipped_tails_as_fastq(sam_strings, min_length=38):
@@ -393,7 +393,7 @@ def extract_reverse_read_of_mapped_pair(bam):
     :return: sam formatted strings
     :rtype: list[str]
     """
-    return pysam.view('-f', '2', '-f', '16', '-F', '4', '-F', '8', bam).splitlines()
+    return pysam.view('-F', '2304', '-f', '2', '-f', '16', '-F', '4', '-F', '8', bam).splitlines()
 
 
 def reverse_soft_clipped_tails_as_fastq(sam_strings, min_length=38):
