@@ -852,8 +852,10 @@ class Comparison(GenomeLoci):
         :return: a csv formatted string of character scores
         :rtype: str
         """
-        return '\n'.join([str(row[1]) + ', ' + str(row[0]).strip('()') for row in zip(*self.as_character_array())])
-
+        array, names = self.as_character_array()
+        columns = 'sample, ' + str(array.dtype.names).strip('()')
+        characters = '\n'.join([str(row[1]) + ', ' + str(row[0]).strip('()') for row in zip(array, names)])
+        return columns + '\n' + characters
 
 if __name__ == '__main__':
     pass
