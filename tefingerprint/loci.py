@@ -826,6 +826,34 @@ class Comparison(GenomeLoci):
         sample_numbers = {k: v for v, k in enumerate(np.sort(np.unique(array['source'])))}
         return '\n'.join((self._format_flat_gff_feature(record, sample_numbers) for record in array))
 
+    def as_character_array(self):
+        """
+        Formats comparision results as an array of character scores.
+
+        This can easily be converted to a pandas dataframe using `pandas.DataFrame(*self.as_character_array())`.
+
+        :return: a tuple containing an array of character states and an array of sample names
+        """
+        array = self.as_array()
+        dtype = [("{0}_{1}_{2}_{3}_{4}".format(item['reference'].split(':')[0],
+                                               item['strand'],
+                                               item['category'],
+                                               item['start'],
+                                               item['stop']), np.int64) for item in array]
+        dtype = np.dtype(dtype)
+        samples = array[0]['sources']
+        characters = np.array([*array['counts']]).transpose().ravel().view(dtype=dtype)
+        return characters, samples
+
+    def as_character_csv(self):
+        """
+        Formats comparision results as an csv of character scores.
+
+        :return: a csv formatted string of character scores
+        :rtype: str
+        """
+        return '\n'.join([str(row[1]) + ', ' + str(row[0]).strip('()') for row in zip(*self.as_character_array())])
+
 
 if __name__ == '__main__':
     pass
