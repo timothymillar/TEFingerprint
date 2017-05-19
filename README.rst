@@ -154,6 +154,7 @@ Example usage:
         -f family1 family2 ... \
         -m 20 \
         -e 500 \
+        -q 30 \
         -t 4 \
         > fingerprint.gff
 
@@ -177,6 +178,8 @@ Arguments:
    of read tips to be considered a (sub) cluster. Sub-clusters are
    calculated based on ``-m/--minreads`` and ``-e/epsilon`` and then
    overlapping sub-clusters are combined to create cluster.
+-  ``-q/--mapping_quality`` Specifies the minimum mapping quality
+   allowed for reads.
 -  ``-t/--threads`` Specifies the number of CPU threads to use. The
    maximum number of threads that may be used is the same as the number
    of references specified.
@@ -226,6 +229,8 @@ Arguments:
    of read tips to be considered a (sub) cluster. Sub-clusters are
    calculated based on ``-m/--minreads`` and ``-e/epsilon`` and then
    overlapping sub-clusters are combined to create cluster.
+-  ``-q/--mapping_quality`` Specifies the minimum mapping quality
+   allowed for reads.
 -  ``-b/--fingerprint_buffer`` Specifies a distance (in base pairs) to
    buffer fingerprints by before combining them into comparative bins.
    This is used to ensure that small clusters, that are slightly offset
