@@ -397,7 +397,7 @@ class ReadLoci(GenomeLoci):
                              ('name', np.str_, 254)])
 
     @classmethod
-    def from_bam(cls, bams, categories, references=None, tag='ME'):
+    def from_bam(cls, bams, categories, references=None, quality=30, tag='ME'):
         """
         Create an object of :class:`ReadLoci` from a bam file.
         The bam file should contain aligned reads without pairs where each read is tagged with the category of
@@ -410,6 +410,8 @@ class ReadLoci(GenomeLoci):
         :type references: str
         :param categories: A list of transposon categories to group reads by
         :type categories: list[str]
+        :param quality: minimum mapping quality
+        :type quality: int
         :param tag: The sam tag containing the transposon each read corresponds to
         :type tag: str
 
@@ -421,6 +423,7 @@ class ReadLoci(GenomeLoci):
                        for group, loci in bamio.extract_bam_reads(bams,
                                                                   categories,
                                                                   references=references,
+                                                                  quality=quality,
                                                                   tag=tag)}
         return reads
 
@@ -835,11 +838,11 @@ class Comparison(GenomeLoci):
         :return: a tuple containing an array of character states and an array of sample names
         """
         array = self.as_array()
-        dtype = [("{0}_{1}_{2}_{3}_{4}".format(item['reference'].split(':')[0],
-                                               item['strand'],
-                                               item['category'],
+        dtype = [("{0}:{1}-{2}_{3}_{4}".format(item['reference'].split(':')[0],
                                                item['start'],
-                                               item['stop']), np.int64) for item in array]
+                                               item['stop'],
+                                               item['strand'],
+                                               item['category']), np.int64) for item in array]
         dtype = np.dtype(dtype)
         samples = array[0]['sources']
         characters = np.array([*array['counts']]).transpose().ravel().view(dtype=dtype)
@@ -853,8 +856,8 @@ class Comparison(GenomeLoci):
         :rtype: str
         """
         array, names = self.as_character_array()
-        columns = 'sample, ' + str(array.dtype.names).strip('()')
-        characters = '\n'.join([str(row[1]) + ', ' + str(row[0]).strip('()') for row in zip(array, names)])
+        columns = '"sample",' + str(array.dtype.names).strip('()').replace("'", '"').replace(" ", "")
+        characters = '\n'.join([str(row[1]) + ', ' + str(row[0]).strip('()').replace(" ", "") for row in zip(array, names)])
         return columns + '\n' + characters
 
 if __name__ == '__main__':

@@ -138,6 +138,7 @@ tef fingerprint danglers.bam \
 	-f family1 family2 ... \
 	-m 20 \
 	-e 500 \
+	-q 30 \
 	-t 4 \
 	> fingerprint.gff
 ```
@@ -150,6 +151,7 @@ Arguments:
 * `-f/--families` Specifies the (super) families or grouping of repeated elements to fingerprint. These names are matched against the start of the mate element name i.e. the name `Gypsy` would treat reads with tagged with a mate element called `Gypsy3`, `Gypsy27` or `GypsyX` as the same.
 * `-m/--minreads` Specifies the minimum number of read (tips) required to form a cluster. It is used in combination with `-e/epsilon`.
 * `-e/epsilon` Specifies the maximum allowable distance among a set of read tips to be considered a (sub) cluster. Sub-clusters are calculated based on `-m/--minreads` and `-e/epsilon` and then overlapping sub-clusters are combined to create cluster.
+* `-q/--mapping_quality` Specifies the minimum mapping quality allowed for reads.
 * `-t/--threads` Specifies the number of CPU threads to use. The maximum number of threads that may be used is the same as the number of references specified.
  
 Additional arguments:
@@ -181,6 +183,7 @@ Arguments:
 * `-f/--families` Specifies the (super) families or grouping of repeated elements to fingerprint. These names are matched against the start of the mate element name i.e. the name `Gypsy` would treat reads with tagged with a mate element called `Gypsy3`, `Gypsy27` or `GypsyX` as the same.
 * `-m/--minreads` Specifies the minimum number of read (tips) required to form a cluster. It is used in combination with `-e/epsilon`.
 * `-e/epsilon` Specifies the maximum allowable distance among a set of read tips to be considered a (sub) cluster. Sub-clusters are calculated based on `-m/--minreads` and `-e/epsilon` and then overlapping sub-clusters are combined to create cluster.
+* `-q/--mapping_quality` Specifies the minimum mapping quality allowed for reads.
 * `-b/--fingerprint_buffer` Specifies a distance (in base pairs) to buffer fingerprints by before combining them into comparative bins. This is used to ensure that small clusters, that are slightly offset in different samples, are treated as a single comparative bin. It also improves the robustness of comparisons by allowing more reads to be included in each bin. Defaults to `0`
 * `-t/--threads` Specifies the number of CPU threads to use. The maximum number of threads that may be used is the same as the number of references specified.
  
