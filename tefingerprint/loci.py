@@ -397,7 +397,7 @@ class ReadLoci(GenomeLoci):
                              ('name', np.str_, 254)])
 
     @classmethod
-    def from_bam(cls, bams, categories, references=None, tag='ME'):
+    def from_bam(cls, bams, categories, references=None, quality=30, tag='ME'):
         """
         Create an object of :class:`ReadLoci` from a bam file.
         The bam file should contain aligned reads without pairs where each read is tagged with the category of
@@ -410,6 +410,8 @@ class ReadLoci(GenomeLoci):
         :type references: str
         :param categories: A list of transposon categories to group reads by
         :type categories: list[str]
+        :param quality: minimum mapping quality
+        :type quality: int
         :param tag: The sam tag containing the transposon each read corresponds to
         :type tag: str
 
@@ -421,6 +423,7 @@ class ReadLoci(GenomeLoci):
                        for group, loci in bamio.extract_bam_reads(bams,
                                                                   categories,
                                                                   references=references,
+                                                                  quality=quality,
                                                                   tag=tag)}
         return reads
 
