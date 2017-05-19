@@ -5,9 +5,9 @@ from multiprocessing import Pool
 from tefingerprint import loci
 
 
-def _fingerprint_worker(bams, categories, reference, transposon_tag, min_reads, eps, min_eps, hierarchical):
+def _fingerprint_worker(bams, categories, reference, quality, transposon_tag, min_reads, eps, min_eps, hierarchical):
     """Worker function for batch fingerprinting"""
-    reads = loci.append(*[loci.ReadLoci.from_bam(bam, categories, references=reference, tag=transposon_tag)
+    reads = loci.append(*[loci.ReadLoci.from_bam(bam, categories, references=reference, quality=quality, tag=transposon_tag)
                           for bam in bams])
     return reads.fingerprint(min_reads, eps, min_eps=min_eps, hierarchical=hierarchical)
 
@@ -15,6 +15,7 @@ def _fingerprint_worker(bams, categories, reference, transposon_tag, min_reads, 
 def fingerprint(bams=None,
                 categories=None,
                 references=None,
+                quality=30,
                 transposon_tag='ME',
                 min_reads=None,
                 eps=None,
@@ -30,6 +31,8 @@ def fingerprint(bams=None,
     :type categories: list[str]
     :param references: targeted (slices of) references with format 'name' or 'name:minimum-maximum'
     :type references: list[str]
+    :param quality: minimum mapping quality
+    :type quality: int
     :param transposon_tag: the two letter sam tag containing the transposon associated with each read
     :type transposon_tag: str
     :param min_reads: minimum number of read tips required to form a fingerprint locus
@@ -46,7 +49,7 @@ def fingerprint(bams=None,
     :return: Fingerprints of bam files
     :rtype: :class:`loci.FingerPrint`
     """
-    jobs = product([bams], [categories], references, [transposon_tag], [min_reads], [eps], [min_eps], [hierarchical])
+    jobs = product([bams], [categories], references, [quality], [transposon_tag], [min_reads], [eps], [min_eps], [hierarchical])
 
     if cores == 1:
         return loci.append(*[_fingerprint_worker(*job) for job in jobs])
@@ -55,9 +58,9 @@ def fingerprint(bams=None,
             return loci.append(*pool.starmap(_fingerprint_worker, jobs))
 
 
-def _comparison_worker(bams, categories, reference, transposon_tag, min_reads, eps, min_eps, hierarchical, fingerprint_buffer, bin_buffer):
+def _comparison_worker(bams, categories, reference, quality, transposon_tag, min_reads, eps, min_eps, hierarchical, fingerprint_buffer, bin_buffer):
     """Worker function for batch fingerprint comparisons"""
-    reads = loci.append(*[loci.ReadLoci.from_bam(bam, categories, references=reference, tag=transposon_tag)
+    reads = loci.append(*[loci.ReadLoci.from_bam(bam, categories, references=reference, quality=quality, tag=transposon_tag)
                           for bam in bams])
     fprint = reads.fingerprint(min_reads, eps, min_eps=min_eps, hierarchical=hierarchical)
     fprint.buffer(fingerprint_buffer)
@@ -69,6 +72,7 @@ def _comparison_worker(bams, categories, reference, transposon_tag, min_reads, e
 def comparison(bams=None,
                categories=None,
                references=None,
+               quality=30,
                transposon_tag='ME',
                min_reads=None,
                eps=None,
@@ -86,6 +90,8 @@ def comparison(bams=None,
     :type categories: list[str]
     :param references: targeted (slices of) references with format 'name' or 'name:minimum-maximum'
     :type references: list[str]
+    :param quality: minimum mapping quality
+    :type quality: int
     :param transposon_tag: the two letter sam tag containing the transposon associated with each read
     :type transposon_tag: str
     :param min_reads: minimum number of read tips required to form a fingerprint locus
@@ -106,7 +112,7 @@ def comparison(bams=None,
     :return: Fingerprint comparisons of bam files
     :rtype: :class:`loci.Comparison`
     """
-    jobs = product([bams], [categories], references, [transposon_tag], [min_reads], [eps], [min_eps], [hierarchical], [fingerprint_buffer],  [bin_buffer])
+    jobs = product([bams], [categories], references, [quality], [transposon_tag], [min_reads], [eps], [min_eps], [hierarchical], [fingerprint_buffer],  [bin_buffer])
 
     if cores == 1:
         return loci.append(*[_comparison_worker(*job) for job in jobs])

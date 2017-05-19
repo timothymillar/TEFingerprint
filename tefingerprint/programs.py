@@ -12,6 +12,7 @@ class FingerprintProgram(object):
         result = batch.fingerprint(bams=self.args.input_bams,
                                    references=self.args.references,
                                    categories=self.args.families,
+                                   quality=self.args.mapping_quality[0],
                                    transposon_tag=self.args.mate_element_tag[0],
                                    min_reads=self.args.min_reads[0],
                                    eps=self.args.epsilon[0],
@@ -46,6 +47,11 @@ class FingerprintProgram(object):
                             help='TE categories to be used. '
                                  'These must be exact string match\'s to start of read name and are used to split '
                                  'reads into categories for analysis')
+        parser.add_argument('-q', '--mapping_quality',
+                            type=int,
+                            nargs=1,
+                            default=[30],
+                            help='Minimum mapping quality')
         parser.add_argument('--mate_element_tag',
                             type=str,
                             default=['ME'],
@@ -105,6 +111,7 @@ class ComparisonProgram(object):
         result = batch.comparison(bams=self.args.input_bams,
                                   references=self.args.references,
                                   categories=self.args.families,
+                                  quality=self.args.mapping_quality[0],
                                   transposon_tag=self.args.mate_element_tag[0],
                                   min_reads=self.args.min_reads[0],
                                   eps=self.args.epsilon[0],
@@ -117,6 +124,9 @@ class ComparisonProgram(object):
             print(result.as_flat_gff())
         else:
             print(result.as_gff())
+        if self.args.character_csv[0]:
+            with open(self.args.character_csv[0], 'w') as csv:
+                csv.write(result.as_character_csv())
 
     @staticmethod
     def parse_args(args):
@@ -144,6 +154,11 @@ class ComparisonProgram(object):
                             help='TE categories to be used. '
                                  'These must be exact string match\'s to start of read name and are used to split '
                                  'reads into categories for analysis')
+        parser.add_argument('-q', '--mapping_quality',
+                            type=int,
+                            nargs=1,
+                            default=[30],
+                            help='Minimum mapping quality')
         parser.add_argument('--mate_element_tag',
                             type=str,
                             default=['ME'],
@@ -203,6 +218,11 @@ class ComparisonProgram(object):
                             nargs=1,
                             help='If True, the resulting gff file will contain one feature per sample per bin. '
                                  'This avoids nested lists in the feature attributes but results in many more features')
+        parser.add_argument('--character_csv',
+                            type=str,
+                            default=[False],
+                            nargs=1,
+                            help='Optionally write a csv file of character states')
         parser.add_argument('-t', '--threads',
                             type=int,
                             default=[1],

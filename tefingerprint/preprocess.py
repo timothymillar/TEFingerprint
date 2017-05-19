@@ -12,19 +12,16 @@ from tempfile import mkdtemp
 
 class PreProcessProgram(object):
     """"""
-    def __init__(self, fastq_1, fastq_2,
+    def __init__(self, dangler_bam,
                  reference_fasta,
-                 repeats_fasta,
                  output_bam,
                  include_tails=True,
                  tail_minimum_length=38,
                  mate_element_tag='ME',
                  temp_dir=False,
                  threads=1):
-        self.fastq_1 = fastq_1
-        self.fastq_2 = fastq_2
+        self.dangler_bam = dangler_bam
         self.reference_fasta = reference_fasta
-        self.repeats_fasta = repeats_fasta
         self.output_bam = output_bam
         self.include_tails = include_tails
         self.tail_minimum_length = tail_minimum_length
@@ -43,18 +40,14 @@ class PreProcessProgram(object):
         :return: Dictionary like object of arguments and values
         """
         parser = argparse.ArgumentParser('Identify potential TE flanking regions')
-        parser.add_argument('reads',
+        parser.add_argument('dangler_bam',
                             type=str,
-                            nargs=2,
-                            help='A pair of fastq files containing paired end reads')
+                            nargs=1,
+                            help='A bam file containing dangler reads')
         parser.add_argument('--reference',
                             type=str,
                             nargs=1,
                             help="Reference genome in fasta format with bwa index")
-        parser.add_argument('--repeats',
-                            type=str,
-                            nargs=1,
-                            help="Library of repeat elements in fasta format with bwa index")
         parser.add_argument('-o', '--output',
                             type=str,
                             nargs=1,
@@ -89,10 +82,8 @@ class PreProcessProgram(object):
     @staticmethod
     def from_cli(args):
         arguments = PreProcessProgram._cli(args)
-        return PreProcessProgram(arguments.reads[0],
-                                 arguments.reads[1],
+        return PreProcessProgram(arguments.dangler_bam[0],
                                  arguments.reference[0],
-                                 arguments.repeats[0],
                                  arguments.output[0],
                                  mate_element_tag=arguments.mate_element_tag[0],
                                  temp_dir=arguments.tempdir[0],
@@ -100,23 +91,10 @@ class PreProcessProgram(object):
 
     def _run_pipeline(self, scratch_dir):
         """"""
-        # map reads to repeats and store as temp file
-        temp_bam_1 = os.path.join(scratch_dir, '1_pairedReadsMappedToRepeats.bam')
-        print('>>> Mapping paired reads to repeat library at: {0}'.format(temp_bam_1))
-        map_pairs_to_repeat_elements(self.fastq_1,
-                                     self.fastq_2,
-                                     self.repeats_fasta,
-                                     temp_bam_1,
-                                     self.threads)
-
-        # index bam
-        print('>>> Indexing: {0}'.format(temp_bam_1))
-        index_bam(temp_bam_1)
-
         # extract danglers from bam
-        print('>>> Extracting dangler reads from: {0}'.format(temp_bam_1))
-        forward_dangler_strings = extract_forward_danglers(temp_bam_1)
-        reverse_dangler_strings = extract_reverse_danglers(temp_bam_1)
+        print('>>> Extracting dangler reads from: {0}'.format(self.dangler_bam))
+        forward_dangler_strings = extract_forward_danglers(self.dangler_bam)
+        reverse_dangler_strings = extract_reverse_danglers(self.dangler_bam)
         # store sam strings for latter tagging
         sam_strings = forward_dangler_strings + reverse_dangler_strings
 
@@ -127,9 +105,9 @@ class PreProcessProgram(object):
 
         if self.include_tails:
             # extract soft clipped tails from bam
-            print('>>> Extracting soft clipped tails from: {0}'.format(temp_bam_1))
-            foward_reads = extract_forward_read_of_mapped_pair(temp_bam_1)
-            reverse_reads = extract_reverse_read_of_mapped_pair(temp_bam_1)
+            print('>>> Extracting soft clipped tails from: {0}'.format(self.dangler_bam))
+            foward_reads = extract_forward_read_of_mapped_pair(self.dangler_bam)
+            reverse_reads = extract_reverse_read_of_mapped_pair(self.dangler_bam)
             sam_strings += foward_reads + reverse_reads
 
             # add soft clipped tail strings to fastq
@@ -139,27 +117,27 @@ class PreProcessProgram(object):
                                                                                 min_length=self.tail_minimum_length))
 
         # write temp fastq
-        temp_fastq_danglers = os.path.join(scratch_dir, '2_danglerReads.fastq')
-        print('>>> Writing dangler reads to: {0}'.format(temp_fastq_danglers))
-        with open(temp_fastq_danglers, 'w') as f:
+        temp_fastq = os.path.join(scratch_dir, '1_danglerReads.fastq')
+        print('>>> Writing dangler reads to: {0}'.format(temp_fastq))
+        with open(temp_fastq, 'w') as f:
             for line in fastq_lines:
                 f.write(line)
 
         # map danglers to reference
-        temp_bam_2 = os.path.join(scratch_dir, '3_danglerReadsMappedToReference.bam')
-        print('>>> Mapping dangler reads to reference at: {0}'.format(temp_bam_2))
-        map_danglers_to_reference(temp_fastq_danglers,
+        temp_bam = os.path.join(scratch_dir, '2_danglerReadsMappedToReference.bam')
+        print('>>> Mapping dangler reads to reference at: {0}'.format(temp_bam))
+        map_danglers_to_reference(temp_fastq,
                                   self.reference_fasta,
-                                  temp_bam_2,
+                                  temp_bam,
                                   self.threads)
 
         # index bam
-        print('>>> Indexing: {0}'.format(temp_bam_2))
-        index_bam(temp_bam_2)
+        print('>>> Indexing: {0}'.format(temp_bam))
+        index_bam(temp_bam)
 
         # tag danglers and write output file
         print('>>> Adding tags to mapped danglers at: {0}'.format(self.output_bam))
-        tag_danglers(temp_bam_2, sam_strings, self.output_bam, self.mate_element_tag)
+        tag_danglers(temp_bam, sam_strings, self.output_bam, self.mate_element_tag)
 
         # index bam
         print('>>> Indexing: {0}'.format(self.output_bam))
@@ -212,20 +190,6 @@ def _check_programs_installed(*args):
         if shutil.which(program) is None:
             raise EnvironmentError("could not find '{0}' in $PATH: {1}".format(program, os.environ['PATH']))
     return True
-
-
-def index_fasta(fasta):
-    """
-    Create index files for bwa mem
-
-    :param fasta: fasta file to index
-    :type fasta: str
-
-    :return: subprocess code
-    :rtype: int
-    """
-    _check_programs_installed('bwa')
-    return subprocess.call(['bwa index -a is ' + fasta], shell=True)
 
 
 def index_bam(bam):
@@ -314,7 +278,7 @@ def extract_forward_danglers(bam):
     :return: sam formatted strings
     :rtype: list[str]
     """
-    return pysam.view('-F', '16', '-F', '0x800', '-F', '0x100', '-F', '8', '-f', '4', bam).splitlines()
+    return pysam.view('-F', '2304', '-F', '16', '-F', '8', '-f', '4', bam).splitlines()
 
 
 def forward_danglers_as_fastq(sam_strings):
@@ -346,7 +310,7 @@ def extract_reverse_danglers(bam):
     :return: sam formatted strings
     :rtype: list[str]
     """
-    return pysam.view('-f', '16', '-F', '0x800', '-F', '0x100', '-F', '8', '-f', '4', bam).splitlines()
+    return pysam.view('-F', '2304', '-f', '16', '-F', '8', '-f', '4', bam).splitlines()
 
 
 def reverse_danglers_as_fastq(sam_strings):
@@ -381,7 +345,7 @@ def extract_forward_read_of_mapped_pair(bam):
     :return: sam formatted strings
     :rtype: list[str]
     """
-    return pysam.view('-f', '2', '-F', '16', '-F', '4', '-F', '8', bam).splitlines()
+    return pysam.view('-F', '2304', '-f', '2', '-F', '16', '-F', '4', '-F', '8', bam).splitlines()
 
 
 def forward_soft_clipped_tails_as_fastq(sam_strings, min_length=38):
@@ -429,7 +393,7 @@ def extract_reverse_read_of_mapped_pair(bam):
     :return: sam formatted strings
     :rtype: list[str]
     """
-    return pysam.view('-f', '2', '-f', '16', '-F', '4', '-F', '8', bam).splitlines()
+    return pysam.view('-F', '2304', '-f', '2', '-f', '16', '-F', '4', '-F', '8', bam).splitlines()
 
 
 def reverse_soft_clipped_tails_as_fastq(sam_strings, min_length=38):
