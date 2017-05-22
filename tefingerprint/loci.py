@@ -542,6 +542,19 @@ class FingerPrint(GenomeLoci):
                              ('start', np.int64),
                              ('stop', np.int64)])
 
+    def as_csv(self):
+        """
+        Convert all loci to a a CSV formatted string sorted by location.
+
+        :return: a CSV formatted string
+        :rtype: str
+        """
+        array = self.as_array()
+        header = ','.join(array.dtype.names)
+        data = str(array).strip('[]').replace("(", "").replace(")", "").replace("'", '"').replace(" ", "")
+        data = re.sub(r':\S*?"', '"', data)
+        return header + '\n' + data
+
     @staticmethod
     def _format_gff_feature(record):
         """
