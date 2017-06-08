@@ -1,5 +1,6 @@
 #! /usr/bin/env python
 
+import os
 import pytest
 import numpy as np
 import numpy.testing as npt
@@ -234,7 +235,23 @@ class TestReadLoci:
     """Tests for class ReadLoci"""
     def test_from_bam(self):
         """"""
-        pass
+        data_path = os.path.dirname(os.path.realpath(__file__)) + '/data/testA-2017-06-08.bam'
+        query = loci.ReadLoci.from_bam(data_path, categories=['CACTA', 'Copia'])
+
+        dictionary = {('chr1:1-25000', '+', 'Copia', 'testA-2017-06-08.bam'): np.array([(24040, 24139, 'read032'),
+                                                                                        (24151, 24250, 'read036')],
+                                                                                       dtype=loci.ReadLoci._DTYPE_LOCI),
+                      ('chr1:1-25000', '-', 'Copia', 'testA-2017-06-08.bam'): np.array([(24773, 24872, 'read038')],
+                                                                                       dtype=loci.ReadLoci._DTYPE_LOCI),
+                      ('chr1:1-25000', '-', 'CACTA', 'testA-2017-06-08.bam'): np.array([(24742, 24841, 'read037')],
+                                                                                       dtype=loci.ReadLoci._DTYPE_LOCI),
+                      ('chr1:1-25000', '+', 'CACTA', 'testA-2017-06-08.bam'): np.array([],
+                                                                                       dtype=loci.ReadLoci._DTYPE_LOCI)}
+        answer = loci.ReadLoci.from_dict(dictionary)
+
+        assert set(query.keys()) == set(answer.keys())
+        for key in query.keys():
+            npt.assert_array_equal(query[key], answer[key])
 
     def test_tips(self):
         """Test for method to extract the tips of loci as a dict"""
