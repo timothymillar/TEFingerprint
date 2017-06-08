@@ -20,6 +20,9 @@ class FingerprintProgram(object):
                                    hierarchical=self.args.hierarchical_clustering[0],
                                    cores=self.args.threads[0])
         print(result.as_gff())
+        if self.args.feature_csv[0]:
+            with open(self.args.feature_csv[0], 'w') as csv:
+                csv.write(result.as_csv())
 
     @staticmethod
     def parse_args(args):
@@ -93,6 +96,11 @@ class FingerprintProgram(object):
                             nargs=1,
                             help='By default hierarchical HUDC algorithm is used. If this is set to False, '
                                  'the non-hierarchical UDC algorithm is used and min_eps is inored.')
+        parser.add_argument('--feature_csv',
+                            type=str,
+                            default=[False],
+                            nargs=1,
+                            help='Optionally write a csv file of features.')
         parser.add_argument('-t', '--threads',
                             type=int,
                             default=[1],
@@ -127,6 +135,9 @@ class ComparisonProgram(object):
         if self.args.character_csv[0]:
             with open(self.args.character_csv[0], 'w') as csv:
                 csv.write(result.as_character_csv())
+        if self.args.feature_csv[0]:
+            with open(self.args.feature_csv[0], 'w') as csv:
+                csv.write(result.as_flat_csv())
 
     @staticmethod
     def parse_args(args):
@@ -218,11 +229,18 @@ class ComparisonProgram(object):
                             nargs=1,
                             help='If True, the resulting gff file will contain one feature per sample per bin. '
                                  'This avoids nested lists in the feature attributes but results in many more features')
+        parser.add_argument('--feature_csv',
+                            type=str,
+                            default=[False],
+                            nargs=1,
+                            help='Optionally write a csv file of features '
+                                 '(one row per sample per comparative bin)')
         parser.add_argument('--character_csv',
                             type=str,
                             default=[False],
                             nargs=1,
-                            help='Optionally write a csv file of character states')
+                            help='Optionally write a csv file of data as character states '
+                                 '(rows of samples * columns of comparative bins)')
         parser.add_argument('-t', '--threads',
                             type=int,
                             default=[1],
