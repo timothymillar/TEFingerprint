@@ -1,5 +1,6 @@
 #! /usr/bin/env python
 
+import re
 import numpy as np
 from tefingerprint import bamio
 from tefingerprint import cluster
@@ -274,8 +275,8 @@ class GenomeLoci(object):
             array = np.append(array, sub_array)
         # this method is faster and avoids sorting on objects in the array (possible source of errors)
         # but does not sort on other values so sub-orders may vary
-        index = np.argsort(array[['reference', 'start', 'stop']],
-                           order=('reference', 'start', 'stop'))
+        index = np.argsort(array[['reference', 'start', 'stop', 'category']],
+                           order=('reference', 'start', 'stop', 'category'))
         array = array[index]
         return array
 
@@ -541,6 +542,19 @@ class FingerPrint(GenomeLoci):
                              ('start', np.int64),
                              ('stop', np.int64)])
 
+    def as_csv(self):
+        """
+        Convert all loci to a a CSV formatted string sorted by location.
+
+        :return: a CSV formatted string
+        :rtype: str
+        """
+        array = self.as_array()
+        header = ','.join(array.dtype.names)
+        data = str(array).strip('[]').replace("(", "").replace(")", "").replace("'", '"').replace(" ", "")
+        data = re.sub(r':\S*?"', '"', data)
+        return header + '\n' + data
+
     @staticmethod
     def _format_gff_feature(record):
         """
@@ -779,8 +793,8 @@ class Comparison(GenomeLoci):
                 array = np.append(array, sub_array)
         # this method is faster and avoids sorting on objects in the array (possible source of errors)
         # but does not sort on other values so sub-orders may vary
-        index = np.argsort(array[['reference', 'start', 'stop']],
-                           order=('reference', 'start', 'stop'))
+        index = np.argsort(array[['reference', 'start', 'stop', 'category']],
+                           order=('reference', 'start', 'stop', 'category'))
         array = array[index]
         return array
 
@@ -828,6 +842,20 @@ class Comparison(GenomeLoci):
         array = self.as_flat_array()
         sample_numbers = {k: v for v, k in enumerate(np.sort(np.unique(array['source'])))}
         return '\n'.join((self._format_flat_gff_feature(record, sample_numbers) for record in array))
+
+    def as_flat_csv(self):
+        """
+        Convert all loci to a a CSV formatted string sorted by location.
+        This method creates one entry per sample per locus to avoid nested structures.
+
+        :return: a CSV formatted string
+        :rtype: str
+        """
+        array = self.as_flat_array()
+        header = ','.join(array.dtype.names)
+        data = str(array).strip('[]').replace("(", "").replace(")", "").replace("'", '"').replace(" ", "")
+        data = re.sub(r':\S*?"', '"', data)
+        return header + '\n' + data
 
     def as_character_array(self):
         """
