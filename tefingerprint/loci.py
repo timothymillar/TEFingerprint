@@ -275,8 +275,8 @@ class GenomeLoci(object):
             array = np.append(array, sub_array)
         # this method is faster and avoids sorting on objects in the array (possible source of errors)
         # but does not sort on other values so sub-orders may vary
-        index = np.argsort(array[['reference', 'start', 'stop']],
-                           order=('reference', 'start', 'stop'))
+        index = np.argsort(array[['reference', 'start', 'stop', 'category']],
+                           order=('reference', 'start', 'stop', 'category'))
         array = array[index]
         return array
 
@@ -793,8 +793,8 @@ class Comparison(GenomeLoci):
                 array = np.append(array, sub_array)
         # this method is faster and avoids sorting on objects in the array (possible source of errors)
         # but does not sort on other values so sub-orders may vary
-        index = np.argsort(array[['reference', 'start', 'stop']],
-                           order=('reference', 'start', 'stop'))
+        index = np.argsort(array[['reference', 'start', 'stop', 'category']],
+                           order=('reference', 'start', 'stop', 'category'))
         array = array[index]
         return array
 
