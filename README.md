@@ -1,6 +1,6 @@
 # TEFingerprint
 A Python library with CLI for fingerprinting transposable elements based on paired-end reads.
-This project is currently in a pe-alpha state and rapidly changing.
+This project is currently in a alpha state and rapidly changing.
 
 
 ## Development Environment
@@ -159,6 +159,7 @@ Additional arguments:
  * `--min_eps` The minimum value of epsilon to be used in hierarchical clustering. Defaults to `0`.
  * `--hierarchical_clustering` Specifies wether or not to use the hierarchical clustering algorithm in order to differentiate between proximate clusters. Defaults to `True`.
  *  `--mate_element_tag` The sam tag used to specify the name of each reads mate element. Defaults to `ME`.
+ *  `--feature_csv` Optionally specify the name of a CSV file to output containing feature data.
 
 
 ### Compare
@@ -194,7 +195,8 @@ Additional arguments:
  * `--hierarchical_clustering` Specifies wether or not to use the hierarchical clustering algorithm in order to differentiate between proximate clusters. Defaults to `True`.
  * `--bin_buffer` The same as `--fingerprint_buffer` but buffering is performed after fingerprints are combined, therefore less likely to combine slightly offset clusters. Defaults to `0`
  *  `--mate_element_tag` The sam tag used to specify the name of each reads mate element. Defaults to `ME`.
-
+*  `--feature_csv` Optionally specify the name of a CSV file to output containing (long-form) feature data. This produces one row of data per sample per feature.
+*  `--character_csv` Optionally specify the name of a CSV file to output containing a matrix of read counts. This produces one column per feature by one row per sample.
 
 ### Filter GFF
 
