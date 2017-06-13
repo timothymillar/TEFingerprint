@@ -9,7 +9,7 @@ def read_file(file_name):
 
 
 setup(name='tefingerprint',
-      version='0.0.3',
+      version='0.1.0',
       author='Tim Millar',
       author_email='tim.millar@plantandfood.co.nz',
       url='https://github.com/PlantandFoodResearch/TEFingerprint',
@@ -17,5 +17,5 @@ setup(name='tefingerprint',
       long_description=read_file('README.MD'),
       scripts=['applications/tef'],
       packages=['tefingerprint'],
-      classifiers=['Development Status :: 2 - Pre-Alpha']
+      classifiers=['Development Status :: 3 - Alpha']
       )

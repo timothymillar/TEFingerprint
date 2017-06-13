@@ -7,7 +7,7 @@ import numpy as np
 from itertools import product
 
 
-def _read_bam_strings(bam, reference, strand):
+def _read_bam_strings(bam, reference, strand, quality):
     """
     Read  strings from an indexed Bam file.
 
@@ -17,14 +17,19 @@ def _read_bam_strings(bam, reference, strand):
     :type reference: str
     :param strand: Select reads that are found on a specific strand, '+' or '-'
     :type strand: str
+    :param quality: minimum mapping quality
+    :type quality: int
 
     :return: A list of Sam formatted strings
     :rtype: list[str]
     """
-    SAM_FLAGS = {'+': ('-F', '20'),
-                 '-': ('-f', '16', '-F', '4')}
-    flag = SAM_FLAGS[strand]
-    return np.array(pysam.view(*flag, bam, reference).splitlines())
+    if strand == '+':
+        args = ('-q', str(quality), '-F', '20', bam, reference)
+    elif strand == '-':
+        args = ('-q', str(quality), '-f', '16', '-F', '4', bam, reference)
+    else:
+        raise ValueError
+    return np.array(pysam.view(*args).splitlines())
 
 
 def _read_bam_reference_lengths(bam):
@@ -95,7 +100,7 @@ def _parse_read_loci(strings):
         yield start, stop, name
 
 
-def _read_bam_ref_strand_loci(bam, reference, strand, categories, tag='ME'):
+def _read_bam_ref_strand_loci(bam, reference, strand, categories, quality, tag='ME'):
     """
     Read a single strand of a single reference from a bam file and categories by their associated transposon.
     If a reference is specified by name only, its range will be extracted from the bam and appended.
@@ -108,6 +113,8 @@ def _read_bam_ref_strand_loci(bam, reference, strand, categories, tag='ME'):
     :type strand: str
     :param categories: a list of transposon categories
     :type categories: list[str]
+    :param quality: minimum mapping quality
+    :type quality: int
     :param tag: the two letter sam tag containing the transposon associated with each read
     :type tag: str
 
@@ -115,7 +122,7 @@ def _read_bam_ref_strand_loci(bam, reference, strand, categories, tag='ME'):
     :rtype: generator[((str, str, str, str), generator[((int, int, str))])]
     """
     source = os.path.basename(bam)
-    strings = _read_bam_strings(bam, reference, strand)
+    strings = _read_bam_strings(bam, reference, strand, quality)
     if ':' in reference:
         pass
     else:
@@ -128,7 +135,7 @@ def _read_bam_ref_strand_loci(bam, reference, strand, categories, tag='ME'):
         yield (reference, strand, category, source), loci
 
 
-def _read_bam_ref_loci(bam, reference, categories, tag='ME'):
+def _read_bam_ref_loci(bam, reference, categories, quality, tag='ME'):
     """
     Read both strands of a single reference from a bam file and categories by their associated transposon.
     If a reference is specified by name only, its range will be extracted from the bam and appended.
@@ -139,19 +146,21 @@ def _read_bam_ref_loci(bam, reference, categories, tag='ME'):
     :type reference: str
     :param categories: a list of transposon categories
     :type categories: list[str]
+    :param quality: minimum mapping quality
+    :type quality: int
     :param tag: the two letter sam tag containing the transposon associated with each read
     :type tag: str
 
     :return: a generator of category tuples and loci tuple generators
     :rtype: generator[((str, str, str, str), generator[((int, int, str))])]
     """
-    for block in _read_bam_ref_strand_loci(bam, reference, '+', categories, tag=tag):
+    for block in _read_bam_ref_strand_loci(bam, reference, '+', categories, quality, tag=tag):
         yield block
-    for block in _read_bam_ref_strand_loci(bam, reference, '-', categories, tag=tag):
+    for block in _read_bam_ref_strand_loci(bam, reference, '-', categories, quality, tag=tag):
         yield block
 
 
-def extract_bam_reads(bams, categories, references=None, tag='ME'):
+def extract_bam_reads(bams, categories, references=None, quality=30, tag='ME'):
     """
     Extract reads from one or more bam file(s) and categories reads by their reference, strand, associated transposon,
     and source bam file.
@@ -163,6 +172,8 @@ def extract_bam_reads(bams, categories, references=None, tag='ME'):
     :type references: str | list[str]
     :param categories: target transposon categories
     :type categories: str | list[str]
+    :param quality: minimum mapping quality
+    :type quality: int
     :param tag: the two letter sam tag containing the transposon associated with each read
     :type tag: str
 
@@ -183,7 +194,7 @@ def extract_bam_reads(bams, categories, references=None, tag='ME'):
     # run jobs
     jobs = product(bams, references)
     for bam, reference in jobs:
-        for block in _read_bam_ref_loci(bam, reference, categories, tag=tag):
+        for block in _read_bam_ref_loci(bam, reference, categories, quality, tag=tag):
             yield block
 
 

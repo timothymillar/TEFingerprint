@@ -1,5 +1,6 @@
 #! /usr/bin/env python
 
+import os
 import pytest
 import numpy as np
 import numpy.testing as npt
@@ -234,7 +235,23 @@ class TestReadLoci:
     """Tests for class ReadLoci"""
     def test_from_bam(self):
         """"""
-        pass
+        data_path = os.path.dirname(os.path.realpath(__file__)) + '/data/testA-2017-06-08.bam'
+        query = loci.ReadLoci.from_bam(data_path, categories=['CACTA', 'Copia'])
+
+        dictionary = {('chr1:1-25000', '+', 'Copia', 'testA-2017-06-08.bam'): np.array([(24040, 24139, 'read032'),
+                                                                                        (24151, 24250, 'read036')],
+                                                                                       dtype=loci.ReadLoci._DTYPE_LOCI),
+                      ('chr1:1-25000', '-', 'Copia', 'testA-2017-06-08.bam'): np.array([(24773, 24872, 'read038')],
+                                                                                       dtype=loci.ReadLoci._DTYPE_LOCI),
+                      ('chr1:1-25000', '-', 'CACTA', 'testA-2017-06-08.bam'): np.array([(24742, 24841, 'read037')],
+                                                                                       dtype=loci.ReadLoci._DTYPE_LOCI),
+                      ('chr1:1-25000', '+', 'CACTA', 'testA-2017-06-08.bam'): np.array([],
+                                                                                       dtype=loci.ReadLoci._DTYPE_LOCI)}
+        answer = loci.ReadLoci.from_dict(dictionary)
+
+        assert set(query.keys()) == set(answer.keys())
+        for key in query.keys():
+            npt.assert_array_equal(query[key], answer[key])
 
     def test_tips(self):
         """Test for method to extract the tips of loci as a dict"""
@@ -504,6 +521,48 @@ class TestFingerPrint:
                   'chr2\t.\t.\t0\t577\t.\t+\t.\tID=chr2_+_Gypsy_0;category=Gypsy;source=bam1',
                   'chr2\t.\t.\t879\t1234\t.\t+\t.\tID=chr2_+_Gypsy_879;category=Gypsy;source=bam1',
                   'chr2\t.\t.\t1662\t1917\t.\t+\t.\tID=chr2_+_Gypsy_1662;category=Gypsy;source=bam1']
+        answer.sort()
+
+        assert query == answer
+
+    def test_as_csv(self):
+        """"""
+        query = loci.FingerPrint.from_dict({('chr1:1-3000',
+                                             '+',
+                                             'Gypsy',
+                                             'bam1'): np.array([(0, 577),
+                                                                (879, 1234),
+                                                                (1662, 1917)], dtype=loci.FingerPrint._DTYPE_LOCI),
+                                            ('chr1:1-3000',
+                                             '-',
+                                             'Gypsy',
+                                             'bam1'): np.array([(20, 570),
+                                                                (870, 1230),
+                                                                (1662, 1917)], dtype=loci.FingerPrint._DTYPE_LOCI),
+                                            ('chr2:1-4000',
+                                             '+',
+                                             'Gypsy',
+                                             'bam1'): np.array([(0, 577),
+                                                                (879, 1234),
+                                                                (1662, 1917)], dtype=loci.FingerPrint._DTYPE_LOCI),
+                                            ('chr2:1-4000',
+                                             '-',
+                                             'Gypsy',
+                                             'bam1'): np.array([], dtype=loci.FingerPrint._DTYPE_LOCI)
+                                            })
+        query = query.as_csv().splitlines()
+        query.sort()
+
+        answer = ['reference,strand,category,source,start,stop',
+                  '"chr1","+","Gypsy","bam1",0,577',
+                  '"chr1","-","Gypsy","bam1",20,570',
+                  '"chr1","-","Gypsy","bam1",870,1230',
+                  '"chr1","+","Gypsy","bam1",879,1234',
+                  '"chr1","-","Gypsy","bam1",1662,1917',
+                  '"chr1","+","Gypsy","bam1",1662,1917',
+                  '"chr2","+","Gypsy","bam1",0,577',
+                  '"chr2","+","Gypsy","bam1",879,1234',
+                  '"chr2","+","Gypsy","bam1",1662,1917']
         answer.sort()
 
         assert query == answer
@@ -778,5 +837,54 @@ class TestComparison:
                   'chr1\t.\t.\t35\t40\t.\t+\t.\tID=chr1_+_Gypsy_35_0;category=Gypsy;source=bam1;count=3;proportion=1.0;color=#08306B',
                   'chr1\t.\t.\t35\t40\t.\t+\t.\tID=chr1_+_Gypsy_35_1;category=Gypsy;source=bam2;count=0;proportion=0.0;color=#C6DBEF']
         answer.sort()
+
+        assert query == answer
+
+    def test_as_flat_csv(self):
+        """"""
+        query = {('chr1:1-3000', '+', 'Copia'): np.array([(0, 20, ['bam1', 'bam2'], [3, 0], [1.0, 0.0]),
+                                                          (21, 30, ['bam1', 'bam2'], [5, 0], [1.0, 0.0]),
+                                                          (35, 40, ['bam1', 'bam2'], [3, 0], [1.0, 0.0])],
+                                                         dtype=loci.Comparison._DTYPE_LOCI),
+                 ('chr1:1-3000', '+', 'Gypsy'): np.array([(0, 20, ['bam1', 'bam2'], [3, 1], [0.75, 0.25]),
+                                                          (21, 30, ['bam1', 'bam2'], [5, 5], [0.5, 0.5]),
+                                                          (35, 40, ['bam1', 'bam2'], [3, 0], [1.0, 0.0])],
+                                                         dtype=loci.Comparison._DTYPE_LOCI)}
+        query = loci.Comparison.from_dict(query)
+        query = query.as_flat_csv().splitlines()
+        query.sort()
+
+        answer = ['reference,strand,category,start,stop,source,count,proportion',
+                  '"chr1","+","Copia",0,20,"bam1",3,1.0',
+                  '"chr1","+","Copia",0,20,"bam2",0,0.0',
+                  '"chr1","+","Gypsy",0,20,"bam1",3,0.75',
+                  '"chr1","+","Gypsy",0,20,"bam2",1,0.25',
+                  '"chr1","+","Copia",21,30,"bam1",5,1.0',
+                  '"chr1","+","Copia",21,30,"bam2",0,0.0',
+                  '"chr1","+","Gypsy",21,30,"bam1",5,0.5',
+                  '"chr1","+","Gypsy",21,30,"bam2",5,0.5',
+                  '"chr1","+","Copia",35,40,"bam1",3,1.0',
+                  '"chr1","+","Copia",35,40,"bam2",0,0.0',
+                  '"chr1","+","Gypsy",35,40,"bam1",3,1.0',
+                  '"chr1","+","Gypsy",35,40,"bam2",0,0.0']
+        answer.sort()
+
+    def test_as_character_csv(self):
+        """"""
+        query = {('chr1:1-3000', '+', 'Copia'): np.array([(0, 20, ['bam1', 'bam2'], [3, 0], [1.0, 0.0]),
+                                                          (21, 30, ['bam1', 'bam2'], [5, 0], [1.0, 0.0]),
+                                                          (35, 40, ['bam1', 'bam2'], [3, 0], [1.0, 0.0])],
+                                                         dtype=loci.Comparison._DTYPE_LOCI),
+                 ('chr1:1-3000', '+', 'Gypsy'): np.array([(0, 20, ['bam1', 'bam2'], [3, 1], [0.75, 0.25]),
+                                                          (21, 30, ['bam1', 'bam2'], [5, 5], [0.5, 0.5]),
+                                                          (35, 40, ['bam1', 'bam2'], [3, 0], [1.0, 0.0])],
+                                                         dtype=loci.Comparison._DTYPE_LOCI)}
+        query = loci.Comparison.from_dict(query)
+        query = query.as_character_csv()
+
+
+        answer = '\n'.join(['"sample","chr1:0-20_+_Copia","chr1:0-20_+_Gypsy","chr1:21-30_+_Copia","chr1:21-30_+_Gypsy","chr1:35-40_+_Copia","chr1:35-40_+_Gypsy"',
+                            'bam1, 3,3,5,5,3,3',
+                            'bam2, 0,1,0,5,0,0'])
 
         assert query == answer

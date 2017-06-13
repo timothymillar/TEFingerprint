@@ -2,7 +2,7 @@ TEFingerprint
 =============
 
 A Python library with CLI for fingerprinting transposable elements based
-on paired-end reads. This project is currently in a pe-alpha state and
+on paired-end reads. This project is currently in a alpha state and
 rapidly changing.
 
 Development Environment
@@ -114,15 +114,32 @@ Index fasta files with bwa:
     bwa index -a bwtsw reference.fasta
     bwa index -a is repeats.fasta
 
-Runing the preprocess pipeline:
+Map paired end reads to repeat elements using ``BWA MEM`` and convert to
+a sorted bam file with ``samtools``:
+
+::
+
+    bwa mem -t 8 \
+        repeats.fasta \
+        reads1.fastq \
+        reads2.fastq \
+        | samtools view -Su - \
+        | samtools sort - \
+        -o reads_mapped_to_repeats.bam
+
+Index the resulting bam file with ``samtools``:
+
+::
+
+    samtools index reads_mapped_to_repeats.bam
+
+Runing the preprocess program on the indexed bam file:
 
 ::
 
     tef preprocess \
-        reads1.fastq \
-        reads2.fastq \
+        reads_mapped_to_repeats.bam
         --reference reference.fasta \
-        --repeats repeats.fasta \
         --output danglers.bam \
         --threads 8
 
@@ -130,18 +147,18 @@ The output file ``danglers.bam`` contains reads mapped to the reference
 genome. Each of these reads is tagged with the repeat element that their
 pair was mapped to.
 
-The ``threads`` argument specifies how many threads to use for alignment
-in bwa (python componants of the pipeline are currently single
-threaded).
+Arguments:
 
-By default, the intermediate files are written to a temporary directory
-that is automatically removed when the pipeline is completed. These
-files can be saved by manually specifying a directory with the
-``--tempdir`` option.
-
-By default, the same tage used to store repeat element names associated
-with each read is ``ME`` (Mate Element). This can be changed with the
-``--mate_element_tag`` option.
+-  The ``threads`` argument specifies how many threads to use for
+   alignment in bwa (python components of the pipeline are currently
+   single threaded).
+-  By default, the intermediate files are written to a temporary
+   directory that is automatically removed when the pipeline is
+   completed. These files can be saved by manually specifying a
+   directory with the ``--tempdir`` option.
+-  By default, the same tag used to store repeat element names
+   associated with each read is ``ME`` (Mate Element). This can be
+   changed with the ``--mate_element_tag`` option.
 
 Fingerprint
 ~~~~~~~~~~~
@@ -154,6 +171,7 @@ Example usage:
         -f family1 family2 ... \
         -m 20 \
         -e 500 \
+        -q 30 \
         -t 4 \
         > fingerprint.gff
 
@@ -177,6 +195,8 @@ Arguments:
    of read tips to be considered a (sub) cluster. Sub-clusters are
    calculated based on ``-m/--minreads`` and ``-e/epsilon`` and then
    overlapping sub-clusters are combined to create cluster.
+-  ``-q/--mapping_quality`` Specifies the minimum mapping quality
+   allowed for reads.
 -  ``-t/--threads`` Specifies the number of CPU threads to use. The
    maximum number of threads that may be used is the same as the number
    of references specified.
@@ -190,6 +210,8 @@ Additional arguments:
    proximate clusters. Defaults to ``True``.
 -  ``--mate_element_tag`` The sam tag used to specify the name of each
    reads mate element. Defaults to ``ME``.
+-  ``--feature_csv`` Optionally specify the name of a CSV file to output
+   containing feature data.
 
 Compare
 ~~~~~~~
@@ -226,6 +248,8 @@ Arguments:
    of read tips to be considered a (sub) cluster. Sub-clusters are
    calculated based on ``-m/--minreads`` and ``-e/epsilon`` and then
    overlapping sub-clusters are combined to create cluster.
+-  ``-q/--mapping_quality`` Specifies the minimum mapping quality
+   allowed for reads.
 -  ``-b/--fingerprint_buffer`` Specifies a distance (in base pairs) to
    buffer fingerprints by before combining them into comparative bins.
    This is used to ensure that small clusters, that are slightly offset
@@ -252,6 +276,12 @@ Additional arguments:
    to combine slightly offset clusters. Defaults to ``0``
 -  ``--mate_element_tag`` The sam tag used to specify the name of each
    reads mate element. Defaults to ``ME``.
+-  ``--feature_csv`` Optionally specify the name of a CSV file to output
+   containing (long-form) feature data. This produces one row of data
+   per sample per feature.
+-  ``--character_csv`` Optionally specify the name of a CSV file to
+   output containing a matrix of read counts. This produces one column
+   per feature by one row per sample.
 
 Filter GFF
 ~~~~~~~~~~
