@@ -1,6 +1,6 @@
 # TEFingerprint
 A Python library with CLI for fingerprinting transposable elements based on paired-end reads.
-This project is currently in a pe-alpha state and rapidly changing.
+This project is currently in a alpha state and rapidly changing.
 
 
 ## Development Environment
