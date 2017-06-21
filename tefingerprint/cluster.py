@@ -348,7 +348,9 @@ class HUDC(UDC):
 
         # compare areas
         total_area = np.sum(base_eps - points['eps'])
-        child_area = np.sum(threshold_eps - points['eps'])
+        child_area = threshold_eps - points['eps']
+        child_area[child_area < 0] = 0  # remove negative values caused by noise points
+        child_area = np.sum(child_area)
         parent_area = total_area - child_area
 
         if parent_area > child_area:
