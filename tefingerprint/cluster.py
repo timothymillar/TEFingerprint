@@ -370,14 +370,39 @@ class HUDC(UDC):
         if len(splits) == 0:
             # there are no children
             cluster['children'] = []
+            cluster['stability'] = cluster['area_self']
+            cluster['selected'] = True
         else:
             child_points = (points[left:right] for left, right in HUDC._cluster(points['value'], epsilon_min, n))
             cluster['children'] = [HUDC._traverse_hudc_tree(points, epsilon_min, n) for points in child_points]
+            cluster['stability'] = False
+            cluster['selected'] = False
 
         return cluster
 
     @staticmethod
-    def hudc(array, n, max_eps=None, min_eps=None):
+    def _hudc_tree_node_stability(node):
+        if node['stability']:
+            return node['stability']
+        else:
+            child_stability = sum([HUDC._hudc_tree_node_stability(child) for child in node['children']])
+            own_stability = node['area_self']
+            if own_stability >= child_stability:
+                node['selected'] = True
+                node['stability'] = own_stability
+            else:
+                node['stability'] = child_stability
+            return node['stability']
+
+    @staticmethod
+    def _select_hudc_tree_clusters(node):
+        if node['selected']:
+            return node['index']
+        else:
+            return [HUDC._select_hudc_tree_clusters(child) for child in node['children']]
+
+    @staticmethod
+    def _hudc_tree(array, n, max_eps=None, min_eps=None):
         """
         Calculate Hierarchical Density Clusters for a Univariate Array.
 
@@ -418,7 +443,8 @@ class HUDC(UDC):
 
         if len(array) < n:
             # not enough points to form a cluster
-            return np.array([], dtype=UDC._DTYPE_SLICE)
+            return []
+            #return np.array([], dtype=UDC._DTYPE_SLICE)
 
         else:
             points = np.empty(len(array), dtype=np.dtype([('value', np.int64),
@@ -437,10 +463,22 @@ class HUDC(UDC):
             # initial splits
             child_points = (points[left:right] for left, right in HUDC._cluster(points['value'], max_eps, n))
 
-            # run
-            clusters = [HUDC._traverse_hudc_tree(points, max_eps, n) for points in child_points]
-            return clusters
+            # build trees
+            trees = [HUDC._traverse_hudc_tree(points, max_eps, n) for points in child_points]
+
+            # calculate node support
+            for tree in trees:
+                HUDC._hudc_tree_node_stability(tree)
+
+            return trees
             #return np.fromiter(HUDC._flatten_list(clusters), dtype=UDC._DTYPE_SLICE)
+
+    @staticmethod
+    def hudc(array, n, max_eps=None, min_eps=None):
+        tree = HUDC._hudc_tree(array, n, max_eps, min_eps)
+        slices = [HUDC._select_hudc_tree_clusters(node) for node in tree]
+        slices = np.fromiter(HUDC._flatten_list(slices), dtype=HUDC._DTYPE_SLICE)
+        return slices
 
     def fit(self, array):
         """
@@ -451,7 +489,9 @@ class HUDC(UDC):
         :type array: :class:`numpy.ndarray`[int]
         """
         self.input_array = np.array(array, copy=True)
-        self._tree = HUDC.hudc(self.input_array, self.min_pts, max_eps=self.max_eps, min_eps=self.min_eps)
+        self._tree = HUDC._hudc_tree(self.input_array, self.min_pts, max_eps=self.max_eps, min_eps=self.min_eps)
+        slices = [HUDC._select_hudc_tree_clusters(node) for node in self._tree]
+        self.slices = np.fromiter(HUDC._flatten_list(slices), dtype=HUDC._DTYPE_SLICE)
 
 
 if __name__ == '__main__':
