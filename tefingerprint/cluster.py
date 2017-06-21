@@ -226,6 +226,7 @@ class HUDC(UDC):
         self.min_eps = min_eps
         self.slices = np.array([], dtype=UDC._DTYPE_SLICE)
         self.input_array = np.array([], dtype=int)
+        self._tree = []
 
     @staticmethod
     def _point_eps(array, n):
@@ -322,43 +323,58 @@ class HUDC(UDC):
             yield item
 
     @staticmethod
-    def _traverse_hudc_tree(points, base_eps, n):
+    def _traverse_hudc_tree(points, epsilon_max, n):
         """
         Traverse a tree of nested density clusters and recursively identify clusters based on their area.
         This method is intimately tied to method 'hudc'.
 
         :param points: An array of points with the slots 'value', 'index' and 'eps
         :type points: :class:`numpy.ndarray`[(int, int, int)]
-        :param base_eps: The maximum distance allowed in among each set of n points
-        :type base_eps: int
+        :param epsilon_max: The maximum distance allowed in among each set of n points
+        :type epsilon_max: int
         :param n: The minimum number of points allowed in each (sub)cluster
         :type n: int
 
         :return: A nested list of upper and (half-open) indices of selected clusters
         :rtype: list[list[]]
         """
+        # dictionary with cluster details
+        cluster = {}
+
+        # bounds of cluster (index of input array, not genome positions)
+        cluster['index'] = points['index'][0], points['index'][-1] + 1
+
+        # splits between child clusters
         splits = HUDC._eps_splits(points['value'], n)
 
-        if len(splits) == 0:
-            # there are no children so return slice indices
-            return points['index'][0], points['index'][-1] + 1
-
         # compare based on largest peak (least dense place)
-        threshold_eps = np.max(splits)
+        if len(splits) > 0:
+            epsilon_min = np.max(splits)
+        else:
+            epsilon_min = 0
 
         # compare areas
-        total_area = np.sum(base_eps - points['eps'])
-        child_area = np.sum(threshold_eps - points['eps'])
-        parent_area = total_area - child_area
+        area_total = np.sum(epsilon_max - points['eps'])
+        area_children = epsilon_min - points['eps']
+        # remove negatives
+        area_children[area_children < 0] = 0
+        area_children = np.sum(area_children)
+        area_self = area_total - area_children
 
-        if parent_area > child_area:
-            # parent is lager so return slice indices
-            return points['index'][0], points['index'][-1] + 1
+        cluster['epsilon_min'] = epsilon_min
+        cluster['epsilon_max'] = epsilon_max
+        cluster['area_total'] = area_total
+        cluster['area_children'] = area_children
+        cluster['area_self'] = area_self
 
+        if len(splits) == 0:
+            # there are no children
+            cluster['children'] = []
         else:
-            # combined area of children is larger so divide and repeat
-            child_points = (points[left:right] for left, right in HUDC._cluster(points['value'], threshold_eps, n))
-            return [HUDC._traverse_hudc_tree(points, threshold_eps, n) for points in child_points]
+            child_points = (points[left:right] for left, right in HUDC._cluster(points['value'], epsilon_min, n))
+            cluster['children'] = [HUDC._traverse_hudc_tree(points, epsilon_min, n) for points in child_points]
+
+        return cluster
 
     @staticmethod
     def hudc(array, n, max_eps=None, min_eps=None):
@@ -423,7 +439,8 @@ class HUDC(UDC):
 
             # run
             clusters = [HUDC._traverse_hudc_tree(points, max_eps, n) for points in child_points]
-            return np.fromiter(HUDC._flatten_list(clusters), dtype=UDC._DTYPE_SLICE)
+            return clusters
+            #return np.fromiter(HUDC._flatten_list(clusters), dtype=UDC._DTYPE_SLICE)
 
     def fit(self, array):
         """
@@ -434,7 +451,7 @@ class HUDC(UDC):
         :type array: :class:`numpy.ndarray`[int]
         """
         self.input_array = np.array(array, copy=True)
-        self.slices = HUDC.hudc(self.input_array, self.min_pts, max_eps=self.max_eps, min_eps=self.min_eps)
+        self._tree = HUDC.hudc(self.input_array, self.min_pts, max_eps=self.max_eps, min_eps=self.min_eps)
 
 
 if __name__ == '__main__':
