@@ -372,6 +372,11 @@ class HUDC(UDC):
             cluster['children'] = []
             cluster['stability'] = cluster['area_self']
             cluster['selected'] = True
+        elif area_self >= area_children:
+            # parent has greater support than any combination of children
+            cluster['children'] = []
+            cluster['stability'] = cluster['area_self']
+            cluster['selected'] = True
         else:
             child_points = (points[left:right] for left, right in HUDC._cluster(points['value'], epsilon_min, n))
             cluster['children'] = [HUDC._traverse_hudc_tree(points, epsilon_min, n) for points in child_points]
