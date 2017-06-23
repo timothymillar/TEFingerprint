@@ -444,7 +444,7 @@ class ReadLoci(GenomeLoci):
                 d[group] = loci["start"]
         return d
 
-    def fingerprint(self, min_reads, eps, min_eps=0, hierarchical=True):
+    def fingerprint(self, min_reads, eps, min_eps=1, hierarchical=True):
         """
         Fingerprint a :class:`ReadLoci` object based on density of read tips.
 

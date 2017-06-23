@@ -86,7 +86,7 @@ class FingerprintProgram(object):
                                  'is selected. ')
         parser.add_argument('--min_eps',
                             type=int,
-                            default=[0],
+                            default=[1],
                             nargs=1,
                             help='Minimum eps values used by the HUDC algorithm when calculating support for clusters. '
                                  'This should usually be left as the default value of 0.')
@@ -201,7 +201,7 @@ class ComparisonProgram(object):
                                  'is selected. ')
         parser.add_argument('--min_eps',
                             type=int,
-                            default=[0],
+                            default=[1],
                             nargs=1,
                             help='Minimum eps values used by the HUDC algorithm when calculating support for clusters. '
                                  'This should usually be left as the default value of 0.')

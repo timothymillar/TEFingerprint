@@ -220,7 +220,7 @@ class HUDC(UDC):
     :type min_eps: int
     """
 
-    def __init__(self, n, max_eps=None, min_eps=None):
+    def __init__(self, n, max_eps=None, min_eps=1):
         self.min_pts = n
         self.max_eps = max_eps
         self.min_eps = min_eps
@@ -229,32 +229,32 @@ class HUDC(UDC):
         self._tree = []
 
     @staticmethod
-    def _point_eps(array, n):
+    def _core_distance(array, min_points):
         """
         Identify the minimum value of eps for every point in an array of integers.
         For each point, the minimum eps is calculated among all subclusters containing that point.
 
         :param array: An array of integers sorted in ascending order
         :type array: :class:`numpy.ndarray`[int]
-        :param n: number of points used to form a subcluster
-        :type n: int
+        :param min_points: number of points used to form a subcluster
+        :type min_points: int
 
         :return: An array of minimum eps values
         :rtype: :class:`numpy.ndarray`[int]
         """
-        assert n > 1  # groups must contain at least two points
-        offset = n - 1  # offset for indexing
+        assert min_points > 1  # groups must contain at least two points
+        offset = min_points - 1  # offset for indexing
         length = len(array)
         lower = array[0:length - offset]
         upper = array[offset:length]
         eps_values = upper - lower
-        eps_2d = np.full((n, length), np.max(eps_values), dtype=int)
-        for i in range(n):
+        eps_2d = np.full((min_points, length), np.max(eps_values), dtype=int)
+        for i in range(min_points):
             eps_2d[i, i:length - (offset - i)] = eps_values
         return np.min(eps_2d, axis=0)
 
     @staticmethod
-    def _eps_splits(array, n):
+    def _epsilon_min_before_split(array, min_points):
         """
         Identify eps 'splits' in an array by calculating eps of the gaps between values in the array.
 
@@ -274,25 +274,25 @@ class HUDC(UDC):
 
         :param array: An array of integers sorted in ascending order
         :type array: :class:`numpy.ndarray`[int]
-        :param n: number of points used to form a subcluster
-        :type n: int
+        :param min_points: number of points used to form a subcluster
+        :type min_points: int
 
         :return: An array of eps split values
         :rtype: :class:`numpy.ndarray`[int]
         """
-        if len(array) <= n:
+        if len(array) <= min_points:
             # no peaks possible because all points must have the same eps
-            return np.array([], dtype=np.int)
+            # so the minimum epsilon of the cluster is the minimum core distance of its points
+            return np.min(HUDC._core_distance(array, min_points))
 
-        offset = n - 1
+        offset = min_points - 1
 
-        # calculate split eps using the 2d method
-        eps_values = array[offset:] - array[:-offset]
-        eps_2d = np.full((offset, len(eps_values) + offset - 1), np.max(eps_values), dtype=int)
+        # calculate split epsilon using the 2d method
+        gap_eps = array[offset:] - array[:-offset]
+        eps_2d = np.full((offset, len(gap_eps) + offset - 1), np.max(gap_eps), dtype=int)
         for i in range(offset):
-            eps_2d[i, i:len(eps_values) + i] = eps_values
+            eps_2d[i, i:len(gap_eps) + i] = gap_eps
         splits = np.min(eps_2d, axis=0)
-        splits -= 1  # Convert values to thresholds
 
         # Remove plateaus
         gradients = splits[1:] - splits[:-1]
@@ -301,7 +301,14 @@ class HUDC(UDC):
         # Remove non-peaks
         is_peak = np.logical_and(np.append(np.array([False]), splits[1:] > splits[:-1]),
                                  np.append(splits[:-1] > splits[1:], np.array([False])))
-        return splits[is_peak]
+        splits = splits[is_peak]
+
+        # maximum split is the the minimum epsilon of the cluster
+        # if no split is present then the minimum epsilon of the cluster is the minimum core distance
+        if len(splits) > 0:
+            return np.max(splits)
+        else:
+            return None
 
     @staticmethod
     def _flatten_list(item):
@@ -323,7 +330,7 @@ class HUDC(UDC):
             yield item
 
     @staticmethod
-    def _traverse_hudc_tree(points, epsilon_max, n):
+    def _traverse_hudc_tree(points, epsilon_max, min_points):
         """
         Traverse a tree of nested density clusters and recursively identify clusters based on their area.
         This method is intimately tied to method 'hudc'.
@@ -332,8 +339,8 @@ class HUDC(UDC):
         :type points: :class:`numpy.ndarray`[(int, int, int)]
         :param epsilon_max: The maximum distance allowed in among each set of n points
         :type epsilon_max: int
-        :param n: The minimum number of points allowed in each (sub)cluster
-        :type n: int
+        :param min_points: The minimum number of points allowed in each (sub)cluster
+        :type min_points: int
 
         :return: A nested list of upper and (half-open) indices of selected clusters
         :rtype: list[list[]]
@@ -344,44 +351,38 @@ class HUDC(UDC):
         # bounds of cluster (index of input array, not genome positions)
         cluster['index'] = points['index'][0], points['index'][-1] + 1
 
-        # splits between child clusters
-        splits = HUDC._eps_splits(points['value'], n)
-
-        # compare based on largest peak (least dense place)
-        if len(splits) > 0:
-            epsilon_min = np.max(splits)
+        # minimum epsilon of cluster
+        split = HUDC._epsilon_min_before_split(points['value'], min_points)
+        if split:
+            epsilon_min = split
         else:
-            epsilon_min = 0
+            epsilon_min = np.min(points['core_distance'])
 
-        # compare areas
-        excess_mass = np.sum(epsilon_max - points['core_distance'])
-        child_excess_mass = epsilon_min - points['core_distance']
-        # remove negatives
-        child_excess_mass[child_excess_mass < 0] = 0
-        child_excess_mass = np.sum(child_excess_mass)
-        relative_excess_mass = excess_mass - child_excess_mass
+        # cluster density following Campello et al 2015
+        density_min = 1/epsilon_max
+        density_max = 1/epsilon_min
 
+        # cluster stability following Campello et al 2015
+        stability = np.sum(np.minimum(points['core_density'], density_max) - density_min)
+
+        cluster['density_min'] = density_min
+        cluster['density_max'] = density_max
         cluster['epsilon_min'] = epsilon_min
         cluster['epsilon_max'] = epsilon_max
-        cluster['excess_mass'] = excess_mass
-        cluster['child_excess_mass'] = child_excess_mass
-        cluster['stability'] = relative_excess_mass
+        cluster['stability'] = stability
 
-        if len(splits) == 0:
+        if split:
+            child_points = (points[left:right] for left, right in HUDC._cluster(points['value'],
+                                                                                epsilon_min - 1,
+                                                                                min_points))
+            cluster['children'] = [HUDC._traverse_hudc_tree(points, epsilon_min, min_points) for points in child_points]
+            cluster['stability_hat'] = False
+            cluster['selected'] = False
+        else:
             # there are no children
             cluster['children'] = []
             cluster['stability_hat'] = cluster['stability']
             cluster['selected'] = True
-        elif relative_excess_mass >= child_excess_mass:
-            # parent has greater stability than any combination of children
-            cluster['children'] = []
-            cluster['stability_hat'] = cluster['stability']
-            cluster['selected'] = True
-        else:
-            child_points = (points[left:right] for left, right in HUDC._cluster(points['value'], epsilon_min, n))
-            cluster['children'] = [HUDC._traverse_hudc_tree(points, epsilon_min, n) for points in child_points]
-            cluster['stability_hat'] = False
-            cluster['selected'] = False
 
         return cluster
 
@@ -406,7 +407,7 @@ class HUDC(UDC):
             return [HUDC._select_hudc_tree_clusters(child) for child in node['children']]
 
     @staticmethod
-    def _hudc_tree(array, n, max_eps=None, min_eps=None):
+    def _hudc_tree(array, n, max_eps=None, min_eps=1):
         """
         Calculate Hierarchical Density Clusters for a Univariate Array.
 
@@ -444,6 +445,7 @@ class HUDC(UDC):
         :rtype: :class:`numpy.ndarray`[(int, int)]
         """
         assert HUDC._sorted_ascending(array)
+        assert min_eps > 0
 
         if len(array) < n:
             # not enough points to form a cluster
@@ -453,16 +455,20 @@ class HUDC(UDC):
         else:
             points = np.empty(len(array), dtype=np.dtype([('value', np.int64),
                                                           ('index', np.int64),
-                                                          ('core_distance', np.int64)]))
+                                                          ('core_distance', np.int64),
+                                                          ('core_density', np.float64)]))
             points['value'] = array
             points['index'] = np.arange(len(array), dtype=int)
-            points['core_distance'] = HUDC._point_eps(array, n)
+            points['core_distance'] = HUDC._core_distance(array, n)
+
             if not max_eps:
-                # start at highest observed eps
+                # start at highest observed core_distance
                 max_eps = np.max(points['core_distance'])
-            if min_eps:
-                # overwrite lower eps
-                points['core_distance'][points['core_distance'] < min_eps] = min_eps
+
+            assert max_eps > min_eps
+            # overwrite lower eps, it must be > 0
+            points['core_distance'][points['core_distance'] < min_eps] = min_eps
+            points['core_density'] = 1 / points['core_distance']
 
             # initial splits
             child_points = (points[left:right] for left, right in HUDC._cluster(points['value'], max_eps, n))
