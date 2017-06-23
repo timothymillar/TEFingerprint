@@ -354,50 +354,49 @@ class HUDC(UDC):
             epsilon_min = 0
 
         # compare areas
-        area_total = np.sum(epsilon_max - points['eps'])
-        area_children = epsilon_min - points['eps']
+        excess_mass = np.sum(epsilon_max - points['core_distance'])
+        child_excess_mass = epsilon_min - points['core_distance']
         # remove negatives
-        area_children[area_children < 0] = 0
-        area_children = np.sum(area_children)
-        area_self = area_total - area_children
+        child_excess_mass[child_excess_mass < 0] = 0
+        child_excess_mass = np.sum(child_excess_mass)
+        relative_excess_mass = excess_mass - child_excess_mass
 
         cluster['epsilon_min'] = epsilon_min
         cluster['epsilon_max'] = epsilon_max
-        cluster['area_total'] = area_total
-        cluster['area_children'] = area_children
-        cluster['area_self'] = area_self
+        cluster['excess_mass'] = excess_mass
+        cluster['child_excess_mass'] = child_excess_mass
+        cluster['stability'] = relative_excess_mass
 
         if len(splits) == 0:
             # there are no children
             cluster['children'] = []
-            cluster['stability'] = cluster['area_self']
+            cluster['stability_hat'] = cluster['stability']
             cluster['selected'] = True
-        elif area_self >= area_children:
-            # parent has greater support than any combination of children
+        elif relative_excess_mass >= child_excess_mass:
+            # parent has greater stability than any combination of children
             cluster['children'] = []
-            cluster['stability'] = cluster['area_self']
+            cluster['stability_hat'] = cluster['stability']
             cluster['selected'] = True
         else:
             child_points = (points[left:right] for left, right in HUDC._cluster(points['value'], epsilon_min, n))
             cluster['children'] = [HUDC._traverse_hudc_tree(points, epsilon_min, n) for points in child_points]
-            cluster['stability'] = False
+            cluster['stability_hat'] = False
             cluster['selected'] = False
 
         return cluster
 
     @staticmethod
     def _hudc_tree_node_stability(node):
-        if node['stability']:
-            return node['stability']
+        if node['stability_hat']:
+            return node['stability_hat']
         else:
-            child_stability = sum([HUDC._hudc_tree_node_stability(child) for child in node['children']])
-            own_stability = node['area_self']
-            if own_stability >= child_stability:
+            child_stability_hat = sum([HUDC._hudc_tree_node_stability(child) for child in node['children']])
+            if node['stability'] >= child_stability_hat:
                 node['selected'] = True
-                node['stability'] = own_stability
+                node['stability_hat'] = node['stability']
             else:
-                node['stability'] = child_stability
-            return node['stability']
+                node['stability_hat'] = child_stability_hat
+            return node['stability_hat']
 
     @staticmethod
     def _select_hudc_tree_clusters(node):
@@ -454,16 +453,16 @@ class HUDC(UDC):
         else:
             points = np.empty(len(array), dtype=np.dtype([('value', np.int64),
                                                           ('index', np.int64),
-                                                          ('eps', np.int64)]))
+                                                          ('core_distance', np.int64)]))
             points['value'] = array
             points['index'] = np.arange(len(array), dtype=int)
-            points['eps'] = HUDC._point_eps(array, n)
+            points['core_distance'] = HUDC._point_eps(array, n)
             if not max_eps:
                 # start at highest observed eps
-                max_eps = np.max(points['eps'])
+                max_eps = np.max(points['core_distance'])
             if min_eps:
                 # overwrite lower eps
-                points['eps'][points['eps'] < min_eps] = min_eps
+                points['core_distance'][points['core_distance'] < min_eps] = min_eps
 
             # initial splits
             child_points = (points[left:right] for left, right in HUDC._cluster(points['value'], max_eps, n))
