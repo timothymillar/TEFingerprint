@@ -172,7 +172,7 @@ class TestHUDC:
                                54,  54,  54,  54,  54,  54,  54,  54, 106, 106, 106, 106, 123,
                               124, 124, 257, 228, 228, 186, 165, 144,  97,  89,  89,  89,  89,
                                89,  89,  89,  89,  89,  89], dtype=int)
-        npt.assert_array_equal(HUDC._point_eps(input_array, 10), point_eps)
+        npt.assert_array_equal(HUDC._core_distances(input_array, 10), point_eps)
 
     def test_point_eps_hidden_peak(self):
         """
@@ -182,7 +182,7 @@ class TestHUDC:
         """
         input_array = np.array([0, 0, 3, 4, 4, 6, 26, 28, 28, 29, 32, 32], dtype=int)
         point_eps = np.array([3, 3, 1, 1, 1, 2, 2, 1, 1, 1, 3, 3], dtype=int)
-        npt.assert_array_equal(HUDC._point_eps(input_array, 3), point_eps)
+        npt.assert_array_equal(HUDC._core_distances(input_array, 3), point_eps)
 
     def test_eps_splits(self):
         """
@@ -199,7 +199,7 @@ class TestHUDC:
                                 1217, 1234, 1234, 1591, 1620, 1620, 1662, 1686, 1707, 1755, 1828,
                                 1828, 1848, 1848, 1848, 1848, 1851, 1851, 1852, 1917], dtype=int)
         split_eps = np.array([122,  42, 453, 436], dtype=int)
-        npt.assert_array_equal(HUDC._eps_splits(input_array, 10), split_eps)
+        npt.assert_array_equal(HUDC._cluster_forks(input_array, 10), split_eps)
 
     def test_eps_splits_hidden_peak(self):
         """
@@ -209,7 +209,7 @@ class TestHUDC:
         """
         input_array = np.array([0, 0, 3, 4, 4, 6, 26, 28, 28, 29, 32, 32], dtype=int)
         split_eps = np.array([21], dtype=int)
-        npt.assert_array_equal(HUDC._eps_splits(input_array, 3), split_eps)
+        npt.assert_array_equal(HUDC._cluster_forks(input_array, 3), split_eps)
 
     @pytest.mark.parametrize("nested,flat",
                              [([(1, 3), [(6, 9), (11, 11)]],
