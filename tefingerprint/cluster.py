@@ -18,10 +18,10 @@ class UDBSCANx(object):
     Sets of n points with a range equal to, or less than epsilon are classified as subclusters.
     Overlapping subclusters are then merged together to form clusters.
 
-    :param n: The minimum number of points allowed in each (sub)cluster
-    :type n: int
-    :param eps: The maximum distance allowed among each set of n points
-    :type eps: int
+    :param min_points: The minimum number of points allowed in each (sub)cluster
+    :type min_points: int
+    :param epsilon: The maximum distance allowed among each set of n points
+    :type epsilon: int
     """
 
     _DTYPE_SLICE = np.dtype([('lower', np.int64), ('upper', np.int64)])
@@ -426,7 +426,9 @@ class UDBSCANxH(UDBSCANx):
                 points['core_dist'] = np.maximum(min_eps, points['core_dist'])
 
             # initial splits based on the specified maximum epsilon
-            child_points = (points[left:right] for left, right in UDBSCANxH._cluster(points['value'], max_eps, min_points))
+            child_points = (points[left:right] for left, right in UDBSCANxH._cluster(points['value'],
+                                                                                     max_eps,
+                                                                                     min_points))
 
             # recursively run on all clusters
             clusters = [UDBSCANxH._traverse_hudc_tree(points, max_eps, min_points) for points in child_points]
