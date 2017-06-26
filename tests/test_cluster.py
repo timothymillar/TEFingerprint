@@ -3,7 +3,7 @@
 import pytest
 import numpy as np
 import numpy.testing as npt
-from tefingerprint.cluster import UDC, HUDC
+from tefingerprint.cluster import UDBSCANx, UDBSCANxH
 
 class TestUDC:
     """
@@ -21,29 +21,29 @@ class TestUDC:
         """
         Test for hidden method _sorted_ascending.
         """
-        assert UDC._sorted_ascending(array) == answer
+        assert UDBSCANx._sorted_ascending(array) == answer
 
     @pytest.mark.parametrize("slices,melted_slices",
                              # single slice spanning single base
                              [(np.array([(13, 14)],
-                                        dtype=UDC._DTYPE_SLICE),
+                                        dtype=UDBSCANx._DTYPE_SLICE),
                                np.array([(13, 14)],
-                                        dtype=UDC._DTYPE_SLICE)),
+                                        dtype=UDBSCANx._DTYPE_SLICE)),
                               # nested slices (this shouldn't happen in practice but is handled correctly)
                               (np.array([(15, 25), (16, 17), (19, 20)],
-                                        dtype=UDC._DTYPE_SLICE),
+                                        dtype=UDBSCANx._DTYPE_SLICE),
                                np.array([(15, 25)],
-                                        dtype=UDC._DTYPE_SLICE)),
+                                        dtype=UDBSCANx._DTYPE_SLICE)),
                               # adjacent loci (slices are half open intervals)
                               (np.array([(7, 9), (9, 12)],
-                                        dtype=UDC._DTYPE_SLICE),
+                                        dtype=UDBSCANx._DTYPE_SLICE),
                                np.array([(7, 9), (9, 12)],
-                                        dtype=UDC._DTYPE_SLICE)),
+                                        dtype=UDBSCANx._DTYPE_SLICE)),
                               # combined
                               (np.array([(3, 6), (6, 8), (7, 9), (10, 12), (12, 13), (15, 25), (16, 17), (19, 20)],
-                                        dtype=UDC._DTYPE_SLICE),
+                                        dtype=UDBSCANx._DTYPE_SLICE),
                                np.array([(3, 6), (6, 9), (10, 12), (12, 13), (15, 25)],
-                                        dtype=UDC._DTYPE_SLICE))
+                                        dtype=UDBSCANx._DTYPE_SLICE))
                               ],
                              ids=['single', 'nested', 'adjacent', 'combined'])
     def test_melt_slices(self, slices, melted_slices):
@@ -54,7 +54,7 @@ class TestUDC:
          * Adjacent slices do not get merged: (7, 9) & (9, 12) -->  (*, 9) & (9, *)
          * Slice may span a single value: (13, 14) --> (13, 14)
         """
-        npt.assert_array_equal(UDC._melt_slices(slices), melted_slices)
+        npt.assert_array_equal(UDBSCANx._melt_slices(slices), melted_slices)
 
     def test_subcluster(self):
         """
@@ -63,8 +63,8 @@ class TestUDC:
         array = np.array([1, 2, 21, 22, 22, 22, 24, 38, 54, 54, 55, 56, 65, 65, 66, 67, 68, 90],
                          dtype=int)
         slices = np.array([(2, 6), (3, 7), (8, 12), (12, 16), (13, 17)],
-                          dtype=UDC._DTYPE_SLICE)
-        npt.assert_array_equal(UDC._subcluster(array, 5, 4), slices)
+                          dtype=UDBSCANx._DTYPE_SLICE)
+        npt.assert_array_equal(UDBSCANx._subcluster(array, 5, 4), slices)
 
     def test_flat_cluster(self):
         """
@@ -74,18 +74,18 @@ class TestUDC:
         sub_slices = np.array([1, 2, 21, 22, 22, 22, 24, 38, 54, 54, 55, 56, 65, 65, 66, 67, 68, 90],
                               dtype=int)
         slices = np.array([(2, 7), (8, 12), (12, 17)],
-                          dtype=UDC._DTYPE_SLICE)
-        npt.assert_array_equal(UDC._cluster(sub_slices, 5, 4), slices)
+                          dtype=UDBSCANx._DTYPE_SLICE)
+        npt.assert_array_equal(UDBSCANx._cluster(sub_slices, 5, 4), slices)
 
     @pytest.mark.parametrize("array,slices",
                              [(np.array([], dtype=int),
-                               np.array([], dtype=UDC._DTYPE_SLICE)),
+                               np.array([], dtype=UDBSCANx._DTYPE_SLICE)),
                               (np.array([1], dtype=int),
-                               np.array([], dtype=UDC._DTYPE_SLICE)),
+                               np.array([], dtype=UDBSCANx._DTYPE_SLICE)),
                               (np.array([1, 2, 3, 4], dtype=int),
-                               np.array([], dtype=UDC._DTYPE_SLICE)),
+                               np.array([], dtype=UDBSCANx._DTYPE_SLICE)),
                               (np.array([1, 2, 3, 4, 5], dtype=int),
-                               np.array([(0, 5)], dtype=UDC._DTYPE_SLICE))
+                               np.array([(0, 5)], dtype=UDBSCANx._DTYPE_SLICE))
                               ],
                              ids=['0<n', '1<n', '4<n', '5==n'])
     def test_udc_few_reads(self, array, slices):
@@ -94,7 +94,7 @@ class TestUDC:
         Method udc should correctly handle an array of length 0 or greater.
         If the length of the array is less than 'n' then an empty array will always be returned.
         """
-        npt.assert_array_equal(UDC.udc(array, 5, 5), slices)
+        npt.assert_array_equal(UDBSCANx.udbscanx(array, 5, 5), slices)
 
     def test_fit(self):
         """
@@ -103,13 +103,13 @@ class TestUDC:
         New copy of points should be sorted.
         Most edge cases should be caught in tests for component methods.
         """
-        udc_object = UDC(4, 5)
+        udc_object = UDBSCANx(4, 5)
         input_array = np.array([1, 2, 21, 22, 22, 22, 24, 38, 54, 54, 55, 56, 65, 65, 66, 67, 68, 90],
                                dtype=int)
         answer_array = np.array([1, 2, 21, 22, 22, 22, 24, 38, 54, 54, 55, 56, 65, 65, 66, 67, 68, 90],
                                 dtype=int)
         answer_slices = np.array([(2, 7), (8, 12), (12, 17)],
-                                 dtype=UDC._DTYPE_SLICE)
+                                 dtype=UDBSCANx._DTYPE_SLICE)
         udc_object.fit(input_array)
         assert udc_object.input_array is not input_array
         npt.assert_array_equal(udc_object.input_array, answer_array)
@@ -119,7 +119,7 @@ class TestUDC:
         """
         Test for method clusters.
         """
-        udc_object = UDC(4, 5)
+        udc_object = UDBSCANx(4, 5)
         input_array = np.array([1, 2, 21, 22, 22, 22, 24, 38, 54, 54, 55, 56, 65, 65, 66, 67, 68, 90], dtype=int)
         cluster_arrays = [np.array([21, 22, 22, 22, 24], dtype=int),
                           np.array([54, 54, 55, 56], dtype=int),
@@ -130,7 +130,7 @@ class TestUDC:
 
     def test_cluster_extremities(self):
         """Test for method cluster_extremities"""
-        udc_object = UDC(4, 5)
+        udc_object = UDBSCANx(4, 5)
         input_array = np.array([1, 2, 21, 22, 22, 22, 24, 38, 54, 54, 55, 56, 65, 65, 66, 67, 68, 90], dtype=int)
         cluster_extremities = [(21, 24), (54, 56), (65, 68)]
         udc_object.fit(input_array)
@@ -139,7 +139,7 @@ class TestUDC:
 
     def test_labels(self):
         """Test for method labels"""
-        udc_object = UDC(4, 5)
+        udc_object = UDBSCANx(4, 5)
         input_array = np.array([1, 2, 21, 22, 22, 22, 24, 38, 54, 54, 55, 56, 65, 65, 66, 67, 68, 90], dtype=int)
         labels = np.array([-1, -1, 0, 0, 0, 0, 0, -1, 1, 1, 1, 1, 2, 2, 2, 2, 2, -1], dtype=int)
         udc_object.fit(input_array)
@@ -172,7 +172,7 @@ class TestHUDC:
                                54,  54,  54,  54,  54,  54,  54,  54, 106, 106, 106, 106, 123,
                               124, 124, 257, 228, 228, 186, 165, 144,  97,  89,  89,  89,  89,
                                89,  89,  89,  89,  89,  89], dtype=int)
-        npt.assert_array_equal(HUDC._core_distances(input_array, 10), point_eps)
+        npt.assert_array_equal(UDBSCANxH._core_distances(input_array, 10), point_eps)
 
     def test_point_eps_hidden_peak(self):
         """
@@ -182,7 +182,7 @@ class TestHUDC:
         """
         input_array = np.array([0, 0, 3, 4, 4, 6, 26, 28, 28, 29, 32, 32], dtype=int)
         point_eps = np.array([3, 3, 1, 1, 1, 2, 2, 1, 1, 1, 3, 3], dtype=int)
-        npt.assert_array_equal(HUDC._core_distances(input_array, 3), point_eps)
+        npt.assert_array_equal(UDBSCANxH._core_distances(input_array, 3), point_eps)
 
     def test_eps_splits(self):
         """
@@ -199,7 +199,7 @@ class TestHUDC:
                                 1217, 1234, 1234, 1591, 1620, 1620, 1662, 1686, 1707, 1755, 1828,
                                 1828, 1848, 1848, 1848, 1848, 1851, 1851, 1852, 1917], dtype=int)
         split_eps = np.array([122,  42, 453, 436], dtype=int)
-        npt.assert_array_equal(HUDC._cluster_forks(input_array, 10), split_eps)
+        npt.assert_array_equal(UDBSCANxH._fork_epsilon(input_array, 10), split_eps)
 
     def test_eps_splits_hidden_peak(self):
         """
@@ -209,7 +209,7 @@ class TestHUDC:
         """
         input_array = np.array([0, 0, 3, 4, 4, 6, 26, 28, 28, 29, 32, 32], dtype=int)
         split_eps = np.array([21], dtype=int)
-        npt.assert_array_equal(HUDC._cluster_forks(input_array, 3), split_eps)
+        npt.assert_array_equal(UDBSCANxH._fork_epsilon(input_array, 3), split_eps)
 
     @pytest.mark.parametrize("nested,flat",
                              [([(1, 3), [(6, 9), (11, 11)]],
@@ -224,7 +224,7 @@ class TestHUDC:
         Tests for hidden method _flatten_list.
         Method _flatten_list returns a generator which should be coerced to a list.
         """
-        assert list(HUDC._flatten_list(nested)) == flat
+        assert list(UDBSCANxH._flatten_list(nested)) == flat
 
     def test_hudc(self):
         """Test for method hudc"""
@@ -237,18 +237,18 @@ class TestHUDC:
                                 1080, 1094, 1094, 1110, 1110, 1113, 1113, 1183, 1189, 1200, 1200,
                                 1217, 1234, 1234, 1591, 1620, 1620, 1662, 1686, 1707, 1755, 1828,
                                 1828, 1848, 1848, 1848, 1848, 1851, 1851, 1852, 1917], dtype=int)
-        answer_slices = np.fromiter([(0, 55), (56, 80), (83, 97)], dtype=HUDC._DTYPE_SLICE)
-        npt.assert_array_equal(HUDC.hudc(input_array, 10, max_eps=200, min_eps=10), answer_slices)
+        answer_slices = np.fromiter([(0, 55), (56, 80), (83, 97)], dtype=UDBSCANxH._DTYPE_SLICE)
+        npt.assert_array_equal(UDBSCANxH.udbscanxh(input_array, 10, max_eps=200, min_eps=10), answer_slices)
 
     @pytest.mark.parametrize("array,slices",
                              [(np.array([], dtype=int),
-                               np.array([], dtype=UDC._DTYPE_SLICE)),
+                               np.array([], dtype=UDBSCANx._DTYPE_SLICE)),
                               (np.array([1], dtype=int),
-                               np.array([], dtype=UDC._DTYPE_SLICE)),
+                               np.array([], dtype=UDBSCANx._DTYPE_SLICE)),
                               (np.array([1, 2, 3, 4], dtype=int),
-                               np.array([], dtype=UDC._DTYPE_SLICE)),
+                               np.array([], dtype=UDBSCANx._DTYPE_SLICE)),
                               (np.array([1, 2, 3, 4, 5], dtype=int),
-                               np.array([(0, 5)], dtype=UDC._DTYPE_SLICE))
+                               np.array([(0, 5)], dtype=UDBSCANx._DTYPE_SLICE))
                               ],
                              ids=['0<n', '1<n', '4<n', '5==n'])
     def test_hudc_few_reads(self, array, slices):
@@ -257,7 +257,7 @@ class TestHUDC:
         Method hudc should correctly handle an array of length 0 or greater.
         If the length of the array is less than 'n' then an empty array will always be returned.
         """
-        npt.assert_array_equal(HUDC.hudc(array, 5, 5), slices)
+        npt.assert_array_equal(UDBSCANxH.udbscanxh(array, 5, 5), slices)
 
     def test_fit(self):
         """
@@ -266,7 +266,7 @@ class TestHUDC:
         New copy of points should be sorted.
         Most edge cases should be caught in tests for component methods.
         """
-        hudc_object = HUDC(10, max_eps=200, min_eps=10)
+        hudc_object = UDBSCANxH(10, max_eps=200, min_eps=10)
         input_array = np.array([   0,    0,   60,   61,   61,   61,   76,   78,  122,  122,  141,
                                  183,  251,  260,  260,  263,  263,  267,  267,  288,  288,  295,
                                  300,  310,  310,  317,  317,  334,  334,  335,  338,  338,  338,
@@ -278,7 +278,7 @@ class TestHUDC:
                                 1828, 1848, 1848, 1848, 1848, 1851, 1851, 1852, 1917], dtype=int)
         answer_array = np.array(input_array, copy=True)
 
-        answer_slices = np.fromiter([(0, 55), (56, 80), (83, 97)], dtype=HUDC._DTYPE_SLICE)
+        answer_slices = np.fromiter([(0, 55), (56, 80), (83, 97)], dtype=UDBSCANxH._DTYPE_SLICE)
         hudc_object.fit(input_array)
         assert hudc_object.input_array is not input_array
         npt.assert_array_equal(hudc_object.input_array, answer_array)
