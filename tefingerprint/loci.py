@@ -471,9 +471,9 @@ class ReadLoci(GenomeLoci):
 
             # fit model
             if hierarchical:
-                model = cluster.HUDC(min_reads, max_eps=eps, min_eps=min_eps)
+                model = cluster.UDBSCANxH(min_reads, max_eps=eps, min_eps=min_eps)
             else:
-                model = cluster.UDC(min_reads, eps)
+                model = cluster.UDBSCANx(min_reads, eps)
             model.fit(tips)
 
             # get new loci
