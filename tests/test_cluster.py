@@ -226,9 +226,8 @@ class TestHUDC:
                               (np.array([1, 2, 3, 4], dtype=int), 5, 5, np.array([], dtype=UDBSCANx._DTYPE_SLICE)),
                               (np.array([1, 2, 3, 4, 5], dtype=int), 5, 5, np.array([(0, 5)], dtype=UDBSCANx._DTYPE_SLICE)),
                               (np.array([0, 2, 3, 7, 8, 12, 13, 17], dtype=int), 3, 5, np.array([(0, 8)], dtype=UDBSCANx._DTYPE_SLICE)),
-                              (np.array([0, 2, 3, 7, 8, 12, 13, 16], dtype=int), 3, 5, np.array([(0, 3), (5, 8)], dtype=UDBSCANx._DTYPE_SLICE)),
-                              (np.array([0, 1, 2, 7, 8, 13, 14, 16, 21, 23, 28, 30], dtype=int), 3, 8, np.array([(0, 3), (5, 8)], dtype=UDBSCANx._DTYPE_SLICE))],
-                             ids=['empty', 'single', 'p < min-points', 'p == min-points', 'parent', 'children', '-ve child area'])
+                              (np.array([0, 2, 3, 7, 8, 12, 13, 16], dtype=int), 3, 5, np.array([(0, 3), (5, 8)], dtype=UDBSCANx._DTYPE_SLICE))],
+                             ids=['empty', 'single', 'p < min-points', 'p == min-points', 'parent', 'children'])
     def test_udbscanxh(self, array, min_points, max_eps, answer):
         """
         Test for method udbscanxh with small arrays.
@@ -236,6 +235,33 @@ class TestHUDC:
         If the length of the array is less than 'n' then an empty array will always be returned.
         """
         npt.assert_array_equal(UDBSCANxH.udbscanxh(array, min_points, max_eps), answer)
+
+    def test_udbscanxh_child_support_calculation(self):
+        """
+        Test for method udbscanxh.
+        Tests that the support for child clusters is calculated correctly.
+
+        If child support is incorrectly calculated as the sum(epsilon_minimum - core_distances) then core_distances
+        larger than epsilon_minimum (of the parent cluster) lead to a negative value which lowers the calculated
+        child support and results in the selection of the parent cluster (0, 12).
+        If child support is correctly calculated as the sum(maximum(0, (epsilon_minimum - core_distances))) then
+        points with core_distance larger than epsilon_minimum (i.e. those not present in the child clusters) don't
+        affect calculated support and the child clusters are selected.
+        """
+        array = np.array([0, 1, 2, 7, 8, 13, 14, 16, 21, 23, 28, 30], dtype=int)
+        answer = np.fromiter([(0, 3), (5, 8)], dtype=UDBSCANxH._DTYPE_SLICE)
+        npt.assert_array_equal(UDBSCANxH.udbscanxh(array, 3), answer)
+
+    def test_udbscanxh_default_max_eps(self):
+        """
+        Test for method udbscanxh.
+        Tests that the correct value of max_eps is selected if none is specified.
+        By default it should exclude the root node of the cluster tree.
+
+        """
+        array = np.array([0, 1, 2, 3, 4, 5, 7, 9, 10, 11, 12, 13, 14], dtype=int)
+        answer = np.fromiter([(0, 6), (7, 13)], dtype=UDBSCANxH._DTYPE_SLICE)
+        npt.assert_array_equal(UDBSCANxH.udbscanxh(array, 3), answer)
 
     def test_udbscanxh_real(self):
         """Test for method udbscanxh"""
