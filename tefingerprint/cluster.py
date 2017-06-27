@@ -419,19 +419,18 @@ class UDBSCANxH(UDBSCANx):
             points['index'] = np.arange(len(array), dtype=int)
             points['core_dist'] = UDBSCANxH._core_distances(array, min_points)
             if not max_eps:
-                # start at highest observed eps
-                max_eps = np.max(points['core_dist'])
+                # start at first fork, i.e. bellow root node as in HDBSCAN* (Campello 2015)
+                max_eps = UDBSCANxH._fork_epsilon(points['value'], min_points) - 1
             if min_eps:
                 # overwrite lower eps
                 points['core_dist'] = np.maximum(min_eps, points['core_dist'])
 
-            # initial splits based on the specified maximum epsilon
-            child_points = (points[left:right] for left, right in UDBSCANxH._cluster(points['value'],
-                                                                                     max_eps,
-                                                                                     min_points))
-
+            # initial splits based on the specified max_eps
+            initial_cluster_bounds = UDBSCANxH._cluster(points['value'], max_eps, min_points)
+            child_points = (points[left:right] for left, right in initial_cluster_bounds)
             # recursively run on all clusters
-            clusters = [UDBSCANxH._traverse_hudc_tree(points, max_eps, min_points) for points in child_points]
+            # initialise with max_eps + 1 to ensure points with core_distance == max_eps are counted
+            clusters = [UDBSCANxH._traverse_hudc_tree(points, max_eps + 1, min_points) for points in child_points]
             return np.fromiter(UDBSCANxH._flatten_list(clusters), dtype=UDBSCANx._DTYPE_SLICE)
 
     def fit(self, array):
