@@ -220,7 +220,24 @@ class TestHUDC:
         """
         assert list(UDBSCANxH._flatten_list(nested)) == flat
 
-    def test_udbscanxh(self):
+    @pytest.mark.parametrize("array,min_points,max_eps,answer",
+                             [(np.array([], dtype=int), 5, 5, np.array([], dtype=UDBSCANx._DTYPE_SLICE)),
+                              (np.array([1], dtype=int), 5, 5, np.array([], dtype=UDBSCANx._DTYPE_SLICE)),
+                              (np.array([1, 2, 3, 4], dtype=int), 5, 5, np.array([], dtype=UDBSCANx._DTYPE_SLICE)),
+                              (np.array([1, 2, 3, 4, 5], dtype=int), 5, 5, np.array([(0, 5)], dtype=UDBSCANx._DTYPE_SLICE)),
+                              (np.array([0, 2, 3, 7, 8, 12, 13, 17], dtype=int), 3, 5, np.array([(0, 8)], dtype=UDBSCANx._DTYPE_SLICE)),
+                              (np.array([0, 2, 3, 7, 8, 12, 13, 16], dtype=int), 3, 5, np.array([(0, 3), (5, 8)], dtype=UDBSCANx._DTYPE_SLICE)),
+                              (np.array([0, 1, 2, 7, 8, 13, 14, 16, 21, 23, 28, 30], dtype=int), 3, 8, np.array([(0, 3), (5, 8)], dtype=UDBSCANx._DTYPE_SLICE))],
+                             ids=['empty', 'single', 'p < min-points', 'p == min-points', 'parent', 'children', '-ve child area'])
+    def test_udbscanxh(self, array, min_points, max_eps, answer):
+        """
+        Test for method udbscanxh with small arrays.
+        Method hudc should correctly handle an array of length 0 or greater.
+        If the length of the array is less than 'n' then an empty array will always be returned.
+        """
+        npt.assert_array_equal(UDBSCANxH.udbscanxh(array, min_points, max_eps), answer)
+
+    def test_udbscanxh_real(self):
         """Test for method udbscanxh"""
         input_array = np.array([   0,    0,   60,   61,   61,   61,   76,   78,  122,  122,  141,
                                  183,  251,  260,  260,  263,  263,  267,  267,  288,  288,  295,
@@ -233,25 +250,6 @@ class TestHUDC:
                                 1828, 1848, 1848, 1848, 1848, 1851, 1851, 1852, 1917], dtype=int)
         answer_slices = np.fromiter([(0, 55), (56, 80), (83, 97)], dtype=UDBSCANxH._DTYPE_SLICE)
         npt.assert_array_equal(UDBSCANxH.udbscanxh(input_array, 10, max_eps=200, min_eps=10), answer_slices)
-
-    @pytest.mark.parametrize("array,slices",
-                             [(np.array([], dtype=int),
-                               np.array([], dtype=UDBSCANx._DTYPE_SLICE)),
-                              (np.array([1], dtype=int),
-                               np.array([], dtype=UDBSCANx._DTYPE_SLICE)),
-                              (np.array([1, 2, 3, 4], dtype=int),
-                               np.array([], dtype=UDBSCANx._DTYPE_SLICE)),
-                              (np.array([1, 2, 3, 4, 5], dtype=int),
-                               np.array([(0, 5)], dtype=UDBSCANx._DTYPE_SLICE))
-                              ],
-                             ids=['0<n', '1<n', '4<n', '5==n'])
-    def test_udbscanxh_few_reads(self, array, slices):
-        """
-        Test for method udbscanxh with small arrays.
-        Method hudc should correctly handle an array of length 0 or greater.
-        If the length of the array is less than 'n' then an empty array will always be returned.
-        """
-        npt.assert_array_equal(UDBSCANxH.udbscanxh(array, 5, 5), slices)
 
     def test_fit(self):
         """
