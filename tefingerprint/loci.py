@@ -259,6 +259,17 @@ class GenomeLoci(object):
                     loci['start'][0] = max(loci['start'][0] - value, minimum)
                     loci['stop'][-1] = min(loci['stop'][-1] + value, maximum)
 
+    def features(self):
+        """
+        Yields one tuple per locus.
+
+        :return: tuple of values per locus
+        :rtype: generator
+        """
+        for key, loci in self.items():
+            for locus in loci:
+                yield (*key, *locus)
+
     def as_array(self):
         """
         Convert all loci to a structured array sorted by location.
@@ -266,15 +277,7 @@ class GenomeLoci(object):
         :return: a structured array of loci
         :rtype: :class:`numpy.ndarray`
         """
-        array = np.empty(0, type(self)._DTYPE_ARRAY)
-        for key, loci in self.items():
-            sub_array = np.empty(len(loci), type(self)._DTYPE_ARRAY)
-            sub_array.fill((*key, *type(self)._LOCI_DEFAULT_VALUES))
-            for slot in list(type(self)._DTYPE_LOCI.fields.keys()):
-                sub_array[slot] = loci[slot]
-            array = np.append(array, sub_array)
-        # this method is faster and avoids sorting on objects in the array (possible source of errors)
-        # but does not sort on other values so sub-orders may vary
+        array = np.fromiter(self.features(), type(self)._DTYPE_ARRAY)
         index = np.argsort(array[['reference', 'start', 'stop', 'category']],
                            order=('reference', 'start', 'stop', 'category'))
         array = array[index]
@@ -774,7 +777,23 @@ class Comparison(GenomeLoci):
                                '.',
                                attributes)
 
-    def _iter_flat_items(self):
+    def as_array(self):
+        """
+        Convert all loci to a structured array sorted by location.
+
+        This implementation differs that of parent class because the `fromiter()` method doesn't work for arrays
+        containing regular python objects.
+
+        :return: a structured array of loci
+        :rtype: :class:`numpy.ndarray`
+        """
+        array = np.array([feature for feature in self.features()], self._DTYPE_ARRAY)
+        index = np.argsort(array[['reference', 'start', 'stop', 'category']],
+                           order=('reference', 'start', 'stop', 'category'))
+        array = array[index]
+        return array
+
+    def flat_features(self):
         """
         Yields one tuple per sample per locus (to avoid nested structures).
 
@@ -801,10 +820,7 @@ class Comparison(GenomeLoci):
         :return: a structured array of loci
         :rtype: :class:`numpy.ndarray`
         """
-        array = np.fromiter(self._iter_flat_items(), dtype=self._DTYPE_FLAT_ARRAY)
-
-        # this method is faster and avoids sorting on objects in the array (possible source of errors)
-        # but does not sort on other values so sub-orders may vary
+        array = np.fromiter(self.flat_features(), dtype=self._DTYPE_FLAT_ARRAY)
         index = np.argsort(array[['reference', 'start', 'stop', 'category']],
                            order=('reference', 'start', 'stop', 'category'))
         array = array[index]
