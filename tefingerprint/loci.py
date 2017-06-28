@@ -774,6 +774,25 @@ class Comparison(GenomeLoci):
                                '.',
                                attributes)
 
+    def _iter_flat_items(self):
+        """
+        Yields one tuple per sample per locus (to avoid nested structures).
+
+        :return: tuple of values for each sample for each locus
+        :rtype: generator[(str, str, str, int, int, str, int, float)]
+        """
+        for key, loci in self.items():
+            for locus in loci:
+                for source, count, proportion in zip(locus['sources'], locus['counts'], locus['proportions']):
+                    yield (key.reference,
+                           key.strand,
+                           key.category,
+                           locus['start'],
+                           locus['stop'],
+                           source,
+                           count,
+                           proportion)
+
     def as_flat_array(self):
         """
         Convert all loci to a structured array sorted by location.
@@ -782,15 +801,8 @@ class Comparison(GenomeLoci):
         :return: a structured array of loci
         :rtype: :class:`numpy.ndarray`
         """
-        array = np.empty(0, self._DTYPE_FLAT_ARRAY)
-        for key, loci in self.items():
-            for locus in loci:
-                sub_array = np.empty(len(locus['sources']), self._DTYPE_FLAT_ARRAY)
-                sub_array.fill((*key, locus['start'], locus['stop'], '', 0, 0.0))
-                sub_array['source'] = locus['sources']
-                sub_array['count'] = locus['counts']
-                sub_array['proportion'] = locus['proportions']
-                array = np.append(array, sub_array)
+        array = np.fromiter(self._iter_flat_items(), dtype=self._DTYPE_FLAT_ARRAY)
+
         # this method is faster and avoids sorting on objects in the array (possible source of errors)
         # but does not sort on other values so sub-orders may vary
         index = np.argsort(array[['reference', 'start', 'stop', 'category']],
