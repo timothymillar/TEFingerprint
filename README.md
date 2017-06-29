@@ -59,25 +59,24 @@ python -m pytest -v ./
 ## Usage
  
 The basic 'tef' tool is used as a wrapper for included programs: `preprocess`, `fingerprint`, `compare` and `filter_gff`.
-The help text can be displayed for `tef` or any of the wrapped tols with the `-h` flag e.g:
+The help text can be displayed for `tef` or any of the wrapped tols with the `--help` or `-h` flag e.g:
 
 ```
 tef -h 
 tef preprocess -h 
 tef fingerprint -h 
 tef compare -h 
-tef filter_gff -h
+tef filter-gff -h
 ```
 
-### Preprocess
+### Preprocess Pipeline
 
 The preprocessing pipeline requires a paired-end reads in fastq format, a library of tranposable elements in fasta format
 and a reference genome in fasta format. Fasta files should be pre indexed using BWA. This pipeline also requires that 
 BWA and Samtools are installed and on the users `$PATH`.
 
-Paired end reads are aligned to the library of transposable elements.
-Unmapped reads with mapped mates (dangler reads) are identified and extracted.
-Dangler reads are mapped against the reference genome and tagged with the ID of their mates transposable element.
+Paired end reads are initially aligned to the library of transposable elements manually with bwa mem.
+The preprocess tool is then used to identify and extract unmapped reads with mapped mates (dangler reads) which are mapped against the reference genome and tagged with the ID of their mates transposable element.
 
 You should have the following four files:
 
@@ -85,6 +84,7 @@ You should have the following four files:
 * `reference.fasta` a reference genome in fasta format.
 * `repeats.fasta ` a library of repeat elements in fasta format.
 
+***Initial alignment:***
 
 Index fasta files with bwa:
 
@@ -93,7 +93,7 @@ bwa index -a bwtsw reference.fasta
 bwa index -a is repeats.fasta
 ```
 
-Map paired end reads to repeat elements using `BWA MEM` and convert to a sorted bam file with `samtools`:
+Map paired end reads to repeat elements using `bwa mem` and convert to a sorted bam file with `samtools`:
 
 ```
 bwa mem -t 8 \
@@ -110,24 +110,33 @@ Index the resulting bam file with `samtools`:
 ```
 samtools index reads_mapped_to_repeats.bam
 ```
+***Preprocess tool:***
 
 Runing the preprocess program on the indexed bam file:
 
 ```
 tef preprocess \
-    reads_mapped_to_repeats.bam
+    reads_mapped_to_repeats.bam \
     --reference reference.fasta \
     --output danglers.bam \
     --threads 8
 ```
 
-The output file `danglers.bam` contains reads mapped to the reference genome. Each of these reads is tagged with the repeat element that their pair was mapped to.
-
 Arguments:
 
-* The `threads` argument specifies how many threads to use for alignment in bwa (python components of the pipeline are currently single threaded).
-* By default, the intermediate files are written to a temporary directory that is automatically removed when the pipeline is completed. These files can be saved by manually specifying a directory with the `--tempdir` option.
-* By default, the same tag used to store repeat element names associated with each read is `ME` (Mate Element). This can be changed with the `--mate_element_tag` option.
+* Input bam file
+* `-r/--reference ` reference genome to align informative reads to.
+* `-o/--output` the name of the output (indexed) bam file.
+* `-t/--threads` specifies how many threads to use for alignment in bwa (python components of the pipeline are currently single threaded).
+
+Additional arguments: 
+
+* `--exclude-tails` by default the soft-clipped tails of pairs properly mapping to a single repeat element are included as an additional source of information. This option will exclude soft-clipped tails from the resulting bam file.
+* `--tail-minimum-length` the minimum length allowed for soft-clipped tails to be included (defaults to `38`).
+* `--tempdir` by default, the intermediate files are written to a temporary directory that is automatically removed when the pipeline is completed. These files can be saved by manually specifying a directory with theis option.
+* `--mate_element_tag` by default, the same tag used to store repeat element names associated with each read is `ME` (Mate Element). This can be changed with the option.
+
+The output file `danglers.bam` contains reads mapped to the reference genome. Each of these reads is tagged with the repeat element that their pair was mapped to.
 
 ### Fingerprint
 
@@ -147,19 +156,20 @@ Where `danglers.bam` is the bam file being fingerprinted and `fingerprint.gff` i
 
 Arguments:
 
-* `-r/references` May optionally be used to specify a subset of chromosomes to fingerprint. By default all reference chromosomes are fingerprinted (based on the bam header).
-* `-f/--families` Specifies the (super) families or grouping of repeated elements to fingerprint. These names are matched against the start of the mate element name i.e. the name `Gypsy` would treat reads with tagged with a mate element called `Gypsy3`, `Gypsy27` or `GypsyX` as the same.
-* `-m/--minreads` Specifies the minimum number of read (tips) required to form a cluster. It is used in combination with `-e/epsilon`.
-* `-e/epsilon` Specifies the maximum allowable distance among a set of read tips to be considered a (sub) cluster. Sub-clusters are calculated based on `-m/--minreads` and `-e/epsilon` and then overlapping sub-clusters are combined to create cluster.
-* `-q/--mapping_quality` Specifies the minimum mapping quality allowed for reads.
-* `-t/--threads` Specifies the number of CPU threads to use. The maximum number of threads that may be used is the same as the number of references specified.
+* A bam file to be fingerprinted
+* `-r/--references` may optionally be used to specify a subset of chromosomes to fingerprint. By default all reference chromosomes are fingerprinted (based on the bam header).
+* `-f/--families` specifies the (super) families or grouping of repeated elements to fingerprint. These names are matched against the start of the mate element name i.e. the name `Gypsy` would treat reads with tagged with a mate element called `Gypsy3`, `Gypsy27` or `GypsyX` as the same.
+* `-m/--minimum-reads` specifies the minimum number of read (tips) required to form a cluster.
+* `-e/--epsilon` specifies the maximum allowable distance among a set of read tips to be considered a cluster.
+* `-q/--mapping-quality` specifies the minimum mapping quality allowed for reads (defaults to `30`).
+* `-t/--threads` specifies the number of CPU threads to use. The maximum number of threads that may be used is the same as the number of references specified.
  
 Additional arguments:
 
- * `--min_eps` The minimum value of epsilon to be used in hierarchical clustering. Defaults to `0`.
- * `--hierarchical_clustering` Specifies wether or not to use the hierarchical clustering algorithm in order to differentiate between proximate clusters. Defaults to `True`.
- *  `--mate_element_tag` The sam tag used to specify the name of each reads mate element. Defaults to `ME`.
- *  `--feature_csv` Optionally specify the name of a CSV file to output containing feature data.
+ * `--minimum-epsilon` the minimum value of epsilon to be used in hierarchical clustering (defaults to `0`).
+ * `--non-hierarchical` by default a hierarchical clustering algorithm is used. This flag will switch to the non-hierarchical version.
+ *  `--mate-element-tag` the sam tag used to specify the name of each reads mate element (defaults to `ME`).
+ *  `--feature_csv` optionally specify the name of a CSV file to output containing feature data.
 
 
 ### Compare
@@ -180,23 +190,24 @@ Where `danglers1.bam ...` are the bam files being compared and `comparison.gff` 
 
 Arguments:
 
-* `-r/references` May optionally be used to specify a subset of chromosomes to fingerprint. By default all reference chromosomes are fingerprinted (based on the bam header).
-* `-f/--families` Specifies the (super) families or grouping of repeated elements to fingerprint. These names are matched against the start of the mate element name i.e. the name `Gypsy` would treat reads with tagged with a mate element called `Gypsy3`, `Gypsy27` or `GypsyX` as the same.
-* `-m/--minreads` Specifies the minimum number of read (tips) required to form a cluster. It is used in combination with `-e/epsilon`.
-* `-e/epsilon` Specifies the maximum allowable distance among a set of read tips to be considered a (sub) cluster. Sub-clusters are calculated based on `-m/--minreads` and `-e/epsilon` and then overlapping sub-clusters are combined to create cluster.
-* `-q/--mapping_quality` Specifies the minimum mapping quality allowed for reads.
-* `-b/--fingerprint_buffer` Specifies a distance (in base pairs) to buffer fingerprints by before combining them into comparative bins. This is used to ensure that small clusters, that are slightly offset in different samples, are treated as a single comparative bin. It also improves the robustness of comparisons by allowing more reads to be included in each bin. Defaults to `0`
-* `-t/--threads` Specifies the number of CPU threads to use. The maximum number of threads that may be used is the same as the number of references specified.
+* At least two bam files to be compared. 
+* `-r/--references` may optionally be used to specify a subset of chromosomes to fingerprint. By default all reference chromosomes are fingerprinted (based on the bam header).
+* `-f/--families` specifies the (super) families or grouping of repeated elements to fingerprint. These names are matched against the start of the mate element name i.e. the name `Gypsy` would treat reads with tagged with a mate element called `Gypsy3`, `Gypsy27` or `GypsyX` as the same.
+* `-m/--minimum-reads` specifies the minimum number of read (tips) required to form a cluster.
+* `-e/--epsilon` specifies the maximum allowable distance among a set of read tips to be considered a cluster.
+* `-q/--mapping-quality` specifies the minimum mapping quality allowed for reads (defaults to `30`).
+* `-b/--buffer-fingerprints` specifies a distance (in base pairs) to buffer fingerprints by before combining them into comparative bins (defaults to `0`). This is used to ensure that small clusters, that are slightly offset in different samples, are treated as a single comparative bin. It also improves the robustness of comparisons by allowing more reads to be included in each bin.
+* `-t/--threads` specifies the number of CPU threads to use. The maximum number of threads that may be used is the same as the number of references specified.
  
 Additional arguments:
  
- * `--long_form` Option to produce a GFF file in which each comparative bin is duplicated for each input bam file. This produces a gff file that does not contatin nested lists of counts or source names. Defaults to `False`
- * `--min_eps` The minimum value of epsilon to be used in hierarchical clustering. Defaults to `0`.
- * `--hierarchical_clustering` Specifies wether or not to use the hierarchical clustering algorithm in order to differentiate between proximate clusters. Defaults to `True`.
- * `--bin_buffer` The same as `--fingerprint_buffer` but buffering is performed after fingerprints are combined, therefore less likely to combine slightly offset clusters. Defaults to `0`
- *  `--mate_element_tag` The sam tag used to specify the name of each reads mate element. Defaults to `ME`.
-*  `--feature_csv` Optionally specify the name of a CSV file to output containing (long-form) feature data. This produces one row of data per sample per feature.
-*  `--character_csv` Optionally specify the name of a CSV file to output containing a matrix of read counts. This produces one column per feature by one row per sample.
+ * `--long-form-gff` optional flag to produce a GFF file in which each comparative bin is duplicated for each input bam file to avoid nested lists of counts or source names.
+ * `--minimum-epsilon` The minimum value of epsilon to be used in hierarchical clustering (defaults to `0`).
+ * `--non-hierarchical` by default a hierarchical clustering algorithm is used. This flag will switch to the non-hierarchical version.
+ *  `--mate-element-tag` the sam tag used to specify the name of each reads mate element (defaults to `ME`).
+ * `--buffer-comparative-bins` similar to `--buffer-fingerprints` but buffering is performed after fingerprints are combined, therefore less likely to combine slightly offset clusters (defaults to `0`).
+*  `--feature-csv` optionally specify the name of a CSV file to output containing (long-form) feature data. This produces one row of data per sample per feature.
+*  `--character-csv` optionally specify the name of a CSV file to output containing a matrix of read counts. This produces one column per feature by one row per sample.
 
 ### Filter GFF
 
@@ -218,17 +229,17 @@ The following operators are only used for numerical comparisons: `<` `>`, `>=`, 
 
 The operators `=`, `==` and `!=` will try to compare values as numerical (floating points) but will also check for equivalence or non-equivalence of string values. Note that `=`, `==` are identical.
 
-
-Example usage with two attribute filters:
+Example usage with one column filter and two attribute filters:
 
 ```
 tef filter_gff comparison.gff \
-	-a 'counts>=10' 'proportions>0.95' \
+	-c 'seqid=chr1' \ 
+	-a 'category=Gypsy' 'proportions>=0.95' \
 	> comparison_filtered.gff
 ```
 Where `comparison.gff ` is a gff file and `comparison_filtered.gff` is a filtered version of that file.
 
 Arguments:
 
-* `-c/--column_filters`: filters to apply to the first 8 standard gff3 columns. These should take the form `'<column><operator><value>'`
-* `-a/--attribute_filters`: filters to apply to the attributes column. These should take the form `'<attribute><operator><value>'`
+* `-c/--column-filters`: filters to apply to the first 8 standard gff3 columns. These should take the form `'<column><operator><value>'`
+* `-a/--attribute-filters`: filters to apply to the attributes column. These should take the form `'<attribute><operator><value>'`
