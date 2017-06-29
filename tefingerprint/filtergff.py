@@ -15,7 +15,7 @@ class FilterGffProgram(object):
         :param arguments: A list of commandline arguments to be parsed for the filter_gff program
         """
         self.args = self.parse_args(arguments)
-        with open(self.args.input_gff[0], 'r') as f:
+        with open(self.args.gff[0], 'r') as f:
             feature_strings = f.read().splitlines()
         result = filter_features(feature_strings,
                                  column_filters=self.args.column_filters,
@@ -33,10 +33,10 @@ class FilterGffProgram(object):
         :return: A dictionary like object of arguments and values for the filter_gff program
         """
         parser = argparse.ArgumentParser('Identify potential TE flanking regions')
-        parser.add_argument('input_gff',
+        parser.add_argument('gff',
                             nargs=1,
                             help='A single gff file to be filtered')
-        parser.add_argument('-c', '--column_filters',
+        parser.add_argument('-c', '--column-filters',
                             nargs='*',
                             help=("List of filters to apply to standard GFF3 columns.\n"
                                   "A valid filter takes the form '<attribute><operator><value>'"
@@ -50,7 +50,7 @@ class FilterGffProgram(object):
                                   "numbers if possible and otherwise compare values as strings. "
                                   "Operators '>=', '<=', '>' and '<' will coerce values "
                                   "to floating point numbers before comparison."))
-        parser.add_argument('-a', '--attribute_filters',
+        parser.add_argument('-a', '--attribute-filters',
                             nargs='*',
                             help=("List of filters to apply to attributes.\n"
                                   "A valid filter takes the form '<attribute><operator><value>'"
