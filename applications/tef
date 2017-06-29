@@ -16,7 +16,7 @@ def parse_program_arg(arg):
                         choices=("preprocess",
                                  "fingerprint",
                                  "compare",
-                                 "filter_gff"))
+                                 "filter-gff"))
     return parser.parse_args(arg)
 
 
@@ -33,7 +33,7 @@ def main():
         FingerprintProgram(sys.argv[2:])
     elif program == "compare":
         ComparisonProgram(sys.argv[2:])
-    elif program == "filter_gff":
+    elif program == "filter-gff":
         FilterGffProgram(sys.argv[2:])
     elif program == "preprocess":
         job = PreProcessProgram.from_cli(sys.argv[2:])
