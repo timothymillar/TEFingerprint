@@ -58,7 +58,7 @@ python -m pytest -v ./
 
 ## Usage
  
-The basic 'tef' tool is used as a wrapper for included programs: `preprocess`, `fingerprint`, `compare` and `filter_gff`.
+The basic 'tef' tool is used as a wrapper for included programs: `preprocess`, `fingerprint`, `compare` and `filter-gff`.
 The help text can be displayed for `tef` or any of the wrapped tols with the `--help` or `-h` flag e.g:
 
 ```
@@ -127,7 +127,7 @@ Arguments:
 * Input bam file
 * `-r/--reference ` reference genome to align informative reads to.
 * `-o/--output` the name of the output (indexed) bam file.
-* `-t/--threads` specifies how many threads to use for alignment in bwa (python components of the pipeline are currently single threaded).
+* `-t/--threads` specifies how many threads to use for alignment in bwa (python components of the pipeline are single threaded).
 
 Additional arguments: 
 
@@ -202,7 +202,7 @@ Arguments:
 Additional arguments:
  
  * `--long-form-gff` optional flag to produce a GFF file in which each comparative bin is duplicated for each input bam file to avoid nested lists of counts or source names.
- * `--minimum-epsilon` The minimum value of epsilon to be used in hierarchical clustering (defaults to `0`).
+ * `--minimum-epsilon` the minimum value of epsilon to be used in hierarchical clustering (defaults to `0`).
  * `--non-hierarchical` by default a hierarchical clustering algorithm is used. This flag will switch to the non-hierarchical version.
  *  `--mate-element-tag` the sam tag used to specify the name of each reads mate element (defaults to `ME`).
  * `--buffer-comparative-bins` similar to `--buffer-fingerprints` but buffering is performed after fingerprints are combined, therefore less likely to combine slightly offset clusters (defaults to `0`).
@@ -241,5 +241,5 @@ Where `comparison.gff ` is a gff file and `comparison_filtered.gff` is a filtere
 
 Arguments:
 
-* `-c/--column-filters`: filters to apply to the first 8 standard gff3 columns. These should take the form `'<column><operator><value>'`
-* `-a/--attribute-filters`: filters to apply to the attributes column. These should take the form `'<attribute><operator><value>'`
+* `-c/--column-filters` filters to apply to the first 8 standard gff3 columns. These should take the form `'<column><operator><value>'`
+* `-a/--attribute-filters` filters to apply to the attributes column. These should take the form `'<attribute><operator><value>'`
