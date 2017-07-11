@@ -3,7 +3,7 @@
 import re
 import sys
 import argparse
-import numpy as np
+import itertools
 
 
 class FilterGffProgram(object):
@@ -209,27 +209,26 @@ def filter_features(feature_strings, column_filters=None, attribute_filters=None
     :type attribute_filters: list[dict[str, str]]
 
     :return: a subset of gff3 formatted feature strings
-    :rtype: list[str]
+    :rtype: generator[str]
     """
     if column_filters is None:
         column_filters = []
     if attribute_filters is None:
         attribute_filters = []
-    keep = np.empty(len(feature_strings), dtype=bool)
-    keep.fill(True)
+    keep = (True for _ in feature_strings)
     if len(column_filters) > 0:
         columns = [_parse_gff_columns(string) for string in feature_strings]
         column_filters = [_parse_filter_string(string) for string in column_filters]
         for filt in column_filters:
-            match = np.array([_matches_filter(col, filt) for col in columns], dtype=bool)
-            keep = np.logical_and(keep, match)
+            match = (_matches_filter(col, filt) for col in columns)
+            keep = [k and m for k, m in zip(keep, match)]
     if len(attribute_filters) > 0:
         attributes = [_parse_gff_attributes(string) for string in feature_strings]
         attribute_filters = [_parse_filter_string(string) for string in attribute_filters]
         for filt in attribute_filters:
-            match = np.array([_matches_filter(attr, filt) for attr in attributes], dtype=bool)
-            keep = np.logical_and(keep, match)
-    return (np.array(feature_strings)[keep]).tolist()
+            match = (_matches_filter(attr, filt) for attr in attributes)
+            keep = [k and m for k, m in zip(keep, match)]
+    return itertools.compress(feature_strings, keep)
 
 
 if __name__ == '__main__':
