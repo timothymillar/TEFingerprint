@@ -155,7 +155,7 @@ class PreProcessProgram(object):
         # check if samtools and bwa are available
         _check_programs_installed('bwa', 'samtools')
 
-        # create temp dir for intermediate files unless one is suplied by user
+        # create temp dir for intermediate files unless one is supplied by user
         if self.temp_dir:
             temp_dir = self.temp_dir
         else:
@@ -248,7 +248,7 @@ def reverse_complement(sequence):
     :rtype: str
     """
     complement = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A', 'N': 'N'}
-    return "".join(complement.get(base, base) for base in reversed(sequence))
+    return "".join(complement.get(base, base) for base in reversed(sequence.upper()))
 
 
 def parse_sam_string(string):
