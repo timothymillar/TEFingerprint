@@ -39,52 +39,59 @@ class PreProcessProgram(object):
 
         :return: Dictionary like object of arguments and values
         """
-        parser = argparse.ArgumentParser('Identify potential TE flanking regions')
-        parser.add_argument('dangler_bam',
+        parser = argparse.ArgumentParser('Extract reads whose pair was mapped to a repeat element, '
+                                         'map them to a reference genome and tag them with their mates element name.')
+        parser.add_argument('bam',
                             type=str,
                             nargs=1,
-                            help='A bam file containing dangler reads')
-        parser.add_argument('--reference',
+                            help='A bam file containing paired end reads mapped to a library of repeat elements.')
+        parser.add_argument('-r', '--reference',
                             type=str,
                             nargs=1,
-                            help="Reference genome in fasta format with bwa index")
+                            help="Reference genome in fasta format indexed with bwa.")
         parser.add_argument('-o', '--output',
                             type=str,
                             nargs=1,
-                            help="Name of output bam file")
-        parser.add_argument('--include_tails',
-                            type=bool,
-                            nargs=1,
-                            default=[True],
-                            help="Include soft-clipped tails of pairs properly mapping to a repeat element")
-        parser.add_argument('--tail_minimum_length',
+                            help="Name of output bam file.")
+        parser.set_defaults(include_tails=True)
+        parser.add_argument('--include-tails',
+                            dest='include_tails',
+                            action='store_true',
+                            help="Include soft-clipped tails of pairs properly mapping to a repeat element (default).")
+        parser.add_argument('--exclude-tails',
+                            dest='include_tails',
+                            action='store_false',
+                            help="Don't include soft-clipped tails.")
+        parser.add_argument('--tail-minimum-length',
                             nargs=1,
                             type=int,
                             default=[38],
-                            help="Minimum required length for inclusion of soft-clipped tails")
-        parser.add_argument('--mate_element_tag',
+                            help="Minimum required length for inclusion of soft-clipped tails.")
+        parser.add_argument('--mate-element-tag',
                             type=str,
                             nargs=1,
                             default=['ME'],
-                            help='Tag used in bam file to indicate the element type mate read')
+                            help='Tag used in bam file to indicate the element type mate read.')
         parser.add_argument('--tempdir',
                             type=str,
                             nargs=1,
                             default=[False],
-                            help="Optional directory to store temp files in")
+                            help="Optional directory to store temp files in (files will not be removed).")
         parser.add_argument('-t', '--threads',
                             type=int,
                             nargs=1,
                             default=[1],
-                            help='Maximum number of cpu threads to be used')
+                            help='Maximum number of cpu threads to be used.')
         return parser.parse_args(args)
 
     @staticmethod
     def from_cli(args):
         arguments = PreProcessProgram._cli(args)
-        return PreProcessProgram(arguments.dangler_bam[0],
+        return PreProcessProgram(arguments.bam[0],
                                  arguments.reference[0],
                                  arguments.output[0],
+                                 include_tails=arguments.include_tails,
+                                 tail_minimum_length=arguments.tail_minimum_length[0],
                                  mate_element_tag=arguments.mate_element_tag[0],
                                  temp_dir=arguments.tempdir[0],
                                  threads=arguments.threads[0])
@@ -148,7 +155,7 @@ class PreProcessProgram(object):
         # check if samtools and bwa are available
         _check_programs_installed('bwa', 'samtools')
 
-        # create temp dir for intermediate files unless one is suplied by user
+        # create temp dir for intermediate files unless one is supplied by user
         if self.temp_dir:
             temp_dir = self.temp_dir
         else:
@@ -241,7 +248,7 @@ def reverse_complement(sequence):
     :rtype: str
     """
     complement = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A', 'N': 'N'}
-    return "".join(complement.get(base, base) for base in reversed(sequence))
+    return "".join(complement.get(base, base) for base in reversed(sequence.upper()))
 
 
 def parse_sam_string(string):

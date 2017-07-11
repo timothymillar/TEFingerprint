@@ -1,0 +1,4 @@
+chr1	.	.	2402	24267	.	+	.	ID=chr1_+_Gypsy_2402;category=Gypsy;sources=testA-2017-06-08.bam,testB-2017-06-08.bam;counts=18,20;proportions=0.474,0.526;color=#C6DBEF
+chr1	.	.	3167	3850	.	-	.	ID=chr1_-_Gypsy_3167;category=Gypsy;sources=testA-2017-06-08.bam,testB-2017-06-08.bam;counts=8,0;proportions=1.0,0.0;color=#08306B
+chr1	.	.	21784	22032	.	-	.	ID=chr1_-_PIF_21784;category=PIF;sources=testA-2017-06-08.bam,testB-2017-06-08.bam;counts=4,6;proportions=0.4,0.6;color=#9ECAE1
+chr1	.	.	24737	24969	.	-	.	ID=chr1_-_Gypsy_24737;category=Gypsy;sources=testA-2017-06-08.bam,testB-2017-06-08.bam;counts=12,10;proportions=0.545,0.455;color=#C6DBEF

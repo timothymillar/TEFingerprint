@@ -9,15 +9,15 @@ class FingerprintProgram(object):
     """Class for the fingerprint program"""
     def __init__(self, arguments):
         self.args = self.parse_args(arguments)
-        result = batch.fingerprint(bams=self.args.input_bams,
+        result = batch.fingerprint(bams=self.args.bams,
                                    references=self.args.references,
                                    categories=self.args.families,
                                    quality=self.args.mapping_quality[0],
                                    transposon_tag=self.args.mate_element_tag[0],
-                                   min_reads=self.args.min_reads[0],
+                                   min_reads=self.args.minimum_reads[0],
                                    eps=self.args.epsilon[0],
-                                   min_eps=self.args.min_eps[0],
-                                   hierarchical=self.args.hierarchical_clustering[0],
+                                   min_eps=self.args.minimum_epsilon[0],
+                                   hierarchical=self.args.hierarchical_clustering,
                                    cores=self.args.threads[0])
         print(result.as_gff())
         if self.args.feature_csv[0]:
@@ -33,15 +33,15 @@ class FingerprintProgram(object):
 
         :return: A dictionary like object of arguments and values for the fingerprint program
         """
-        parser = argparse.ArgumentParser('Identify potential TE flanking regions')
-        parser.add_argument('input_bams',
+        parser = argparse.ArgumentParser('Identify potential TE flanking regions.')
+        parser.add_argument('bams',
                             nargs='+',
-                            help='One or more bam files to be fingerprinted')
+                            help='One or more bam files to be fingerprinted.')
         parser.add_argument('-r', '--references',
                             type=str,
                             nargs='+',
                             default=[None],
-                            help='The reference sequence(s) (e.g. chromosome) to be fingerprinted. ' + \
+                            help='The reference sequence(s) (e.g. chromosome) to be fingerprinted. '
                                  'If left blank all references sequences in the input file will be used.')
         parser.add_argument('-f', '--families',
                             type=str,
@@ -49,54 +49,40 @@ class FingerprintProgram(object):
                             default=[''],
                             help='TE categories to be used. '
                                  'These must be exact string match\'s to start of read name and are used to split '
-                                 'reads into categories for analysis')
-        parser.add_argument('-q', '--mapping_quality',
+                                 'reads into categories for analysis.')
+        parser.add_argument('-q', '--mapping-quality',
                             type=int,
                             nargs=1,
                             default=[30],
-                            help='Minimum mapping quality')
-        parser.add_argument('--mate_element_tag',
+                            help='Minimum mapping quality of reads.')
+        parser.add_argument('--mate-element-tag',
                             type=str,
                             default=['ME'],
                             nargs=1,
-                            help='Tag used in bam file to indicate the element type mate read')
-        parser.add_argument('-m', '--min_reads',
+                            help='Tag used in bam file to indicate the element type of the mate read.')
+        parser.add_argument('-m', '--minimum-reads',
                             type=int,
                             default=[10],
                             nargs=1,
-                            help='Minimum number of read tips required to be considered a cluster. '
-                                 'This values is used in combination with epsilon to describe the density of '
-                                 'read tips that is required for identification of a clusters. '
-                                 'For every set of <min_reads> reads tips, if those reads are within epsilon range of '
-                                 'one another, they are classified as a subcluster. '
-                                 'Overlapping sets of subclusters are then merged to form clusters.')
+                            help='Minimum number of read tips required to be considered a cluster.')
         parser.add_argument('-e', '--epsilon',
                             type=int,
                             default=[250],
                             nargs=1,
-                            help='Epsilon is the maximum allowable distance among a set of read tips to be '
-                                 'considered a (sub)cluster. '
-                                 'The epsilon value given should be larger than the insert size. '
-                                 'HUDC identifies all clusters at the '
-                                 'maximum specified density and then attempts to split them into logical '
-                                 'child clusters at all values of epsilon between maximum and minimum. '
-                                 'The robustness of each parent cluster is compared to it\'s children. '
-                                 'If the parent is more robust it is selected, otherwise the process is repeated for '
-                                 'child cluster recursively until a parent or terminal (cluster with no children) '
-                                 'is selected. ')
-        parser.add_argument('--min_eps',
+                            help='The maximum allowable distance among a set of read tips to be considered a cluster.')
+        parser.add_argument('--minimum-epsilon',
                             type=int,
                             default=[0],
                             nargs=1,
-                            help='Minimum eps values used by the HUDC algorithm when calculating support for clusters. '
-                                 'This should usually be left as the default value of 0.')
-        parser.add_argument('--hierarchical_clustering',
-                            type=bool,
-                            default=[True],
-                            nargs=1,
-                            help='By default hierarchical HUDC algorithm is used. If this is set to False, '
-                                 'the non-hierarchical UDC algorithm is used and min_eps is inored.')
-        parser.add_argument('--feature_csv',
+                            help='Minimum epsilon values used when calculating support for clusters. '
+                                 'This is only used in hierarchical clustering and should usually be left '
+                                 'as the default value of 0.')
+        parser.set_defaults(hierarchical_clustering=True)
+        parser.add_argument('--non-hierarchical',
+                            dest='hierarchical_clustering',
+                            action='store_false',
+                            help='Use non-hierarchical clustering.')
+        parser.add_argument('--feature-csv',
                             type=str,
                             default=[False],
                             nargs=1,
@@ -105,10 +91,10 @@ class FingerprintProgram(object):
                             type=int,
                             default=[1],
                             nargs=1,
-                            help='Maximum number of cpu threads to be used')
+                            help='Maximum number of cpu threads to be used.')
         args = parser.parse_args(args)
         if args.references == [None]:
-            args.references = bamio.extract_bam_references(*args.input_bams)
+            args.references = bamio.extract_bam_references(*args.bams)
         return args
 
 
@@ -116,19 +102,19 @@ class ComparisonProgram(object):
     """Class for the comparison program"""
     def __init__(self, arguments):
         self.args = self.parse_args(arguments)
-        result = batch.comparison(bams=self.args.input_bams,
+        result = batch.comparison(bams=self.args.bams,
                                   references=self.args.references,
                                   categories=self.args.families,
                                   quality=self.args.mapping_quality[0],
                                   transposon_tag=self.args.mate_element_tag[0],
-                                  min_reads=self.args.min_reads[0],
+                                  min_reads=self.args.minimum_reads[0],
                                   eps=self.args.epsilon[0],
-                                  min_eps=self.args.min_eps[0],
-                                  hierarchical=self.args.hierarchical_clustering[0],
-                                  fingerprint_buffer=self.args.fingerprint_buffer[0],
-                                  bin_buffer=self.args.bin_buffer[0],
+                                  min_eps=self.args.minimum_epsilon[0],
+                                  hierarchical=self.args.hierarchical_clustering,
+                                  fingerprint_buffer=self.args.buffer_fingerprints[0],
+                                  bin_buffer=self.args.buffer_comparative_bins[0],
                                   cores=self.args.threads[0])
-        if self.args.long_form[0] is True:
+        if self.args.long_form_gff is True:
             print(result.as_flat_gff())
         else:
             print(result.as_gff())
@@ -149,14 +135,14 @@ class ComparisonProgram(object):
         :return: A dictionary like object of arguments and values for the comparison program
         """
         parser = argparse.ArgumentParser('Compare potential TE flanking regions from multiple samples')
-        parser.add_argument('input_bams',
+        parser.add_argument('bams',
                             nargs='+',
-                            help='A list of two or more bam files to be compared')
+                            help='A list of two or more bam files to be compared.')
         parser.add_argument('-r', '--references',
                             type=str,
                             nargs='*',
                             default=[None],
-                            help='The reference sequence(s) (e.g. chromosome) to be fingerprinted. ' + \
+                            help='The reference sequence(s) (e.g. chromosome) to be fingerprinted. '
                                  'If left blank all references sequences in the input file will be used.')
         parser.add_argument('-f', '--families',
                             type=str,
@@ -164,91 +150,76 @@ class ComparisonProgram(object):
                             default=[''],
                             help='TE categories to be used. '
                                  'These must be exact string match\'s to start of read name and are used to split '
-                                 'reads into categories for analysis')
-        parser.add_argument('-q', '--mapping_quality',
+                                 'reads into categories for analysis.')
+        parser.add_argument('-q', '--mapping-quality',
                             type=int,
                             nargs=1,
                             default=[30],
-                            help='Minimum mapping quality')
-        parser.add_argument('--mate_element_tag',
+                            help='Minimum mapping quality of reads.')
+        parser.add_argument('--mate-element-tag',
                             type=str,
                             default=['ME'],
                             nargs=1,
-                            help='Tag used in bam file to indicate the element type mate read')
-        parser.add_argument('-m', '--min_reads',
+                            help='Tag used in bam file to indicate the element type of the mate read.')
+        parser.add_argument('-m', '--minimum-reads',
                             type=int,
                             default=[10],
                             nargs=1,
-                            help='Minimum number of read tips required to be considered a cluster. '
-                                 'This values is used in combination with epsilon to describe the density of '
-                                 'read tips that is required for identification of a clusters. '
-                                 'For every set of <min_reads> reads tips, if those reads are within epsilon range of '
-                                 'one another, they are classified as a subcluster. '
-                                 'Overlapping sets of subclusters are then merged to form clusters.')
+                            help='Minimum number of read tips required to be considered a cluster.')
         parser.add_argument('-e', '--epsilon',
                             type=int,
                             default=[250],
                             nargs=1,
-                            help='Epsilon is the maximum allowable distance among a set of read tips to be '
-                                 'considered a (sub)cluster. '
-                                 'The epsilon value given should be larger than the insert size. '
-                                 'HUDC identifies all clusters at the '
-                                 'maximum specified density and then attempts to split them into logical '
-                                 'child clusters at all values of epsilon between maximum and minimum. '
-                                 'The robustness of each parent cluster is compared to it\'s children. '
-                                 'If the parent is more robust it is selected, otherwise the process is repeated for '
-                                 'child cluster recursively until a parent or terminal (cluster with no children) '
-                                 'is selected. ')
-        parser.add_argument('--min_eps',
+                            help='The maximum allowable distance among a set of read tips to be considered a cluster.')
+        parser.add_argument('--minimum-epsilon',
                             type=int,
                             default=[0],
                             nargs=1,
-                            help='Minimum eps values used by the HUDC algorithm when calculating support for clusters. '
-                                 'This should usually be left as the default value of 0.')
-        parser.add_argument('--hierarchical_clustering',
-                            type=bool,
-                            default=[True],
-                            nargs=1,
-                            help='By default hierarchical HUDC algorithm is used. If this is set to False, '
-                                 'the non-hierarchical UDC algorithm is used and min_eps is inored.')
-        parser.add_argument('-b', '--fingerprint_buffer',
+                            help='Minimum epsilon values used when calculating support for clusters. '
+                                 'This is only used in hierarchical clustering and should usually be left '
+                                 'as the default value of 0.')
+        parser.set_defaults(hierarchical_clustering=True)
+        parser.add_argument('--non-hierarchical',
+                            dest='hierarchical_clustering',
+                            action='store_false',
+                            help='Use non-hierarchical clustering.')
+        parser.add_argument('-b', '--buffer-fingerprints',
                             type=int,
                             default=[0],
                             nargs=1,
                             help='Additional buffer to be added to margins of fingerprints. '
                                  'This is used avoid identifying small clusters as unique, when these is only '
-                                 'slight miss-match in read positions across samples (i.e. false positives). ')
-        parser.add_argument('--bin_buffer',
+                                 'slight miss-match in read positions across samples (i.e. false positives).')
+        parser.add_argument('--buffer-comparative-bins',
                             type=int,
                             default=[0],
                             nargs=1,
-                            help='Additional buffer to be added to margins of comparative bins. ')
-        parser.add_argument('--long_form',
-                            type=bool,
-                            default=[False],
-                            nargs=1,
-                            help='If True, the resulting gff file will contain one feature per sample per bin. '
-                                 'This avoids nested lists in the feature attributes but results in many more features')
-        parser.add_argument('--feature_csv',
+                            help='Additional buffer to be added to margins of comparative bins.')
+        parser.set_defaults(long_form_gff=False)
+        parser.add_argument('--long-form-gff',
+                            dest='long_form_gff',
+                            action='store_true',
+                            help='The resulting gff output will contain one feature per sample per bin. '
+                                 'This avoids nested lists in the feature attributes.')
+        parser.add_argument('--feature-csv',
                             type=str,
                             default=[False],
                             nargs=1,
-                            help='Optionally write a csv file of features '
-                                 '(one row per sample per comparative bin)')
-        parser.add_argument('--character_csv',
+                            help='Optionally write a csv file of features (one row per sample per comparative bin).')
+        parser.add_argument('--character-csv',
                             type=str,
                             default=[False],
                             nargs=1,
                             help='Optionally write a csv file of data as character states '
-                                 '(rows of samples * columns of comparative bins)')
+                                 '(rows of samples * columns of comparative bins).')
         parser.add_argument('-t', '--threads',
                             type=int,
                             default=[1],
                             nargs=1,
-                            help='Maximum number of cpu threads to be used')
+                            help='Maximum number of cpu threads to be used.')
         args = parser.parse_args(args)
         if args.references == [None]:
-            args.references = bamio.extract_bam_references(*args.input_bams)
+            args.references = bamio.extract_bam_references(*args.bams)
         return args
 
 
