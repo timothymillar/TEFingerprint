@@ -157,10 +157,13 @@ class PreProcessProgram(object):
 
         # create temp dir for intermediate files unless one is supplied by user
         if self.temp_dir:
+            if not os.path.exists(self.temp_dir):
+                os.makedirs(self.temp_dir)
             temp_dir = self.temp_dir
+            print('>>> Using directory at: {0}'.format(temp_dir))
         else:
             temp_dir = mkdtemp()
-        print('>>> Creating temporary directory at: {0}'.format(temp_dir))
+            print('>>> Creating temporary directory at: {0}'.format(temp_dir))
 
         # attempt running pipeline
         try:
@@ -168,7 +171,7 @@ class PreProcessProgram(object):
         except:
             # remove temp dir unless it was supplied by user
             if self.temp_dir:
-                pass
+                print('>>> Error Encountered... temporary files kept at: {0}'.format(temp_dir))
             else:
                 print('>>> Error Encountered... Removing temporary directory at: {0}'.format(temp_dir))
                 shutil.rmtree(temp_dir)
