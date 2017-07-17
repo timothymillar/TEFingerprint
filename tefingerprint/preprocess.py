@@ -8,6 +8,9 @@ import shutil
 import sys
 import re
 from tempfile import mkdtemp
+from functools import reduce
+from itertools import chain, tee
+
 
 
 class PreProcessProgram(object):
@@ -98,37 +101,35 @@ class PreProcessProgram(object):
 
     def _run_pipeline(self, scratch_dir):
         """"""
-        # extract danglers from bam
-        print('>>> Extracting dangler reads from: {0}'.format(self.dangler_bam))
-        forward_dangler_strings = extract_forward_danglers(self.dangler_bam)
-        reverse_dangler_strings = extract_reverse_danglers(self.dangler_bam)
-        # store sam strings for latter tagging
-        sam_strings = forward_dangler_strings + reverse_dangler_strings
 
-        # convert dangler strings to fastq
-        fastq_lines = ''
-        fastq_lines += '\n'.join((forward_danglers_as_fastq(forward_dangler_strings)))
-        fastq_lines += '\n' + '\n'.join((reverse_danglers_as_fastq(reverse_dangler_strings)))
+        temp_fastq = os.path.join(scratch_dir, '1_danglerReads.fastq')
+        print('>>> Writing dangler reads to: {0}'.format(temp_fastq))
+
+        # extract danglers from bam
+        read_sources = []  # a list to accumulate generators
+        print('>>> Extracting dangler reads from: {0}'.format(self.dangler_bam))
+        read_sources.append(extract_forward_danglers(self.dangler_bam))
+        read_sources.append(extract_reverse_danglers(self.dangler_bam))
 
         if self.include_tails:
             # extract soft clipped tails from bam
             print('>>> Extracting soft clipped tails from: {0}'.format(self.dangler_bam))
-            foward_reads = extract_forward_read_of_mapped_pair(self.dangler_bam)
-            reverse_reads = extract_reverse_read_of_mapped_pair(self.dangler_bam)
-            sam_strings += foward_reads + reverse_reads
+            read_sources.append(extract_forward_soft_clips(self.dangler_bam, min_length=self.tail_minimum_length))
+            read_sources.append(extract_reverse_soft_clips(self.dangler_bam, min_length=self.tail_minimum_length))
 
-            # add soft clipped tail strings to fastq
-            fastq_lines += '\n' + '\n'.join(forward_soft_clipped_tails_as_fastq(foward_reads,
-                                                                                min_length=self.tail_minimum_length))
-            fastq_lines += '\n' + '\n'.join(reverse_soft_clipped_tails_as_fastq(reverse_reads,
-                                                                                min_length=self.tail_minimum_length))
+        # chain read sources into single generator
+        reads = reduce(chain, read_sources)
+
+        # split read generator into two new generators
+        reads_for_fastq, reads_for_tags = tee(reads)
+
+        # store read read mate elements as dict
+        mate_element_dict = get_mate_elements(reads_for_tags)
 
         # write temp fastq
-        temp_fastq = os.path.join(scratch_dir, '1_danglerReads.fastq')
         print('>>> Writing dangler reads to: {0}'.format(temp_fastq))
-        with open(temp_fastq, 'w') as f:
-            for line in fastq_lines:
-                f.write(line)
+        with open(temp_fastq, 'a') as f:
+            f.writelines(reads_as_fastq(reads_for_fastq))
 
         # map danglers to reference
         temp_bam = os.path.join(scratch_dir, '2_danglerReadsMappedToReference.bam')
@@ -144,7 +145,7 @@ class PreProcessProgram(object):
 
         # tag danglers and write output file
         print('>>> Adding tags to mapped danglers at: {0}'.format(self.output_bam))
-        tag_danglers(temp_bam, sam_strings, self.output_bam, self.mate_element_tag)
+        tag_danglers(temp_bam, mate_element_dict, self.output_bam, self.mate_element_tag)
 
         # index bam
         print('>>> Indexing: {0}'.format(self.output_bam))
@@ -278,6 +279,17 @@ def parse_sam_string(string):
             'QUAL': attributes[10]}
 
 
+def reads_as_fastq(read_dicts):
+    for read in read_dicts:
+        yield "@{0}\n{1}\n+\n{2}\n".format(read['QNAME'],
+                                           read['SEQ'],
+                                           read['QUAL'])
+
+
+def get_mate_elements(read_dicts):
+    return {read['QNAME']: read['RNAME'] for read in read_dicts}
+
+
 def extract_forward_danglers(bam):
     """
     Extracts unmapped reads with a mapped pair where the unmapped read does not have the reverse bit flag.
@@ -288,26 +300,9 @@ def extract_forward_danglers(bam):
     :return: sam formatted strings
     :rtype: list[str]
     """
-    return pysam.view('-F', '2304', '-F', '16', '-F', '8', '-f', '4', bam).splitlines()
-
-
-def forward_danglers_as_fastq(sam_strings):
-    """
-    Convert unmapped reads with a mapped pair to fastq format.
-    This function assumes the unmapped reads are not reverse complimented.
-
-    :param sam_strings: sam formatted strings
-    :type sam_strings: list[str]
-
-    :return: a list of fastq formatted reads
-    :rtype: list[str]
-    """
-    reads = iter(parse_sam_string(string) for string in sam_strings)
-    # convert to fastq strings
-    fastqs = ["@{0}\n{1}\n+\n{2}".format(read['QNAME'],
-                                         read['SEQ'],
-                                         read['QUAL']) for read in reads]
-    return fastqs
+    for line in pysam.view('-F', '2304', '-F', '16', '-F', '8', '-f', '4', bam).splitlines():
+        read = parse_sam_string(line)
+        yield read
 
 
 def extract_reverse_danglers(bam):
@@ -320,29 +315,14 @@ def extract_reverse_danglers(bam):
     :return: sam formatted strings
     :rtype: list[str]
     """
-    return pysam.view('-F', '2304', '-f', '16', '-F', '8', '-f', '4', bam).splitlines()
+    for line in pysam.view('-F', '2304', '-f', '16', '-F', '8', '-f', '4', bam).splitlines():
+        read = parse_sam_string(line)
+        read['SEQ'] = reverse_complement(read['SEQ'])
+        read['QUAL'] = read['QUAL'][::-1]
+        yield read
 
 
-def reverse_danglers_as_fastq(sam_strings):
-    """
-    Convert unmapped reads with a mapped pair to fastq format.
-    This function assumes the unmapped reads have been reverse complimented and will revert them.
-
-    :param sam_strings: sam formatted strings
-    :type sam_strings: list[str]
-
-    :return: a list of fastq formatted reads
-    :rtype: list[str]
-    """
-    reads = iter(parse_sam_string(string) for string in sam_strings)
-    # convert to fastq strings
-    fastqs = ["@{0}\n{1}\n+\n{2}".format(read['QNAME'],
-                                         reverse_complement(read['SEQ']),
-                                         read['QUAL'][::-1]) for read in reads]
-    return fastqs
-
-
-def extract_forward_read_of_mapped_pair(bam):
+def extract_forward_soft_clips(bam, min_length=38):
     """
     Extracts forward reads of proper mapped pairs.
 
@@ -355,42 +335,25 @@ def extract_forward_read_of_mapped_pair(bam):
     :return: sam formatted strings
     :rtype: list[str]
     """
-    return pysam.view('-F', '2304', '-f', '2', '-F', '16', '-F', '4', '-F', '8', bam).splitlines()
+    for line in pysam.view('-F', '2304', '-f', '2', '-F', '16', '-F', '4', '-F', '8', bam).splitlines():
+        read = parse_sam_string(line)
+        # extract soft clipped tail
+        clip = re.findall(r"^[0-9]+[S]", read['CIGAR'])
+        if clip:
+            # get clip length
+            clip = int(clip[0].strip('S'))
+            if clip >= min_length:
+                # use soft clipped section as read sequence and quality
+                read['SEQ'] = read['SEQ'][0: clip + 1]
+                read['QUAL'] = read['QUAL'][0: clip + 1]
+                yield read
+            else:
+                pass
+        else:
+            pass
 
 
-def forward_soft_clipped_tails_as_fastq(sam_strings, min_length=38):
-    """
-    Identify soft-clipped tails from forward reads to be used as additional danglers.
-
-    The soft-clipped section is converted to fastq format for re-alignment to the reference genome
-    if the clipped section is longer than the specified 'min_length'.
-
-    :param sam_strings: sam formatted strings
-    :type sam_strings: list[str]
-
-    :param min_length: minimum length of soft clipped section required (defaults to 20 base pairs)
-    :type min_length: int
-
-    :return: a list of fastq formatted reads
-    :rtype: list[str]
-    """
-    reads = [parse_sam_string(read) for read in sam_strings]
-    # extract soft clipped tails
-    clips = [re.findall(r"^[0-9]+[S]", read['CIGAR']) for read in reads]
-    # subset and pair reads with soft clipped tails
-    reads = [case for case in zip(reads, clips) if case[1]]
-    # clean up clip lengths
-    reads = [(read, int(clip[0].strip('S'))) for read, clip in reads]
-    # filter out short clips
-    reads = [(read, clip) for read, clip in reads if clip >= min_length]
-    # convert to fastq strings
-    fastqs = ['@{0}\n{1}\n+\n{2}'.format(read['QNAME'],
-                                         read['SEQ'][0: clip + 1],
-                                         read['QUAL'][0: clip + 1]) for read, clip in reads]
-    return fastqs
-
-
-def extract_reverse_read_of_mapped_pair(bam):
+def extract_reverse_soft_clips(bam, min_length=38):
     """
     Extracts reverse reads of proper mapped pairs.
 
@@ -403,39 +366,22 @@ def extract_reverse_read_of_mapped_pair(bam):
     :return: sam formatted strings
     :rtype: list[str]
     """
-    return pysam.view('-F', '2304', '-f', '2', '-f', '16', '-F', '4', '-F', '8', bam).splitlines()
-
-
-def reverse_soft_clipped_tails_as_fastq(sam_strings, min_length=38):
-    """
-    Identify soft-clipped tails from reverse reads to be used as additional danglers.
-
-    The reverse compliment soft-clipped section is converted to fastq format for re-alignment to the reference genome
-    if the clipped section is longer than the specified 'min_length'.
-
-    :param sam_strings: sam formatted strings
-    :type sam_strings: list[str]
-
-    :param min_length: minimum length of soft clipped section required (defaults to 20 base pairs)
-    :type min_length: int
-
-    :return: a list of fastq formatted reads
-    :rtype: list[str]
-    """
-    reads = [parse_sam_string(read) for read in sam_strings]
-    # extract soft clipped tails
-    clips = [re.findall(r"[0-9]+[S]$", read['CIGAR']) for read in reads]
-    # subset and pair reads with soft clipped tails
-    reads = [case for case in zip(reads, clips) if case[1]]
-    # clean up clip lengths
-    reads = [(read, int(clip[0].strip('S'))) for read, clip in reads]
-    # filter out short clips
-    reads = [(read, clip) for read, clip in reads if clip >= min_length]
-    # convert to fastq strings
-    fastqs = ['@{0}\n{1}\n+\n{2}'.format(read['QNAME'],
-                                         reverse_complement(read['SEQ'][-clip:]),
-                                         read['QUAL'][-clip:][::-1]) for read, clip in reads]
-    return fastqs
+    for line in pysam.view('-F', '2304', '-f', '2', '-f', '16', '-F', '4', '-F', '8', bam).splitlines():
+        read = parse_sam_string(line)
+        # extract soft clipped tail
+        clip = re.findall(r"[0-9]+[S]$", read['CIGAR'])
+        if clip:
+            # get clip length
+            clip = int(clip[0].strip('S'))
+            if clip >= min_length:
+                # use soft clipped section as read sequence and quality
+                read['SEQ'] = reverse_complement(read['SEQ'][-clip:])
+                read['QUAL'] = read['QUAL'][-clip:][::-1]
+                yield read
+            else:
+                pass
+        else:
+            pass
 
 
 def map_danglers_to_reference(fastq, reference_fasta, output_bam, threads):
@@ -460,23 +406,21 @@ def map_danglers_to_reference(fastq, reference_fasta, output_bam, threads):
     return subprocess.call([command], shell=True)
 
 
-def tag_danglers(dangler_bam, sam_strings, output_bam, tag):
+def tag_danglers(dangler_bam, mate_element_dict, output_bam, tag):
     """
     Tags mapped danglers with the id of the element which their mate mapped to and writes to new bam.
 
     :param dangler_bam: bam file of dangler reads aligned to reference genome
     :type dangler_bam: str
-    :param sam_strings: sam formatted strings of non-mapped reads with pair mapping to repeat-element
-    :type sam_strings: list[str]
+    :param mate_element_dict: dict of read-name, mate-element pairs
+    :type mate_element_dict: dict[str, str]
     :param output_bam: bam file of dangler reads aligned to reference genome and tagged with mate element
     :type output_bam: str
     """
-    sam_attributes = iter(line.split('\t') for line in sam_strings)
-    read_mate_elements = {attrs[0]: attrs[2] for attrs in sam_attributes}
     danglers_untagged = pysam.Samfile(dangler_bam, "rb")
     danglers_tagged = pysam.Samfile(output_bam, "wb", template=danglers_untagged)
     for read in danglers_untagged.fetch():
-        read.tags += [(tag, read_mate_elements[read.qname])]
+        read.tags += [(tag, mate_element_dict[read.qname])]
         danglers_tagged.write(read)
     danglers_tagged.close()
 
