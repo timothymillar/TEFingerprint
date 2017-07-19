@@ -279,14 +279,12 @@ class _ProcessDanglers(object):
                  input_bam,
                  reference,
                  directory,
-                 remove_files=True,
                  bwa_threads=1,
                  element_tag='ME',
                  soft_clip_min_length=38):
         self.input_bam = input_bam
         self.reference = reference
         self.directory = directory
-        self.remove_files = remove_files
         self.temp_dangler_bam = os.path.join(self.directory,
                                              self.TEMP_FILE_PREFIX +
                                              '0_danglers.bam')
@@ -474,8 +472,8 @@ class ProcessReverseTailClips(_ProcessDanglers):
                     # return the clipped section as a read
                     yield {'name': read.qname,
                            'element': read.reference_name,
-                           'sequence': reverse_complement(read.seq[0: clip + 1]),
-                           'quality': read.qual[0: clip + 1][::-1]}
+                           'sequence': reverse_complement(read.seq[-clip:]),
+                           'quality': read.qual[-clip:][::-1]}
                 else:
                     pass
             else:
