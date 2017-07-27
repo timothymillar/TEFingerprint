@@ -1,38 +1,12 @@
 #! /usr/bin/env python
 
 import os
-import re
 import pysam
-import numpy as np
 from itertools import product
+from collections import deque
 
 
-def _read_bam_strings(bam, reference, strand, quality):
-    """
-    Read  strings from an indexed Bam file.
-
-    :param bam: The path to an indexed sorted Bam file
-    :type bam: str
-    :param reference: Select reads from a single reference or slice of reference
-    :type reference: str
-    :param strand: Select reads that are found on a specific strand, '+' or '-'
-    :type strand: str
-    :param quality: minimum mapping quality
-    :type quality: int
-
-    :return: A list of Sam formatted strings
-    :rtype: list[str]
-    """
-    if strand == '+':
-        args = ('-q', str(quality), '-F', '20', bam, reference)
-    elif strand == '-':
-        args = ('-q', str(quality), '-f', '16', '-F', '4', bam, reference)
-    else:
-        raise ValueError
-    return np.array(pysam.view(*args).splitlines())
-
-
-def _read_bam_reference_lengths(bam):
+def _get_reference_lengths(bam):
     """
     Read lengths of references from a Bam file
 
@@ -48,119 +22,185 @@ def _read_bam_reference_lengths(bam):
         return references
 
 
-def extract_bam_references(*args):
+def _get_references(*args):
     """
-    Returns a list of references (including their range) from the header(s) of one or more bam file(s).
-    If multiple bam file are specified, they must all have identical references (including their range).
+    Return references names and intervals for a set of indexed bam files.
+    Bam files must have the same reverence names and lengths.
 
-    :param args: The path(s) to one or more indexed sorted Bam file(s)
-    :type args: iterable[str]
+    :param args: paths to one or more bam files
+    :type args: [str]
 
-    :return: A list of strings with the structure 'name:minimum-maximum'
+    :return: reference names and 1-based intervals
+    :rtype: generator[str, int, int]
+    """
+    bam_references = [_get_reference_lengths(bam) for bam in args]  # get references of all bams
+    assert all(ref == bam_references[0] for ref in bam_references)  # assert that references are the same for all bams
+    for name, length in bam_references[0].items():  # yield name and interval of references
+        yield name, 1, length
+
+
+def extract_bam_reference_strings(*args):
+    """
+    Return references names and intervals for a set of indexed bam files.
+    Bam files must have the same reverence names and lengths.
+
+    :param args: paths to one or more bam files
+    :type args: [str]
+
+    :return: reference names and 1-based intervals with the form 'name:start-stop'
     :rtype: list[str]
     """
-    bam_refs = [_read_bam_reference_lengths(bam) for bam in args]
-    assert all(ref == bam_refs[0] for ref in bam_refs)
-    references = ['{0}:1-{1}'.format(k, v) for k, v in bam_refs[0].items()]
-    return references
+    references = list(_get_references(*args))
+    strings = ['{0}:{1}-{2}'.format(*reference) for reference in references]
+    return strings
 
 
-def _cigar_mapped_length(cigar):
+def _parse_reference_strings(bams, reference_strings=None):
     """
-    Calculate length of the mapped section of a read from a sam CIGAR string.
-    This length is calculated based on the length of the section of reference genome which the
-    read is mapped to. Therefore, deletions are counted and insertions are not.
-    Values for the symbols 'M', 'D', 'N', 'P', 'X' and '=' count towards length.
+    Take a set of bams and a set of reference strings and return reference tuples.
+    Reference strings may be a reference name or name and interval with the form 'name:start-stop'
+    If no references are specified then all references recorded are returned.
 
-    :param cigar: A sam format CIGAR string thant may contain the symbols 'MIDNSHP=Q'
-    :type cigar: str
+    :param bams: paths to one or more bam files
+    :type bams: iterable[str]
+    :param reference_strings:
+    :type reference_strings: iterable[str]
 
-    :return: length of the mapped section of read as it appears on the reference genome
-    :rtype: int
+    :return: reference names and intervals suitable for use with pysam.AlignmentFile.fetch()
+    :rtype: generator[(str, int, int)]
     """
-    return sum([int(i[0:-1]) for i in re.findall(r"[0-9]+[MIDNSHP=X]", cigar) if (i[-1] in 'MDNP=X')])
+    valid_references = {i[0]: (i[1], i[2]) for i in _get_references(*bams)}
 
+    # return all valid references if none specified
+    if reference_strings is None:
+        for name, interval in valid_references.items():
+            yield name, interval[0], interval[1]
 
-def _parse_read_loci(strings):
-    """
-    Parses a collection of SAM formatted strings into a tuple generator.
-
-    :param strings: A collection of SAM formatted strings
-    :type strings: iterable[str]
-
-    :return: An iterable of mapped SAM read positions and names
-    :rtype: generator[(int, int, str)]
-    """
-    for string in strings:
-        attr = string.split("\t")
-        name = str(attr[0])
-        start = int(attr[3])
-        length = _cigar_mapped_length(attr[5])
-        stop = start + length - 1  # 1 based indexing used in SAM format
-        yield start, stop, name
-
-
-def _read_bam_ref_strand_loci(bam, reference, strand, categories, quality, tag='ME'):
-    """
-    Read a single strand of a single reference from a bam file and categories by their associated transposon.
-    If a reference is specified by name only, its range will be extracted from the bam and appended.
-
-    :param bam: path to a bam file
-    :type bam: str
-    :param reference: target reference of format 'name' or 'name:minimum-maximum'
-    :type reference: str
-    :param strand: target strand '+' or '-'
-    :type strand: str
-    :param categories: a list of transposon categories
-    :type categories: list[str]
-    :param quality: minimum mapping quality
-    :type quality: int
-    :param tag: the two letter sam tag containing the transposon associated with each read
-    :type tag: str
-
-    :return: a generator of category tuples and loci tuple generators
-    :rtype: generator[((str, str, str, str), generator[((int, int, str))])]
-    """
-    source = os.path.basename(bam)
-    strings = _read_bam_strings(bam, reference, strand, quality)
-    if ':' in reference:
-        pass
+    # else check and parse strings
     else:
-        reference += ':1-{0}'.format(_read_bam_reference_lengths(bam)[reference])
-    tag = '\t' + tag + ':[Zi]:'
-    tags = np.array([re.split(tag, s)[1].split('\t')[0] for s in strings])
-    for category in categories:
-        category_strings = strings[tags.astype('U{0}'.format(len(category))) == category]
-        loci = _parse_read_loci(category_strings)
-        yield (reference, strand, category, source), loci
+        for reference in reference_strings:
+            if ':' in reference:
+                # assume reference contains a string representation of an interval
+                name, interval = reference.split(':')
+                assert name in valid_references.keys()
+                start, stop = interval.split('-')
+                yield name, int(start), int(stop)
+            else:
+                # assume reference name only so use the full interval from the dict
+                assert reference in valid_references.keys()
+                interval = valid_references[reference]
+                yield reference, interval[0], interval[1]
 
 
-def _read_bam_ref_loci(bam, reference, categories, quality, tag='ME'):
+def _create_loci_keys(bams, references, categories):
     """
-    Read both strands of a single reference from a bam file and categories by their associated transposon.
-    If a reference is specified by name only, its range will be extracted from the bam and appended.
+    Returns all possible loci keys for a selection of bam files, references, categories
 
-    :param bam: path to a bam file
+    :param bams: list of bam files
+    :type bams: list[str]
+    :param references: list of references
+    :type references: list[(str, int, int)]
+    :param categories: list of categories
+    :type categories: list[str]
+
+    :return: all possible loci keys
+    :rtype: generator[(str, str, str, str)]
+    """
+    strands = ['+', '-']
+    for bam, reference, category, strand in product(bams, references, categories, strands):
+        yield '{0}:{1}-{2}'.format(*reference), strand, category, os.path.basename(bam)
+
+
+def _parse_reads(bam, references, categories, quality=0, tag='ME'):
+    """
+    Parses reads from an indexed bam file into a format suitable for TEFingerprint.
+    Reads are excluded if they are not in one of the specified reference-slices, categories or bellow the
+    minimum mapping quality
+
+    :param bam: path to an indexed bam file
     :type bam: str
-    :param reference: target reference of format 'name' or 'name:minimum-maximum'
-    :type reference: str
-    :param categories: a list of transposon categories
+    :param references: list of references with intervals
+    :type references: list[str]
+    :param categories: list of categories of reads i.e. transposon super families
+    :type categories: list[str]
+    :param quality: minimum mapping quality for reads
+    :type quality: int
+    :param tag: sam-tag containing the category information about each read (defaults to 'ME')
+    :type tag: str
+
+    :return: key-locus pairs that match the above criteria
+    :rtype: generator[((str, str, str, str), (int, int, str))]
+    """
+    alignment = pysam.AlignmentFile(bam, 'r')
+    for reference in references:
+        for read in alignment.fetch(*reference):
+            # filter out reads below specified mapping quality
+            if read.mapping_quality >= quality:
+                # filter out reads that are not in a specified category
+                category_matches = tuple(filter(lambda x: read.get_tag(tag).startswith(x), categories))
+                if category_matches:
+                    key = ('{0}:{1}-{2}'.format(*reference),
+                           '-' if read.is_reverse else '+',
+                           max(category_matches, key=len),
+                           os.path.basename(bam))
+                    # TODO: use pysam 0-based half-open indices or sam 1-based closed indices?
+                    locus = (read.blocks[0][0] + 1,  # adjust pysam indexing to sam indexing
+                             read.blocks[-1][-1],
+                             read.qname)
+                    yield key, locus
+                else:
+                    pass
+            else:
+                pass
+
+
+def _group_reads_by_keys(keys, reads):
+    """
+    Groups key-locus pairs by their keys
+
+    :param keys: keys of the form (reference, strand, category, source)
+    :type keys: iterable[str, str, str, str]
+    :param reads: key-locus pairs of the form ((reference, strand, category, source), (start, stop, name))
+    :type reads: iterable[(iterable[(str, str, str, str)], iterable[(int, int, str)])]
+
+    :return: key-loci pairs
+    :rtype: generator[((str, str, str, str), collections.Deque[(int, int, str)])]
+    """
+    queues = {key: deque() for key in keys}
+    for key, locus in reads:
+        queues[key].append(locus)
+
+    for key, loci in queues.items():
+        yield key, loci
+
+
+def _process_bams(bams, references, categories, quality=0, tag='ME'):
+    """
+    Processes a set of bams to extract and group reads into a format suitable for TEFingerprint.
+
+    :param bams: list of paths to bam files
+    :type bams: list[str]
+    :param references: list of references with intervals
+    :type references: list[(str, int, int)]
+    :param categories: list of categories of reads i.e. transposon super families
     :type categories: list[str]
     :param quality: minimum mapping quality
     :type quality: int
-    :param tag: the two letter sam tag containing the transposon associated with each read
+    :param tag: sam-tag containing the category information about each read (defaults to 'ME')
     :type tag: str
 
-    :return: a generator of category tuples and loci tuple generators
-    :rtype: generator[((str, str, str, str), generator[((int, int, str))])]
+    :return: key-loci pairs
+    :rtype: generator[((str, str, str, str), collections.Deque[(int, int, str)])]
     """
-    for block in _read_bam_ref_strand_loci(bam, reference, '+', categories, quality, tag=tag):
-        yield block
-    for block in _read_bam_ref_strand_loci(bam, reference, '-', categories, quality, tag=tag):
-        yield block
+    keys = _create_loci_keys(bams, references, categories)
+    for bam in bams:
+        reads = _parse_reads(bam, references, categories, quality=quality, tag=tag)
+        blocks = _group_reads_by_keys(keys, reads)
+        for block in blocks:
+            yield block
 
 
-def extract_bam_reads(bams, categories, references=None, quality=30, tag='ME'):
+def extract_bam_reads(bams, categories, references=None, quality=0, tag='ME'):
     """
     Extract reads from one or more bam file(s) and categories reads by their reference, strand, associated transposon,
     and source bam file.
@@ -186,17 +226,12 @@ def extract_bam_reads(bams, categories, references=None, quality=30, tag='ME'):
     if isinstance(categories, str):
         categories = [categories]
 
-    if references is None:
-        references = extract_bam_references(*bams)
     if isinstance(references, str):
         references = [references]
 
-    # run jobs
-    jobs = product(bams, references)
-    for bam, reference in jobs:
-        for block in _read_bam_ref_loci(bam, reference, categories, quality, tag=tag):
-            yield block
+    references = list(_parse_reference_strings(bams, reference_strings=references))
 
+    return _process_bams(bams, references, categories, quality=quality, tag=tag)
 
 if __name__ == '__main__':
     pass

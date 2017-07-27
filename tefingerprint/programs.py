@@ -94,7 +94,7 @@ class FingerprintProgram(object):
                             help='Maximum number of cpu threads to be used.')
         args = parser.parse_args(args)
         if args.references == [None]:
-            args.references = bamio.extract_bam_references(*args.bams)
+            args.references = bamio.extract_bam_reference_strings(*args.bams)
         return args
 
 
@@ -219,7 +219,7 @@ class ComparisonProgram(object):
                             help='Maximum number of cpu threads to be used.')
         args = parser.parse_args(args)
         if args.references == [None]:
-            args.references = bamio.extract_bam_references(*args.bams)
+            args.references = bamio.extract_bam_reference_strings(*args.bams)
         return args
 
 
