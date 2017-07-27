@@ -6,9 +6,7 @@ import subprocess
 import os
 import shutil
 import sys
-import re
 from tempfile import mkdtemp
-from enum import IntFlag
 
 
 class PreProcessProgram(object):
@@ -163,6 +161,19 @@ class PreProcessProgram(object):
 
 
 def extract_informative_reads(bam, include_tails=True, minimum_tail=38):
+    """
+    Extracts informative reads from a bam file of paired end reads aligned to a library of transposons.
+
+    :param bam: path to a bam file of paired end reads aligned to a library of transposons
+    :type bam: str
+    :param include_tails: whether or not to include soft clipped tails as an additional source of information
+    :type include_tails: bool
+    :param minimum_tail: minimum length of tail soft clips to include
+    :type minimum_tail: int
+
+    :return: parsed and filtered reads relating information about location of transposon insertions
+    :rtype: generator[dict[str: str]]
+    """
     alignment = pysam.AlignmentFile(bam, 'r')
     for read in alignment:
         if any((read.is_secondary, read.is_supplementary, read.mate_is_unmapped)):
@@ -224,6 +235,17 @@ def extract_informative_reads(bam, include_tails=True, minimum_tail=38):
 
 
 def capture_elements_and_write_fastq(reads, fastq):
+    """
+    Captures writes parsed reads to a fastq file and returns a dictionary of read-element pairs.
+
+    :param reads: sequence of dictionaries of reads with fields 'name', 'element', sequence' and 'quality'
+    :type reads: iterator[dict[str: str]]
+    :param fastq: path to fastq to write
+    :type fastq: str
+
+    :return: dictionary of read-element pairs
+    :rtype: dict[str, str]
+    """
     element_tags = {}
 
     with open(fastq, 'w') as fq:
@@ -269,7 +291,7 @@ def check_programs_installed(*args):
     return True
 
 
-def map_danglers_to_reference(fastq, reference_fasta, output_bam, threads):
+def map_danglers_to_reference(fastq, reference_fasta, output_bam, threads=1):
     """
     Maps dangler reads (non-mapped reads with pair mapping to repeat-element) to reference genome and writes a bam file.
 
@@ -286,8 +308,8 @@ def map_danglers_to_reference(fastq, reference_fasta, output_bam, threads):
     :rtype: int
     """
     check_programs_installed('bwa', 'samtools')
-    command = ' '.join(['bwa', 'mem', '-t', threads, reference_fasta, fastq,
-                        '| samtools view -Su - | samtools sort - -o', output_bam])
+    command = 'bwa mem -t {threads} {reference} {fastq} | samtools view -Su - | samtools sort - -o {bam}'
+    command = command.format(threads=threads, reference=reference_fasta, fastq=fastq, bam=output_bam)
     return subprocess.call([command], shell=True)
 
 
