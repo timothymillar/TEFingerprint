@@ -120,7 +120,7 @@ def _parse_reads(bam, references, categories, quality=0, tag='ME'):
     :param bam: path to an indexed bam file
     :type bam: str
     :param references: list of references with intervals
-    :type references: list[str]
+    :type references: list[(str, int, int)]
     :param categories: list of categories of reads i.e. transposon super families
     :type categories: list[str]
     :param quality: minimum mapping quality for reads
