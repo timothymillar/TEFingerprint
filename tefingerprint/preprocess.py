@@ -186,14 +186,14 @@ def extract_informative_reads(bam, include_tails=True, minimum_tail=38):
                 if read.is_reverse:
                     # read is a reverse dangler
                     yield {'name': read.qname,
-                           'element': read.reference_name,
+                           'element': read.next_reference_name,  # will be identical to read.reference_name
                            'sequence': reverse_complement(read.seq),
                            'quality': read.qual[::-1]}
 
                 else:
                     # read is a forward dangler
                     yield {'name': read.qname,
-                           'element': read.reference_name,
+                           'element': read.next_reference_name,  # will be identical to read.reference_name
                            'sequence': read.seq,
                            'quality': read.qual}
 
