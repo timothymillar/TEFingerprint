@@ -3,7 +3,8 @@
 import re
 import sys
 import argparse
-import numpy as np
+import itertools
+from functools import reduce
 
 
 class FilterGffProgram(object):
@@ -173,7 +174,8 @@ def _matches_filter(feature, filt):
     :param filt: A dictionary with keys 'attribute', 'operator' and 'value'
     :param filt: dict[str, str]
 
-    :return:
+    :return: boolean
+    :rtype: bool
     """
     try:
         feature[filt['attribute']]
@@ -185,6 +187,21 @@ def _matches_filter(feature, filt):
         values = feature[filt['attribute']].split(',')
         # check if any values meet filter requirement
         return any([_FILTER_DISPATCH[filt['operator']](value, filt['value']) for value in values])
+
+
+def _matches_filters(feature, filters):
+    """
+    Check if feature meats requirement of a list of filters.
+
+    :param feature: A dictionary of attribute-value pairs
+    :type feature: dict[str, str]
+    :param filters: A list of dictionaries with keys 'attribute', 'operator' and 'value'
+    :param filters: list[dict[str, str]]
+
+    :return: boolean
+    :rtype: bool
+    """
+    return all(_matches_filter(feature, filt) for filt in filters)
 
 
 def filter_features(feature_strings, column_filters=None, attribute_filters=None):
@@ -209,27 +226,24 @@ def filter_features(feature_strings, column_filters=None, attribute_filters=None
     :type attribute_filters: list[dict[str, str]]
 
     :return: a subset of gff3 formatted feature strings
-    :rtype: list[str]
+    :rtype: generator[str]
     """
     if column_filters is None:
-        column_filters = []
-    if attribute_filters is None:
-        attribute_filters = []
-    keep = np.empty(len(feature_strings), dtype=bool)
-    keep.fill(True)
-    if len(column_filters) > 0:
-        columns = [_parse_gff_columns(string) for string in feature_strings]
+        column_matches = (True for _ in range(len(feature_strings)))
+    else:
         column_filters = [_parse_filter_string(string) for string in column_filters]
-        for filt in column_filters:
-            match = np.array([_matches_filter(col, filt) for col in columns], dtype=bool)
-            keep = np.logical_and(keep, match)
-    if len(attribute_filters) > 0:
-        attributes = [_parse_gff_attributes(string) for string in feature_strings]
+        feature_columns = (_parse_gff_columns(string) for string in feature_strings)
+        column_matches = (_matches_filters(feat, column_filters) for feat in feature_columns)
+
+    if attribute_filters is None:
+        attribute_matches = (True for _ in range(len(feature_strings)))
+    else:
         attribute_filters = [_parse_filter_string(string) for string in attribute_filters]
-        for filt in attribute_filters:
-            match = np.array([_matches_filter(attr, filt) for attr in attributes], dtype=bool)
-            keep = np.logical_and(keep, match)
-    return (np.array(feature_strings)[keep]).tolist()
+        feature_attributes = (_parse_gff_attributes(string) for string in feature_strings)
+        attribute_matches = (_matches_filters(feat, attribute_filters) for feat in feature_attributes)
+
+    keep = (c and a for c, a in zip(column_matches, attribute_matches))
+    return itertools.compress(feature_strings, keep)
 
 
 if __name__ == '__main__':
