@@ -135,8 +135,8 @@ class PreProcessProgram(object):
             if not os.path.exists(self.temp_dir):
                 os.makedirs(self.temp_dir)
         else:
-            print('>>> Creating temporary directory at: {0}'.format(self.temp_dir))
             self.temp_dir = mkdtemp()
+            print('>>> Creating temporary directory at: {0}'.format(self.temp_dir))
 
         # attempt running pipeline
         print('>>> Running Pipeline')
