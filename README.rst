@@ -11,7 +11,13 @@ TEFingerprint requires the following inputs:
 This project is currently in a alpha state and rapidly changing.
 please see the linked documentation for more information:
 
-- `Installation <docs/install.rst>`
-- `Command line usage <docs/install.rst>`
-- `Description of method <docs/method.rst>`
+- `Installation`_
+- `Command line usage`_
+- `Description of methods`_
 
+There are also `PDF versions`_ of some documentation.
+
+.. _`Installation`: docs/install.rst
+.. _`Command line usage`: docs/usage.rst
+.. _`Description of methods`: docs/method.rst
+.. _`PDF versions`: docs/pdf/
