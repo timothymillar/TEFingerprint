@@ -5,7 +5,7 @@ This is record of feature/roadmap ideas
 1. Preprocessing:
 	- [x] A simple python wrapper for the established process to identifies the “dangler” reads and  map them against the reference. 
 	- [x] Store the name of the TE each dangler represents as a SAM tag rather than appended to the name.
-	- 	[ ] Use soft clipped reads to get more accurate location of insertion
+	- [x] Use soft clipped reads to get more accurate location of insertion
 
 2. Fingerprinting:
 	- [x] Basic “flat” clustering
