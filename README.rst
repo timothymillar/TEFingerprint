@@ -2,14 +2,15 @@ TEFingerprint
 =============
 
 A Python 3 library and command line tool for transposon fingerprinting.
+This project is currently in a alpha state and rapidly changing.
+
 TEFingerprint requires the following inputs:
 
 - Genomic paired end reads from target organism
 - Reference genome of target organism
 - Reference library of known tansposons for target organism
 
-This project is currently in a alpha state and rapidly changing.
-please see the linked documentation for more information:
+Please see the linked documentation for more information:
 
 - `Installation`_
 - `Command line usage`_
