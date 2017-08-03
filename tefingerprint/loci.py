@@ -554,9 +554,14 @@ class FingerPrint(GenomeLoci):
         """
         array = self.as_array()
         header = ','.join(array.dtype.names)
-        data = str(array).strip('[]').replace("(", "").replace(")", "").replace("'", '"').replace(" ", "")
-        data = re.sub(r':\S*?"', '"', data)
-        return header + '\n' + data
+        data = ('"{0}","{1}","{2}","{3}",{4},{5}'.format(record['reference'].split(':')[0],
+                                                         record['strand'],
+                                                         record['category'],
+                                                         record['source'],
+                                                         record['start'],
+                                                         record['stop']) for record in array)
+
+        return header + '\n' + '\n'.join(data) + '\n'
 
     @staticmethod
     def _format_gff_feature(record):
@@ -881,9 +886,15 @@ class Comparison(GenomeLoci):
         """
         array = self.as_flat_array()
         header = ','.join(array.dtype.names)
-        data = str(array).strip('[]').replace("(", "").replace(")", "").replace("'", '"').replace(" ", "")
-        data = re.sub(r':\S*?"', '"', data)
-        return header + '\n' + data
+        data = ('"{0}","{1}","{2}",{3},{4},"{5}",{6},{7}'.format(record['reference'].split(':')[0],
+                                                                 record['strand'],
+                                                                 record['category'],
+                                                                 record['start'],
+                                                                 record['stop'],
+                                                                 record['source'],
+                                                                 record['count'],
+                                                                 record['proportion']) for record in array)
+        return header + '\n' + '\n'.join(data) + '\n'
 
     def as_character_array(self):
         """
