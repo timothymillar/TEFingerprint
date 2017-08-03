@@ -869,6 +869,8 @@ class TestComparison:
                   '"chr1","+","Gypsy",35,40,"bam2",0,0.0']
         answer.sort()
 
+        assert query == answer
+
     def test_as_character_csv(self):
         """"""
         query = {('chr1:1-3000', '+', 'Copia'): np.array([(0, 20, ['bam1', 'bam2'], [3, 0], [1.0, 0.0]),
