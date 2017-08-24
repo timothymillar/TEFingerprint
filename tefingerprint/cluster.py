@@ -344,7 +344,7 @@ class UDBSCANxH(UDBSCANx):
             yield item
 
     @staticmethod
-    def _traverse_hudc_tree(points, epsilon_maximum, min_points):
+    def _traverse_tree(points, epsilon_maximum, min_points):
         """
         Traverse a tree of nested density clusters and recursively identify clusters based on their area.
         This method is intimately tied to method 'hudc'.
@@ -364,31 +364,71 @@ class UDBSCANxH(UDBSCANx):
 
         if fork_epsilon is None:
             # The cluster doesn't fork so it has no children
-            # Epsilon_minimum would equal the minimum of core distances but it's not neededE
-            return points['index'][0], points['index'][-1] + 1
+            # Epsilon_minimum is equal the minimum of core distances
+            epsilon_minimum = np.min(points['core_dist'])
+        else:
+            # If a cluster forks into children then it's minimum epsilon is the value at which forks
+            epsilon_minimum = fork_epsilon
 
-        # If a cluster forks into children then it's minimum epsilon is the value at which forks
-        epsilon_minimum = fork_epsilon
-
-        # Compare support for cluster and its children
+        # calculate support for cluster and total of children
         support = np.sum(epsilon_maximum - np.maximum(epsilon_minimum, points['core_dist']))
         support_children = np.sum(np.maximum(0, epsilon_minimum - points['core_dist']))
 
+        # bounds of cluster are index of input array, not genome positions
+        cluster = {'index': (points['index'][0], points['index'][-1] + 1),
+                   'epsilon_maximum': epsilon_maximum,
+                   'epsilon_minimum': epsilon_minimum,
+                   'support': support,
+                   'support_children': support_children}
+
+        if fork_epsilon is None:
+            # cluster has no children
+            cluster['stability_hat'] = support
+            cluster['selected'] = True
+            cluster['children'] = []
+
         if support > support_children:
-            # Parent is supported so return slice indices
-            return points['index'][0], points['index'][-1] + 1
+            # children cannot be selected
+            cluster['stability_hat'] = support
+            cluster['selected'] = True
+            cluster['children'] = []
 
         else:
-            # Combined support of children is larger so divide and repeat recursively:
+            # Recurse down to children:
+            cluster['stability_hat'] = None
+            cluster['selected'] = False
             # A minimum epsilon of 5 means the child clusters technically starts at epsilon 4.999...
             # we calculate the child clusters using epsilon 4 which will produce the same clusters as 4.999...
             child_cluster_bounds = UDBSCANxH._cluster(points['value'], epsilon_minimum - 1, min_points)
             child_points = (points[left:right] for left, right in child_cluster_bounds)
             # but then use epsilon 5 as the new maximum epsilon so that support is calculated from epsilon 4.999...
-            return [UDBSCANxH._traverse_hudc_tree(points, epsilon_minimum, min_points) for points in child_points]
+            cluster['children'] = [UDBSCANxH._traverse_tree(points, epsilon_minimum, min_points)
+                                   for points in child_points]
+
+        return cluster
 
     @staticmethod
-    def udbscanxh(array, min_points, max_eps=None, min_eps=None):
+    def _node_stability(node):
+        if node['stability_hat']:
+            return node['stability_hat']
+        else:
+            child_stability_hat = sum([UDBSCANxH._node_stability(child) for child in node['children']])
+            if node['support'] >= child_stability_hat:
+                node['selected'] = True
+                node['stability_hat'] = node['support']
+            else:
+                node['stability_hat'] = child_stability_hat
+        return node['stability_hat']
+
+    @staticmethod
+    def _select_tree_clusters(node):
+        if node['selected']:
+            return node['index']
+        else:
+            return [UDBSCANxH._select_tree_clusters(child) for child in node['children']]
+
+    @staticmethod
+    def _build_tree(array, min_points, max_eps=None, min_eps=None):
         """
         See documentation for :class: `UDBSCANxH`.
 
@@ -430,8 +470,21 @@ class UDBSCANxH(UDBSCANx):
             child_points = (points[left:right] for left, right in initial_cluster_bounds)
             # recursively run on all clusters
             # initialise with max_eps + 1 to ensure points with core_distance == max_eps are counted
-            clusters = [UDBSCANxH._traverse_hudc_tree(points, max_eps + 1, min_points) for points in child_points]
-            return np.fromiter(UDBSCANxH._flatten_list(clusters), dtype=UDBSCANx._DTYPE_SLICE)
+            trees = [UDBSCANxH._traverse_tree(points, max_eps + 1, min_points) for points in child_points]
+
+            # calculate node stability
+            for tree in trees:
+                UDBSCANxH._node_stability(tree)
+
+            return trees
+            #return np.fromiter(UDBSCANxH._flatten_list(clusters), dtype=UDBSCANx._DTYPE_SLICE)
+
+    @staticmethod
+    def udbscanxh(array, min_points, max_eps=None, min_eps=None):
+        tree = UDBSCANxH._build_tree(array, min_points, max_eps=max_eps, min_eps=min_eps)
+        slices = [UDBSCANxH._select_tree_clusters(node) for node in tree]
+        slices = np.fromiter(UDBSCANxH._flatten_list(slices), dtype=UDBSCANxH._DTYPE_SLICE)
+        return slices
 
     def fit(self, array):
         """
