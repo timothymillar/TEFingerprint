@@ -402,7 +402,7 @@ class UDBSCANxH(UDBSCANx):
             child_cluster_bounds = UDBSCANxH._cluster(points['value'], epsilon_minimum - 1, min_points)
             child_points = (points[left:right] for left, right in child_cluster_bounds)
             # but then use epsilon 5 as the new maximum epsilon so that support is calculated from epsilon 4.999...
-            cluster['children'] = [UDBSCANxH._traverse_tree(points, epsilon_minimum, min_points)
+            cluster['children'] = [UDBSCANxH._traverse_tree(points, epsilon_maximum, min_points)
                                    for points in child_points]
 
         return cluster
