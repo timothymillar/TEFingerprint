@@ -372,7 +372,7 @@ class UDBSCANxH(UDBSCANx):
 
         # calculate support for cluster and total of children
         support = np.sum(epsilon_maximum - np.maximum(epsilon_minimum, points['core_dist']))
-        support_children = np.sum(np.maximum(0, epsilon_minimum - points['core_dist']))
+        support_children = np.sum(np.maximum(0, epsilon_maximum - points['core_dist'])) - support
 
         # bounds of cluster are index of input array, not genome positions
         cluster = {'index': (points['index'][0], points['index'][-1] + 1),
@@ -387,11 +387,11 @@ class UDBSCANxH(UDBSCANx):
             cluster['selected'] = True
             cluster['children'] = []
 
-        if support > support_children:
-            # children cannot be selected
-            cluster['stability_hat'] = support
-            cluster['selected'] = True
-            cluster['children'] = []
+        #if support > support_children:
+        #    # children cannot be selected
+        #    cluster['stability_hat'] = support
+        #    cluster['selected'] = True
+        #    cluster['children'] = []
 
         else:
             # Recurse down to children:
