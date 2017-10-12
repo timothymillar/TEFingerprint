@@ -39,6 +39,13 @@ def _extract_dtype_field_names(item, prefix=''):
         pass
 
 
+def _tabular_str(value):
+    if isinstance(value, str):
+        return '"{0}"'.format(value)
+    else:
+        return str(value)
+
+
 def _loci_melter(array):
     """
     Combine overlapping loci into a single locus.
@@ -835,9 +842,9 @@ class BinCounts(GenomeLoci):
         return array
 
     def as_tabular_lines(self, sep=','):
-        yield sep.join(_extract_dtype_field_names(self._DTYPE_ARRAY.descr)) + '\n'
+        yield sep.join(map(_tabular_str, _extract_dtype_field_names(self._DTYPE_ARRAY.descr))) + '\n'
         for f in self.features():
-            yield sep.join(map(str, _flatten_numpy_element(f))) + '\n'
+            yield sep.join(map(_tabular_str, _flatten_numpy_element(f))) + '\n'
 
 
 class Comparison(GenomeLoci):
