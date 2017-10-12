@@ -1,7 +1,8 @@
 #! /usr/bin/env python
 
-import re
 import numpy as np
+from collections import Counter
+from functools import reduce
 from tefingerprint import bamio
 from tefingerprint import cluster
 
@@ -447,6 +448,18 @@ class ReadLoci(GenomeLoci):
                 d[group] = loci["start"]
         return d
 
+    def named_tips(self):
+        """
+        """
+        d = {}
+        for group, loci in self.items():
+            if group.strand == '+':
+                d[group] = loci[['name', "stop"]]
+            else:
+                d[group] = loci[['name', "start"]]
+            d[group].dtype.names = ('name', 'tip')
+        return d
+
     def fingerprint(self, min_reads, eps, min_eps=0, hierarchical=True):
         """
         Fingerprint a :class:`ReadLoci` object based on density of read tips.
@@ -683,6 +696,82 @@ class ComparativeBins(GenomeLoci):
         comparison = Comparison()
         comparison._dict = results
         return comparison
+
+    def count_reads(self, reads, trim=True, n_common_elements=0):
+        assert isinstance(reads, ReadLoci)
+        sources = np.array(list({key.source for key in list(reads.keys())}))
+        sources.sort()
+
+        dtype_element_count = np.dtype([('name', np.str_, 256),
+                                        ('count', np.int64)])
+
+        dtype_elements = np.dtype([('element_{0}'.format(i), dtype_element_count) for i in range(n_common_elements)])
+
+        dtype_sample_count = np.dtype([('name', np.str_, 256),
+                                       ('count', np.int64),
+                                       ('elements', dtype_elements)])
+
+        dtype_samples = np.dtype([('sample_{0}'.format(i), dtype_sample_count) for i, _ in enumerate(sources)])
+
+        dtype_loci = np.dtype([('category', np.str_, 256),
+                               ('start', np.int64),
+                               ('stop', np.int64),
+                               ('median', np.int64),
+                               ('counts', dtype_samples)])
+
+        # dictionary of tips from all reads
+        all_tips = reads.named_tips()
+
+        # dictionary to collect result
+        new = {}
+
+        for group, bins in self.items():
+            new_loci = np.empty(len(bins), dtype=dtype_loci)
+
+            # if the loci aren't trimmed then they are the same as the bins
+            new_loci['start'] = bins['start']
+            new_loci['stop'] = bins['stop']
+
+            # sources are always the same
+            for i, name in enumerate(sources):
+                new_loci['counts']['sample_{0}'.format(i)]['name'] = name
+
+            # list of dictionary keys comparable to this group of bins
+            comparable_keys = [LociKey(*group, sample) for sample in sources]
+
+            # list of read tips comparable to this group of bins
+            comparable_tips = [all_tips[key] for key in comparable_keys]
+
+            # iterate through the new loci
+            for locus in new_loci:
+
+                # named reads tips within this locus
+                local_tips = [tips[np.logical_and(tips['tip'] >= locus['start'], tips['tip'] <= locus['stop'])] for tips in comparable_tips]
+
+                # counts of reads
+                for i, r in enumerate(local_tips):
+                    sample = 'sample_{0}'.format(i)
+
+                    # total count of reads from each sample
+                    locus['counts'][sample]['count'] = len(r)
+
+                    # most common elements per sample per locus
+                    for j, pair in enumerate(Counter(r['name']).most_common(n_common_elements)):
+                        locus['counts'][sample]['elements']['element_{0}'.format(j)] = pair
+
+                # find median of cluster
+                combined_tips = reduce(np.append, (tips['tip'] for tips in local_tips))
+                locus['median'] = np.median(combined_tips)
+
+                # trim the potentially buffered locus to the first and last read tips
+                if trim:
+                    locus['start'] = np.min(combined_tips)
+                    locus['stop'] = np.max(combined_tips)
+
+            # add loci to new dict
+            new[group] = new_loci
+
+        return new
 
 
 class Comparison(GenomeLoci):
