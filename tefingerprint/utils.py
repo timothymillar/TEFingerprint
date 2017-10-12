@@ -2,6 +2,7 @@
 
 import numpy as np
 
+
 def flatten_numpy_element(item):
     """
     Flatten a nested numpy element.

@@ -800,6 +800,14 @@ class BinCounts(GenomeLoci):
         array = array[index]
         return array
 
+    def as_flat_array(self):
+        data = map(tuple, map(flatten_numpy_element, self.features()))
+        array = np.fromiter(data, flatten_dtype(dtype=self._DTYPE_ARRAY), count=len(self))
+        index = np.argsort(array[['reference', 'start', 'stop', 'category']],
+                           order=('reference', 'start', 'stop', 'category'))
+        array = array[index]
+        return array
+
     def as_tabular_lines(self, sep=','):
         yield sep.join(map(quote_str, flatten_dtype_fields(self._DTYPE_ARRAY.descr))) + '\n'
         for f in self.features():
