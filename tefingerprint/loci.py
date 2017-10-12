@@ -5,45 +5,7 @@ from collections import Counter
 from functools import reduce
 from tefingerprint import bamio
 from tefingerprint import cluster
-
-
-def _flatten_numpy_element(item):
-    """
-    Flatten a nested numpy element.
-
-    :param item: a numpy element
-    :type item: np.void[any] | any
-
-    :return: A generator
-    :rtype: generator[any]
-    """
-    if isinstance(item, np.void) or isinstance(item, tuple):
-        for element in item:
-            for item in _flatten_numpy_element(element):
-                yield item
-    else:
-        yield item
-
-
-def _extract_dtype_field_names(item, prefix=''):
-    if isinstance(item, list):
-        for element in item:
-            for item in _extract_dtype_field_names(element, prefix=prefix):
-                yield item
-    if isinstance(item, tuple):
-        yield prefix + item[0]
-        prefix += str(item[0]) + '_'
-        for item in _extract_dtype_field_names(item[1], prefix=prefix):
-            yield item
-    else:
-        pass
-
-
-def _tabular_str(value):
-    if isinstance(value, str):
-        return '"{0}"'.format(value)
-    else:
-        return str(value)
+from tefingerprint.utils import flatten_numpy_element, flatten_dtype, flatten_dtype_fields, quote_str
 
 
 def _loci_melter(array):
@@ -828,9 +790,6 @@ class BinCounts(GenomeLoci):
         """
         Convert all loci to a structured array sorted by location.
 
-        This implementation differs that of parent class because the `fromiter()` method doesn't work for arrays
-        containing regular python objects.
-
         :return: a structured array of loci
         :rtype: :class:`numpy.ndarray`
         """
@@ -842,9 +801,9 @@ class BinCounts(GenomeLoci):
         return array
 
     def as_tabular_lines(self, sep=','):
-        yield sep.join(map(_tabular_str, _extract_dtype_field_names(self._DTYPE_ARRAY.descr))) + '\n'
+        yield sep.join(map(quote_str, flatten_dtype_fields(self._DTYPE_ARRAY.descr))) + '\n'
         for f in self.features():
-            yield sep.join(map(_tabular_str, _flatten_numpy_element(f))) + '\n'
+            yield sep.join(map(quote_str, flatten_numpy_element(f))) + '\n'
 
 
 class Comparison(GenomeLoci):
