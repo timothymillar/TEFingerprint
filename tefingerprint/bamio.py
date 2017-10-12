@@ -146,7 +146,7 @@ def _parse_reads(bam, references, categories, quality=0, tag='ME'):
                     # TODO: use pysam 0-based half-open indices or sam 1-based closed indices?
                     locus = (read.blocks[0][0] + 1,  # adjust pysam indexing to sam indexing
                              read.blocks[-1][-1],
-                             read.qname)
+                             read.get_tag(tag))
                     yield key, locus
                 else:
                     pass
