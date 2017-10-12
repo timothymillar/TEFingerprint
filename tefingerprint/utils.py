@@ -3,6 +3,13 @@
 import numpy as np
 
 
+def append_dtypes(*args):
+    descr = []
+    for dtype in args:
+        descr += dtype.descr
+    return np.dtype(descr)
+
+
 def flatten_numpy_element(item):
     """
     Flatten a nested numpy element.

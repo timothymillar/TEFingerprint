@@ -5,7 +5,7 @@ from collections import Counter
 from functools import reduce
 from tefingerprint import bamio
 from tefingerprint import cluster
-from tefingerprint.utils import flatten_numpy_element, flatten_dtype, flatten_dtype_fields, quote_str
+from tefingerprint.utils import append_dtypes, flatten_numpy_element, flatten_dtype, flatten_dtype_fields, quote_str
 
 
 def _loci_melter(array):
@@ -772,7 +772,7 @@ class ComparativeBins(GenomeLoci):
             new_dict[group] = new_loci
 
         dtype_key = self._DTYPE_KEY
-        dtype_array = np.dtype(dtype_key.descr + dtype_loci.descr)
+        dtype_array = append_dtypes(dtype_key, dtype_loci)
 
         new_object = BinCounts()
         new_object._dict = new_dict
