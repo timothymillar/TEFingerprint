@@ -7,6 +7,38 @@ from tefingerprint import bamio
 from tefingerprint import cluster
 
 
+def _flatten_numpy_element(item):
+    """
+    Flatten a nested numpy element.
+
+    :param item: a numpy element
+    :type item: np.void[any] | any
+
+    :return: A generator
+    :rtype: generator[any]
+    """
+    if isinstance(item, np.void) or isinstance(item, tuple):
+        for element in item:
+            for item in _flatten_numpy_element(element):
+                yield item
+    else:
+        yield item
+
+
+def _extract_dtype_field_names(item, prefix=''):
+    if isinstance(item, list):
+        for element in item:
+            for item in _extract_dtype_field_names(element, prefix=prefix):
+                yield item
+    if isinstance(item, tuple):
+        yield prefix + item[0]
+        prefix += str(item[0]) + '_'
+        for item in _extract_dtype_field_names(item[1], prefix=prefix):
+            yield item
+    else:
+        pass
+
+
 def _loci_melter(array):
     """
     Combine overlapping loci into a single locus.
@@ -713,8 +745,7 @@ class ComparativeBins(GenomeLoci):
 
         dtype_samples = np.dtype([('sample_{0}'.format(i), dtype_sample_count) for i, _ in enumerate(sources)])
 
-        dtype_loci = np.dtype([('category', np.str_, 256),
-                               ('start', np.int64),
+        dtype_loci = np.dtype([('start', np.int64),
                                ('stop', np.int64),
                                ('median', np.int64),
                                ('counts', dtype_samples)])
@@ -723,7 +754,7 @@ class ComparativeBins(GenomeLoci):
         all_tips = reads.named_tips()
 
         # dictionary to collect result
-        new = {}
+        new_dict = {}
 
         for group, bins in self.items():
             new_loci = np.empty(len(bins), dtype=dtype_loci)
@@ -769,9 +800,44 @@ class ComparativeBins(GenomeLoci):
                     locus['stop'] = np.max(combined_tips)
 
             # add loci to new dict
-            new[group] = new_loci
+            new_dict[group] = new_loci
 
-        return new
+        dtype_key = self._DTYPE_KEY
+        dtype_array = np.dtype(dtype_key.descr + dtype_loci.descr)
+
+        new_object = BinCounts()
+        new_object._dict = new_dict
+        new_object._DTYPE_LOCI = dtype_loci
+        new_object._DTYPE_KEY = dtype_key
+        new_object.__DTYPE_ARRAY = dtype_array
+
+        return new_object
+
+
+class BinCounts(GenomeLoci):
+    """"""
+
+    def as_array(self):
+        """
+        Convert all loci to a structured array sorted by location.
+
+        This implementation differs that of parent class because the `fromiter()` method doesn't work for arrays
+        containing regular python objects.
+
+        :return: a structured array of loci
+        :rtype: :class:`numpy.ndarray`
+        """
+
+        array = np.fromiter(self.features(), dtype=self._DTYPE_ARRAY, count=len(self))
+        index = np.argsort(array[['reference', 'start', 'stop', 'category']],
+                           order=('reference', 'start', 'stop', 'category'))
+        array = array[index]
+        return array
+
+    def as_tabular_lines(self, sep=','):
+        yield sep.join(_extract_dtype_field_names(self._DTYPE_ARRAY.descr)) + '\n'
+        for f in self.features():
+            yield sep.join(map(str, _flatten_numpy_element(f))) + '\n'
 
 
 class Comparison(GenomeLoci):
