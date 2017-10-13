@@ -588,6 +588,10 @@ class GenomicBins(GenomeLoci):
         return new_bins
 
 
+class BinCounts(GenomeLoci):
+    """"""
+
+
 class ComparativeBins(GenomeLoci):
     """
     A collection of categorised univariate bins (loci) derived from the union of fingerprint loci from multiple sources.
@@ -763,37 +767,6 @@ class ComparativeBins(GenomeLoci):
         new_object.__DTYPE_ARRAY = dtype_array
 
         return new_object
-
-
-class BinCounts(GenomeLoci):
-    """"""
-
-    def as_array(self):
-        """
-        Convert all loci to a structured array sorted by location.
-
-        :return: a structured array of loci
-        :rtype: :class:`numpy.ndarray`
-        """
-
-        array = np.fromiter(self.features(), dtype=self._DTYPE_ARRAY, count=len(self))
-        index = np.argsort(array[['reference', 'start', 'stop', 'category']],
-                           order=('reference', 'start', 'stop', 'category'))
-        array = array[index]
-        return array
-
-    def as_flat_array(self):
-        data = map(tuple, map(flatten_numpy_element, self.features()))
-        array = np.fromiter(data, flatten_dtype(dtype=self._DTYPE_ARRAY), count=len(self))
-        index = np.argsort(array[['reference', 'start', 'stop', 'category']],
-                           order=('reference', 'start', 'stop', 'category'))
-        array = array[index]
-        return array
-
-    def as_tabular_lines(self, sep=','):
-        yield sep.join(map(quote_str, flatten_dtype_fields(self._DTYPE_ARRAY.descr))) + '\n'
-        for f in self.features():
-            yield sep.join(map(quote_str, flatten_numpy_element(f))) + '\n'
 
 
 class Comparison(GenomeLoci):
