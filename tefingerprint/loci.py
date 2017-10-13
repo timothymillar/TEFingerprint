@@ -309,43 +309,46 @@ class GenomeLoci(object):
         for f in self.features():
             yield sep.join(map(quote_str, flatten_numpy_element(f))) + '\n'
 
-    @staticmethod
-    def _format_gff_feature(record):  # TODO: generalise this method
-        """
-        Worker method to format a single array entry as a single gff formatted string.
+    def as_gff_lines(self, order=False,
+                     reference='reference',
+                     start='start',
+                     stop='stop',
+                     strand='strand',
+                     category='category'):
 
-        :param record: a single entry from a structured :class:`numpy.ndarray`
-        :type record: :class:`numpy.void`
+        array = self.as_flat_array(order=order)
 
-        :return: gff formatted string
-        :rtype: str
-        """
-        identifier = "{0}_{1}_{2}_{3}".format(record['reference'].split(':')[0],
-                                              record['strand'],
-                                              record['category'],
-                                              record['start'])
-        attributes = '{0}={1}'.format('category', record['category'])
-        attributes = 'ID=' + identifier + ';' + attributes
-        template = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}"
-        return template.format(record['reference'].split(':')[0],
-                               '.',
-                               '.',
-                               record['start'],
-                               record['stop'],
-                               '.',
-                               record['strand'],
-                               '.',
-                               attributes)
+        attribute_fields = list(array.dtype.names)
+        for field in (reference, start, stop, strand):
+            attribute_fields.remove(field)
 
-    def as_gff(self):  # TODO: generalise this method
-        """
-        Convert all loci to a GFF3 formatted string, sorted by location.
+        template = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}\n"
 
-        :return: A multi-line GFF3 formatted string
-        :rtype: str
-        """
-        array = self.as_array()
-        return '\n'.join((self._format_gff_feature(record) for record in array))
+        for record in array:
+            if category in attribute_fields:
+                identifier = "{0}:{1}-{2}_{3}_{4}".format(record[reference].split(':')[0],
+                                                          record[start],
+                                                          record[stop],
+                                                          record[strand],
+                                                          record[category])
+            else:
+                identifier = "{0}:{1}-{2}_{3}".format(record[reference].split(':')[0],
+                                                      record[start],
+                                                      record[stop],
+                                                      record[strand])
+
+            attributes = ('{0}={1}'.format(field, record[field]) for field in attribute_fields)
+            attributes = 'ID=' + identifier + ';' + ';'.join(attributes)
+            yield template.format(record['reference'].split(':')[0],
+                                  '.',
+                                  '.',
+                                  record['start'],
+                                  record['stop'],
+                                  '.',
+                                  record['strand'],
+                                  '.',
+                                  attributes)
+
 
 
 class InformativeReadLoci(GenomeLoci):
@@ -479,30 +482,6 @@ class InformativeReadLoci(GenomeLoci):
 
         fprint._dict = dictionary
         return fprint
-
-    @staticmethod
-    def _format_gff_feature(record):
-        """
-        Worker method to format a single array entry as a single gff formatted string.
-
-        :param record: a single entry from a structured :class:`numpy.ndarray`
-        :type record: :class:`numpy.void`
-
-        :return: gff formatted string
-        :rtype: str
-        """
-        attributes = ';'.join(['{0}={1}'.format(slot, record[slot]) for slot in ('category', 'source')])
-        attributes = 'ID=' + record['name'] + ';' + attributes
-        template = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}"
-        return template.format(record['reference'].split(':')[0],
-                               '.',
-                               '.',
-                               record['start'],
-                               record['stop'],
-                               '.',
-                               record['strand'],
-                               '.',
-                               attributes)
 
 
 class GenomicBins(GenomeLoci):
