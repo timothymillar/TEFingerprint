@@ -18,11 +18,11 @@ def _fingerprint_worker(bams,
     Worker function for batch fingerprinting.
     Runs a single job dispatched from fingerprint.
     """
-    reads = loci.append(*[loci.ReadLoci.from_bam(bam,
-                                                 categories,
-                                                 references=reference,
-                                                 quality=quality,
-                                                 tag=transposon_tag) for bam in bams])
+    reads = loci.append(*[loci.InformativeReadLoci.from_bam(bam,
+                                                            categories,
+                                                            references=reference,
+                                                            quality=quality,
+                                                            tag=transposon_tag) for bam in bams])
     return reads.fingerprint(min_reads,
                              eps,
                              min_eps=min_eps,
@@ -64,7 +64,7 @@ def fingerprint(bams=None,
     :type cores: int
 
     :return: Fingerprints of bam files
-    :rtype: :class:`loci.FingerPrint`
+    :rtype: :class:`loci.GenomicBins`
     """
     jobs = product([bams],
                    [categories],
@@ -98,11 +98,11 @@ def _comparison_worker(bams,
     Worker function for batch fingerprint comparisons.
     Runs a single job dispatched from comparison.
     """
-    reads = loci.append(*[loci.ReadLoci.from_bam(bam,
-                                                 categories,
-                                                 references=reference,
-                                                 quality=quality,
-                                                 tag=transposon_tag)
+    reads = loci.append(*[loci.InformativeReadLoci.from_bam(bam,
+                                                            categories,
+                                                            references=reference,
+                                                            quality=quality,
+                                                            tag=transposon_tag)
                           for bam in bams])
     fprint = reads.fingerprint(min_reads, eps, min_eps=min_eps, hierarchical=hierarchical)
     fprint.buffer(fingerprint_buffer)

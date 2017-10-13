@@ -26,16 +26,16 @@ class TestFingerprint:
                                 'hierarchical':True},
                                {('chr1:1-25000', '+', 'PIF', 'testB-2017-06-08.bam'):
                                     np.array([],
-                                             dtype=loci.FingerPrint._DTYPE_LOCI),
+                                             dtype=loci.GenomicBins._DTYPE_LOCI),
                                 ('chr1:1-25000', '+', 'Gypsy', 'testB-2017-06-08.bam'):
                                     np.array([(2452, 2577), (2841, 3138), (24065, 24217)],
-                                             dtype=loci.FingerPrint._DTYPE_LOCI),
+                                             dtype=loci.GenomicBins._DTYPE_LOCI),
                                 ('chr1:1-25000', '-', 'Gypsy', 'testB-2017-06-08.bam'):
                                     np.array([(24850, 24919)],
-                                             dtype=loci.FingerPrint._DTYPE_LOCI),
+                                             dtype=loci.GenomicBins._DTYPE_LOCI),
                                 ('chr1:1-25000', '-', 'PIF', 'testB-2017-06-08.bam'):
                                     np.array([(21834, 21982)],
-                                                          dtype=loci.FingerPrint._DTYPE_LOCI)}),
+                                             dtype=loci.GenomicBins._DTYPE_LOCI)}),
                               ({'bams': [DATA_PATH + 'testB-2017-06-08.bam'],
                                 'categories': ['Gypsy', 'PIF'],
                                 'references': ['chr1'],
@@ -47,16 +47,16 @@ class TestFingerprint:
                                 'hierarchical': True},
                                {('chr1:1-25000', '+', 'PIF', 'testB-2017-06-08.bam'):
                                     np.array([],
-                                             dtype=loci.FingerPrint._DTYPE_LOCI),
+                                             dtype=loci.GenomicBins._DTYPE_LOCI),
                                 ('chr1:1-25000', '+', 'Gypsy', 'testB-2017-06-08.bam'):
                                     np.array([(2452, 2577), (2841, 3138), (24065, 24217)],
-                                             dtype=loci.FingerPrint._DTYPE_LOCI),
+                                             dtype=loci.GenomicBins._DTYPE_LOCI),
                                 ('chr1:1-25000', '-', 'Gypsy', 'testB-2017-06-08.bam'):
                                     np.array([],
-                                             dtype=loci.FingerPrint._DTYPE_LOCI),
+                                             dtype=loci.GenomicBins._DTYPE_LOCI),
                                 ('chr1:1-25000', '-', 'PIF', 'testB-2017-06-08.bam'):
                                     np.array([(21834, 21982)],
-                                             dtype=loci.FingerPrint._DTYPE_LOCI)}),
+                                             dtype=loci.GenomicBins._DTYPE_LOCI)}),
                               ({'bams': [DATA_PATH + 'testB-2017-06-08.bam'],
                                 'categories': ['INVALID'],
                                 'references': ['chr1'],
@@ -68,15 +68,15 @@ class TestFingerprint:
                                 'hierarchical': True},
                                {('chr1:1-25000', '+', 'INVALID', 'testB-2017-06-08.bam'):
                                     np.array([],
-                                             dtype=loci.FingerPrint._DTYPE_LOCI),
+                                             dtype=loci.GenomicBins._DTYPE_LOCI),
                                 ('chr1:1-25000', '-', 'INVALID', 'testB-2017-06-08.bam'):
                                     np.array([],
-                                             dtype=loci.FingerPrint._DTYPE_LOCI)})
+                                             dtype=loci.GenomicBins._DTYPE_LOCI)})
                               ])
     def test_fingerprint(self, parameters, answer):
         parameters['cores'] = self.CORES
         query = batch.fingerprint(**parameters)
-        answer = loci.FingerPrint.from_dict(answer)
+        answer = loci.GenomicBins.from_dict(answer)
 
         assert set(query.keys()) == set(answer.keys())
         for key in query.keys():

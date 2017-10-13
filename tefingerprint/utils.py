@@ -10,6 +10,10 @@ def append_dtypes(*args):
     return np.dtype(descr)
 
 
+def drop_dtype_field(dtype, field):  # TODO: make this work on nested dtypes
+    return np.dtype([i for i in dtype.descr if i[0] != field])
+
+
 def flatten_numpy_element(item):
     """
     Flatten a nested numpy element.

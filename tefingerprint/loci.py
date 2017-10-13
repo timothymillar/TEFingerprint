@@ -5,7 +5,7 @@ from collections import Counter
 from functools import reduce
 from tefingerprint import bamio
 from tefingerprint import cluster
-from tefingerprint.utils import append_dtypes, flatten_numpy_element, flatten_dtype, flatten_dtype_fields, quote_str
+from tefingerprint.utils import append_dtypes, flatten_numpy_element, flatten_dtype, flatten_dtype_fields, quote_str, drop_dtype_field
 
 
 def _loci_melter(array):
@@ -62,7 +62,8 @@ def append(*args):
     :rtype: :class:`GenomeLoci`
     """
     assert len(set(map(type, args))) == 1
-    merged = type(args[0])()
+    merged = type(args[0])(dtype_key=args[0].dtype_key,
+                           dtype_loci=args[0].dtype_loci)
     for arg in args:
         merged.append(arg, inplace=True)
     return merged
@@ -137,21 +138,12 @@ class GenomeLoci(object):
     Where 'start' and 'stop' are respectively the lower and upper coordinates that define a segment of the reference.
     Coordinates are inclusive, 1 based integers (i.e, use the SAM coordinate system).
     """
-    _DTYPE_LOCI = np.dtype([('start', np.int64), ('stop', np.int64)])
-
     _LOCI_DEFAULT_VALUES = (0, 0)
 
-    _DTYPE_KEY = np.dtype([('reference', np.str_, 256),
-                           ('strand', np.str_, 1),
-                           ('category', np.str_, 256)])
-
-    _DTYPE_ARRAY = np.dtype([('reference', np.str_, 256),
-                             ('strand', np.str_, 1),
-                             ('category', np.str_, 256),
-                             ('start', np.int64),
-                             ('stop', np.int64)])
-
-    def __init__(self):
+    def __init__(self, dtype_key, dtype_loci):
+        self.dtype_key = dtype_key
+        self.dtype_loci = dtype_loci
+        self.dtype_array = append_dtypes(dtype_key, dtype_loci)
         self._dict = {}
 
     def __len__(self):
@@ -272,21 +264,8 @@ class GenomeLoci(object):
             for locus in loci:
                 yield (*key, *locus)
 
-    def as_array(self):
-        """
-        Convert all loci to a structured array sorted by location.
-
-        :return: a structured array of loci
-        :rtype: :class:`numpy.ndarray`
-        """
-        array = np.fromiter(self.features(), type(self)._DTYPE_ARRAY)
-        index = np.argsort(array[['reference', 'start', 'stop', 'category']],
-                           order=('reference', 'start', 'stop', 'category'))
-        array = array[index]
-        return array
-
     @classmethod
-    def from_dict(cls, dictionary):
+    def from_dict(cls, dictionary):  # TODO: setting key dtype
         """
         Creat from a dictionary with the correct keys and dtype
 
@@ -298,14 +277,13 @@ class GenomeLoci(object):
         d = {}
         for key, loci in dictionary.items():
             key = LociKey(*key)  # use named tuple for keys
-            assert loci.dtype == cls._DTYPE_LOCI
             d[key] = loci
         result = cls()
         result._dict = d
         return result
 
     @classmethod
-    def from_array(cls, array):
+    def from_array(cls, array, key_fields):  # TODO: setting dtypes
         """
         Create from an array with the correct dtype
 
@@ -326,8 +304,43 @@ class GenomeLoci(object):
         result._dict = d
         return result
 
+    def as_array(self, order=False):
+        """
+        Convert all loci to a structured array sorted by location.
+
+        :return: a structured array of loci
+        :rtype: :class:`numpy.ndarray`
+        """
+        array = np.fromiter(self.features(), dtype=self.dtype_array, count=len(self))
+
+        if order:
+            if isinstance(order, str):
+                order = [order]
+            index = np.argsort(array[order],
+                               order=(tuple(order)))
+            array = array[index]
+        return array
+
+    def as_flat_array(self, order=False):
+        data = map(tuple, map(flatten_numpy_element, self.features()))
+        array = np.fromiter(data, flatten_dtype(dtype=self.dtype_array), count=len(self))
+
+        if order:
+            if isinstance(order, str):
+                order = [order]
+            index = np.argsort(array[order],
+                               order=(tuple(order)))
+            array = array[index]
+
+        return array
+
+    def as_tabular_lines(self, sep=','):
+        yield sep.join(map(quote_str, flatten_dtype_fields(self.dtype_array.descr))) + '\n'
+        for f in self.features():
+            yield sep.join(map(quote_str, flatten_numpy_element(f))) + '\n'
+
     @staticmethod
-    def _format_gff_feature(record):
+    def _format_gff_feature(record):  # TODO: generalise this method
         """
         Worker method to format a single array entry as a single gff formatted string.
 
@@ -354,7 +367,7 @@ class GenomeLoci(object):
                                '.',
                                attributes)
 
-    def as_gff(self):
+    def as_gff(self):  # TODO: generalise this method
         """
         Convert all loci to a GFF3 formatted string, sorted by location.
 
@@ -365,7 +378,7 @@ class GenomeLoci(object):
         return '\n'.join((self._format_gff_feature(record) for record in array))
 
 
-class ReadLoci(GenomeLoci):
+class InformativeReadLoci(GenomeLoci):
     """
     A collection of named sam reads, categorised by origin.
 
@@ -385,22 +398,6 @@ class ReadLoci(GenomeLoci):
     and name is the reads name in the source bam file.
     Coordinates are inclusive, 1 based integers (i.e, use the SAM coordinate system).
     """
-    _DTYPE_LOCI = np.dtype([('start', np.int64), ('stop', np.int64), ('name', np.str_, 254)])
-
-    _LOCI_DEFAULT_VALUES = (0, 0, '')
-
-    _DTYPE_KEY = np.dtype([('reference', np.str_, 256),
-                           ('strand', np.str_, 1),
-                           ('category', np.str_, 256),
-                           ('source', np.str_, 256)])
-
-    _DTYPE_ARRAY = np.dtype([('reference', np.str_, 256),
-                             ('strand', np.str_, 1),
-                             ('category', np.str_, 256),
-                             ('source', np.str_, 256),
-                             ('start', np.int64),
-                             ('stop', np.int64),
-                             ('name', np.str_, 254)])
 
     @classmethod
     def from_bam(cls, bams, categories, references=None, quality=30, tag='ME'):
@@ -422,10 +419,16 @@ class ReadLoci(GenomeLoci):
         :type tag: str
 
         :return: An instance of :class:`ReadLoci`
-        :rtype: :class:`ReadLoci`
+        :rtype: :class:`InformativeReadLoci`
         """
-        reads = ReadLoci()
-        reads._dict = {LociKey(*group): np.fromiter(loci, dtype=cls._DTYPE_LOCI)
+        reads = InformativeReadLoci(dtype_key=np.dtype([('reference', np.str_, 256),
+                                                        ('strand', np.str_, 1),
+                                                        ('category', np.str_, 256),
+                                                        ('source', np.str_, 256)]),
+                                    dtype_loci=np.dtype([('start', np.int64),
+                                                         ('stop', np.int64),
+                                                         ('name', np.str_, 254)]))
+        reads._dict = {LociKey(*group): np.fromiter(loci, dtype=reads.dtype_loci)
                        for group, loci in bamio.extract_bam_reads(bams,
                                                                   categories,
                                                                   references=references,
@@ -479,11 +482,15 @@ class ReadLoci(GenomeLoci):
         :type hierarchical: bool
 
         :return: The density based fingerprints of read loci
-        :rtype: :class:`FingerPrint`
+        :rtype: :class:`GenomicBins`
         """
         dictionary = {}
 
-        for group, tips in self.tips().items():
+        fprint = GenomicBins(dtype_key=self.dtype_key,
+                             dtype_loci=np.dtype([('start', np.int64),
+                                                  ('stop', np.int64)]))
+
+        for key, tips in self.tips().items():
             tips.sort()
 
             # fit model
@@ -495,12 +502,11 @@ class ReadLoci(GenomeLoci):
 
             # get new loci
             positions = np.fromiter(model.cluster_extremities(),
-                                    dtype=FingerPrint._DTYPE_LOCI)
+                                    dtype=fprint.dtype_loci)
 
             # add to fingerprint
-            dictionary[group] = positions
+            dictionary[key] = positions
 
-        fprint = FingerPrint()
         fprint._dict = dictionary
         return fprint
 
@@ -529,7 +535,7 @@ class ReadLoci(GenomeLoci):
                                attributes)
 
 
-class FingerPrint(GenomeLoci):
+class GenomicBins(GenomeLoci):
     """
     A collection of categorised univariate loci comprising a density based fingerprint.
 
@@ -547,63 +553,39 @@ class FingerPrint(GenomeLoci):
     Where 'start' and 'stop' are respectively the lower and upper coordinates that define a segment of the reference.
     Coordinates are inclusive, 1 based integers (i.e, use the SAM coordinate system).
     """
-    _DTYPE_KEY = np.dtype([('reference', np.str_, 256),
-                           ('strand', np.str_, 1),
-                           ('category', np.str_, 256),
-                           ('source', np.str_, 256)])
 
-    _DTYPE_ARRAY = np.dtype([('reference', np.str_, 256),
-                             ('strand', np.str_, 1),
-                             ('category', np.str_, 256),
-                             ('source', np.str_, 256),
-                             ('start', np.int64),
-                             ('stop', np.int64)])
+    def drop_source_field(self):
+        """"""
+        new_bins = GenomicBins(dtype_key=drop_dtype_field(self.dtype_key, 'source'),
+                               dtype_loci=self.dtype_loci)
 
-    def as_csv(self):
-        """
-        Convert all loci to a a CSV formatted string sorted by location.
+        for key, loci in self.items():
 
-        :return: a CSV formatted string
-        :rtype: str
-        """
-        array = self.as_array()
-        header = ','.join(array.dtype.names)
-        data = ('"{0}","{1}","{2}","{3}",{4},{5}'.format(record['reference'].split(':')[0],
-                                                         record['strand'],
-                                                         record['category'],
-                                                         record['source'],
-                                                         record['start'],
-                                                         record['stop']) for record in array)
+            # Use the Fingerprint key to make a ComparativeBins key
+            new_key = LociKey(reference=key.reference,
+                              strand=key.strand,
+                              category=key.category)
+            # Populate the dictionary with loci from FingerPrint object
+            if new_key not in new_bins._dict.keys():
+                new_bins._dict[new_key] = loci
+            else:
+                new_bins._dict[new_key] = np.append(new_bins._dict[new_key], loci)
 
-        return header + '\n' + '\n'.join(data) + '\n'
+        return new_bins
 
-    @staticmethod
-    def _format_gff_feature(record):
-        """
-        Worker method to format a single array entry as a single gff formatted string.
+    def melt(self, *args):
 
-        :param record: a single entry from a structured :class:`numpy.ndarray`
-        :type record: :class:`numpy.void`
+        new_bins = GenomicBins(dtype_key=self.dtype_key,
+                               dtype_loci=np.dtype([('start', np.int64),
+                                                    ('stop', np.int64)]))
 
-        :return: gff formatted string
-        :rtype: str
-        """
-        identifier = "{0}_{1}_{2}_{3}".format(record['reference'].split(':')[0],
-                                              record['strand'],
-                                              record['category'],
-                                              record['start'])
-        attributes = ';'.join(['{0}={1}'.format(slot, record[slot]) for slot in ('category', 'source')])
-        attributes = 'ID=' + identifier + ';' + attributes
-        template = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}"
-        return template.format(record['reference'].split(':')[0],
-                               '.',
-                               '.',
-                               record['start'],
-                               record['stop'],
-                               '.',
-                               record['strand'],
-                               '.',
-                               attributes)
+        for key, loci in self._dict.items():
+            if len(loci) == 0:
+                new_bins._dict[key] = np.empty(0, dtype=new_bins.dtype_loci)
+            else:
+                new_bins._dict[key] = np.fromiter(_loci_melter(loci), dtype=new_bins.dtype_loci)
+
+        return new_bins
 
 
 class ComparativeBins(GenomeLoci):
@@ -637,7 +619,7 @@ class ComparativeBins(GenomeLoci):
         """
         # Merge multiple FingerPrints objects
         fingerprints = append(*args)
-        assert isinstance(fingerprints, FingerPrint)
+        assert isinstance(fingerprints, GenomicBins)
 
         # Dictionary to store loci
         dictionary = {}
@@ -678,7 +660,7 @@ class ComparativeBins(GenomeLoci):
         :rtype: :class:`Comparison`
         """
         reads = append(*args)
-        assert isinstance(reads, ReadLoci)
+        assert isinstance(reads, InformativeReadLoci)
         sources = np.array(list({key.source for key in list(reads.keys())}))
         sources.sort()
         tips_dict = reads.tips()
@@ -699,7 +681,7 @@ class ComparativeBins(GenomeLoci):
         return comparison
 
     def count_reads(self, reads, trim=True, n_common_elements=0):
-        assert isinstance(reads, ReadLoci)
+        assert isinstance(reads, InformativeReadLoci)
         sources = np.array(list({key.source for key in list(reads.keys())}))
         sources.sort()
 

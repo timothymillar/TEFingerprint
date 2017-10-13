@@ -236,18 +236,18 @@ class TestReadLoci:
     def test_from_bam(self):
         """"""
         data_path = os.path.dirname(os.path.realpath(__file__)) + '/data/testA-2017-06-08.bam'
-        query = loci.ReadLoci.from_bam(data_path, categories=['CACTA', 'Copia'])
+        query = loci.InformativeReadLoci.from_bam(data_path, categories=['CACTA', 'Copia'])
 
         dictionary = {('chr1:1-25000', '+', 'Copia', 'testA-2017-06-08.bam'): np.array([(24040, 24139, 'read032'),
                                                                                         (24151, 24250, 'read036')],
-                                                                                       dtype=loci.ReadLoci._DTYPE_LOCI),
+                                                                                       dtype=loci.InformativeReadLoci._DTYPE_LOCI),
                       ('chr1:1-25000', '-', 'Copia', 'testA-2017-06-08.bam'): np.array([(24773, 24872, 'read038')],
-                                                                                       dtype=loci.ReadLoci._DTYPE_LOCI),
+                                                                                       dtype=loci.InformativeReadLoci._DTYPE_LOCI),
                       ('chr1:1-25000', '-', 'CACTA', 'testA-2017-06-08.bam'): np.array([(24742, 24841, 'read037')],
-                                                                                       dtype=loci.ReadLoci._DTYPE_LOCI),
+                                                                                       dtype=loci.InformativeReadLoci._DTYPE_LOCI),
                       ('chr1:1-25000', '+', 'CACTA', 'testA-2017-06-08.bam'): np.array([],
-                                                                                       dtype=loci.ReadLoci._DTYPE_LOCI)}
-        answer = loci.ReadLoci.from_dict(dictionary)
+                                                                                       dtype=loci.InformativeReadLoci._DTYPE_LOCI)}
+        answer = loci.InformativeReadLoci.from_dict(dictionary)
 
         assert set(query.keys()) == set(answer.keys())
         for key in query.keys():
@@ -256,16 +256,16 @@ class TestReadLoci:
     def test_tips(self):
         """Test for method to extract the tips of loci as a dict"""
         dictionary = {('chr1:1-100', '+', 'Copia', 'bam1'): np.array([(1, 2, 'a'), (2, 3, 'b')],
-                                                                     dtype=loci.ReadLoci._DTYPE_LOCI),
+                                                                     dtype=loci.InformativeReadLoci._DTYPE_LOCI),
                       ('chr1:1-100', '-', 'Copia', 'bam1'): np.array([(1, 2, 'c'), (2, 3, 'd')],
-                                                                     dtype=loci.ReadLoci._DTYPE_LOCI),
+                                                                     dtype=loci.InformativeReadLoci._DTYPE_LOCI),
                       ('chr1:1-100', '+', 'Gypsy', 'bam1'): np.array([(1, 2, 'e'), (2, 3, 'f')],
-                                                                     dtype=loci.ReadLoci._DTYPE_LOCI),
+                                                                     dtype=loci.InformativeReadLoci._DTYPE_LOCI),
                       ('chr1:1-100', '-', 'Gypsy', 'bam1'): np.array([(1, 2, 'g'), (2, 3, 'h')],
-                                                                     dtype=loci.ReadLoci._DTYPE_LOCI),
+                                                                     dtype=loci.InformativeReadLoci._DTYPE_LOCI),
                       ('chr2:1-100', '+', 'Copia', 'bam1'): np.array([(1, 2, 'i'), (2, 3, 'j')],
-                                                                     dtype=loci.ReadLoci._DTYPE_LOCI)}
-        query = loci.ReadLoci.from_dict(dictionary)
+                                                                     dtype=loci.InformativeReadLoci._DTYPE_LOCI)}
+        query = loci.InformativeReadLoci.from_dict(dictionary)
         query = query.tips()
 
         answer = {loci.LociKey('chr1:1-100', '+', 'Copia', 'bam1'): np.array([2, 3]),
@@ -279,7 +279,7 @@ class TestReadLoci:
 
     def test_fingerprint(self):
         """Test for fingerprinting of read loci when one strand is empty (no reads)"""
-        query = {('chr1:1-3000', '-', 'Gypsy', 'bam1'): np.array([], dtype=loci.ReadLoci._DTYPE_LOCI),
+        query = {('chr1:1-3000', '-', 'Gypsy', 'bam1'): np.array([], dtype=loci.InformativeReadLoci._DTYPE_LOCI),
                  ('chr1:1-3000', '+', 'Gypsy', 'bam1'): np.array([(0,    0, 'Gypsy27_uniqueID'),
                                                                   (0,    0, 'Gypsy27_uniqueID'),
                                                                   (0,   60, 'Gypsy27_uniqueID'),
@@ -377,60 +377,60 @@ class TestReadLoci:
                                                                   (0, 1851, 'Gypsy27_uniqueID'),
                                                                   (0, 1852, 'Gypsy27_uniqueID'),
                                                                   (0, 1917, 'Gypsy27_uniqueID')],
-                                                                 dtype=loci.ReadLoci._DTYPE_LOCI)}
-        query = loci.ReadLoci.from_dict(query)
+                                                                 dtype=loci.InformativeReadLoci._DTYPE_LOCI)}
+        query = loci.InformativeReadLoci.from_dict(query)
         query = query.fingerprint(10, eps=200, min_eps=10, hierarchical=True)
-        answer = loci.FingerPrint.from_dict({('chr1:1-3000',
+        answer = loci.GenomicBins.from_dict({('chr1:1-3000',
                                               '-',
                                               'Gypsy',
-                                              'bam1'): np.array([], dtype=loci.FingerPrint._DTYPE_LOCI),
+                                              'bam1'): np.array([], dtype=loci.GenomicBins._DTYPE_LOCI),
                                              ('chr1:1-3000',
                                               '+',
                                               'Gypsy',
                                               'bam1'): np.array([(0, 577),
                                                                  (879, 1234),
-                                                                 (1662, 1917)], dtype=loci.FingerPrint._DTYPE_LOCI)})
+                                                                 (1662, 1917)], dtype=loci.GenomicBins._DTYPE_LOCI)})
         assert set(query.keys()) == set(answer.keys())
         for key in query.keys():
             npt.assert_array_equal(query[key], answer[key])
 
     def test_as_array(self):
-        query = loci.ReadLoci.from_dict({('chr1:1-3000',
+        query = loci.InformativeReadLoci.from_dict({('chr1:1-3000',
                                           '+',
                                           'Gypsy',
                                           'bam1'): np.array([(0, 20, 'name1'),
                                                              (21, 30, 'name2'),
-                                                             (42, 100, 'name3')], dtype=loci.ReadLoci._DTYPE_LOCI),
-                                         ('chr1:1-3000',
+                                                             (42, 100, 'name3')], dtype=loci.InformativeReadLoci._DTYPE_LOCI),
+                                                    ('chr1:1-3000',
                                           '-',
                                           'Gypsy',
                                           'bam1'): np.array([(0, 20, 'name4'),
                                                              (21, 30, 'name5'),
-                                                             (42, 100, 'name6')], dtype=loci.ReadLoci._DTYPE_LOCI)})
+                                                             (42, 100, 'name6')], dtype=loci.InformativeReadLoci._DTYPE_LOCI)})
         answer = np.array([('chr1:1-3000', '+', 'Gypsy', 'bam1', 0, 20, 'name1'),
                            ('chr1:1-3000', '-', 'Gypsy', 'bam1', 0, 20, 'name4'),
                            ('chr1:1-3000', '+', 'Gypsy', 'bam1', 21, 30, 'name2'),
                            ('chr1:1-3000', '-', 'Gypsy', 'bam1', 21, 30, 'name5'),
                            ('chr1:1-3000', '+', 'Gypsy', 'bam1', 42, 100, 'name3'),
                            ('chr1:1-3000', '-', 'Gypsy', 'bam1', 42, 100, 'name6')],
-                          dtype=loci.ReadLoci._DTYPE_ARRAY)
+                          dtype=loci.InformativeReadLoci._DTYPE_ARRAY)
 
         npt.assert_array_equal(np.sort(query.as_array()), np.sort(answer))
 
     def test_as_gff(self):
         """"""
-        query = loci.ReadLoci.from_dict({('chr1:1-3000',
+        query = loci.InformativeReadLoci.from_dict({('chr1:1-3000',
                                           '+',
                                           'Gypsy',
                                           'bam1'): np.array([(0, 20, 'name1'),
                                                              (21, 30, 'name2'),
-                                                             (42, 100, 'name3')], dtype=loci.ReadLoci._DTYPE_LOCI),
-                                         ('chr1:1-3000',
+                                                             (42, 100, 'name3')], dtype=loci.InformativeReadLoci._DTYPE_LOCI),
+                                                    ('chr1:1-3000',
                                           '-',
                                           'Gypsy',
                                           'bam1'): np.array([(0, 20, 'name4'),
                                                              (21, 30, 'name5'),
-                                                             (42, 100, 'name6')], dtype=loci.ReadLoci._DTYPE_LOCI)})
+                                                             (42, 100, 'name6')], dtype=loci.InformativeReadLoci._DTYPE_LOCI)})
         query = query.as_gff().splitlines()
         query.sort()
 
@@ -449,28 +449,28 @@ class TestFingerPrint:
     """Tests for class FingerPrint"""
     def test_as_array(self):
         """"""
-        query = loci.FingerPrint.from_dict({('chr1:1-3000',
+        query = loci.GenomicBins.from_dict({('chr1:1-3000',
                                              '+',
                                              'Gypsy',
                                              'bam1'): np.array([(0, 577),
                                                                 (879, 1234),
-                                                                (1662, 1917)], dtype=loci.FingerPrint._DTYPE_LOCI),
+                                                                (1662, 1917)], dtype=loci.GenomicBins._DTYPE_LOCI),
                                             ('chr1:1-3000',
                                              '-',
                                              'Gypsy',
                                              'bam1'): np.array([(20, 570),
                                                                 (870, 1230),
-                                                                (1662, 1917)], dtype=loci.FingerPrint._DTYPE_LOCI),
+                                                                (1662, 1917)], dtype=loci.GenomicBins._DTYPE_LOCI),
                                             ('chr2:1-4000',
                                              '+',
                                              'Gypsy',
                                              'bam1'): np.array([(0, 577),
                                                                 (879, 1234),
-                                                                (1662, 1917)], dtype=loci.FingerPrint._DTYPE_LOCI),
+                                                                (1662, 1917)], dtype=loci.GenomicBins._DTYPE_LOCI),
                                             ('chr2:1-4000',
                                              '-',
                                              'Gypsy',
-                                             'bam1'): np.array([], dtype=loci.FingerPrint._DTYPE_LOCI)
+                                             'bam1'): np.array([], dtype=loci.GenomicBins._DTYPE_LOCI)
                                             })
         answer = np.array([('chr1:1-3000', '+', 'Gypsy', 'bam1', 0, 577),
                            ('chr1:1-3000', '-', 'Gypsy', 'bam1', 20, 570),
@@ -481,33 +481,33 @@ class TestFingerPrint:
                            ('chr2:1-4000', '+', 'Gypsy', 'bam1', 0, 577),
                            ('chr2:1-4000', '+', 'Gypsy', 'bam1', 879, 1234),
                            ('chr2:1-4000', '+', 'Gypsy', 'bam1', 1662, 1917)],
-                          dtype=loci.FingerPrint._DTYPE_ARRAY)
+                          dtype=loci.GenomicBins._DTYPE_ARRAY)
         npt.assert_array_equal(np.sort(query.as_array()), np.sort(answer))
 
     def test_as_gff(self):
         """"""
-        query = loci.FingerPrint.from_dict({('chr1:1-3000',
+        query = loci.GenomicBins.from_dict({('chr1:1-3000',
                                              '+',
                                              'Gypsy',
                                              'bam1'): np.array([(0, 577),
                                                                 (879, 1234),
-                                                                (1662, 1917)], dtype=loci.FingerPrint._DTYPE_LOCI),
+                                                                (1662, 1917)], dtype=loci.GenomicBins._DTYPE_LOCI),
                                             ('chr1:1-3000',
                                              '-',
                                              'Gypsy',
                                              'bam1'): np.array([(20, 570),
                                                                 (870, 1230),
-                                                                (1662, 1917)], dtype=loci.FingerPrint._DTYPE_LOCI),
+                                                                (1662, 1917)], dtype=loci.GenomicBins._DTYPE_LOCI),
                                             ('chr2:1-4000',
                                              '+',
                                              'Gypsy',
                                              'bam1'): np.array([(0, 577),
                                                                 (879, 1234),
-                                                                (1662, 1917)], dtype=loci.FingerPrint._DTYPE_LOCI),
+                                                                (1662, 1917)], dtype=loci.GenomicBins._DTYPE_LOCI),
                                             ('chr2:1-4000',
                                              '-',
                                              'Gypsy',
-                                             'bam1'): np.array([], dtype=loci.FingerPrint._DTYPE_LOCI)
+                                             'bam1'): np.array([], dtype=loci.GenomicBins._DTYPE_LOCI)
                                             })
         query = query.as_gff().splitlines()
         query.sort()
@@ -527,28 +527,28 @@ class TestFingerPrint:
 
     def test_as_csv(self):
         """"""
-        query = loci.FingerPrint.from_dict({('chr1:1-3000',
+        query = loci.GenomicBins.from_dict({('chr1:1-3000',
                                              '+',
                                              'Gypsy',
                                              'bam1'): np.array([(0, 577),
                                                                 (879, 1234),
-                                                                (1662, 1917)], dtype=loci.FingerPrint._DTYPE_LOCI),
+                                                                (1662, 1917)], dtype=loci.GenomicBins._DTYPE_LOCI),
                                             ('chr1:1-3000',
                                              '-',
                                              'Gypsy',
                                              'bam1'): np.array([(20, 570),
                                                                 (870, 1230),
-                                                                (1662, 1917)], dtype=loci.FingerPrint._DTYPE_LOCI),
+                                                                (1662, 1917)], dtype=loci.GenomicBins._DTYPE_LOCI),
                                             ('chr2:1-4000',
                                              '+',
                                              'Gypsy',
                                              'bam1'): np.array([(0, 577),
                                                                 (879, 1234),
-                                                                (1662, 1917)], dtype=loci.FingerPrint._DTYPE_LOCI),
+                                                                (1662, 1917)], dtype=loci.GenomicBins._DTYPE_LOCI),
                                             ('chr2:1-4000',
                                              '-',
                                              'Gypsy',
-                                             'bam1'): np.array([], dtype=loci.FingerPrint._DTYPE_LOCI)
+                                             'bam1'): np.array([], dtype=loci.GenomicBins._DTYPE_LOCI)
                                             })
         query = query.as_csv().splitlines()
         query.sort()
@@ -572,18 +572,18 @@ class TestComparativeBins:
     """Tests for class ComparativeBins"""
     def test_from_fingerprints(self):
         """"""
-        fprint1 = loci.FingerPrint.from_dict({('chr1:1-300',
+        fprint1 = loci.GenomicBins.from_dict({('chr1:1-300',
                                                '+',
                                                'Gypsy',
                                                'bam1'): np.array([(0, 10),
                                                                   (21, 30)],
-                                                                 dtype=loci.FingerPrint._DTYPE_LOCI)})
-        fprint2 = loci.FingerPrint.from_dict({('chr1:1-300',
+                                                                 dtype=loci.GenomicBins._DTYPE_LOCI)})
+        fprint2 = loci.GenomicBins.from_dict({('chr1:1-300',
                                                '+',
                                                'Gypsy',
                                                'bam2'): np.array([(10, 20),
                                                                   (35, 40)],
-                                                                 dtype=loci.FingerPrint._DTYPE_LOCI)})
+                                                                 dtype=loci.GenomicBins._DTYPE_LOCI)})
         query = loci.ComparativeBins.from_fingerprints(fprint1, fprint2)
         answer = loci.ComparativeBins.from_dict({('chr1:1-300',
                                                   '+',
@@ -623,7 +623,7 @@ class TestComparativeBins:
                                                                   (0, 36, 'Gypsy_uniqueID'),
                                                                   (0, 40, 'Gypsy_uniqueID'),
                                                                   (0, 70, 'Gypsy_uniqueID')],
-                                                                 dtype=loci.ReadLoci._DTYPE_LOCI),
+                                                                 dtype=loci.InformativeReadLoci._DTYPE_LOCI),
                  ('chr1:1-3000', '+', 'Gypsy', 'bam2'): np.array([(0,  2, 'Gypsy_uniqueID'),
                                                                   (0, 21, 'Gypsy_uniqueID'),
                                                                   (0, 27, 'Gypsy_uniqueID'),
@@ -631,7 +631,7 @@ class TestComparativeBins:
                                                                   (0, 28, 'Gypsy_uniqueID'),
                                                                   (0, 30, 'Gypsy_uniqueID'),
                                                                   (0, 70, 'Gypsy_uniqueID')],
-                                                                 dtype=loci.ReadLoci._DTYPE_LOCI),
+                                                                 dtype=loci.InformativeReadLoci._DTYPE_LOCI),
                  ('chr1:1-3000', '+', 'Copia', 'bam1'): np.array([(0,  0, 'Gypsy_uniqueID'),
                                                                   (0,  2, 'Gypsy_uniqueID'),
                                                                   (0, 20, 'Gypsy_uniqueID'),
@@ -645,10 +645,10 @@ class TestComparativeBins:
                                                                   (0, 36, 'Gypsy_uniqueID'),
                                                                   (0, 40, 'Gypsy_uniqueID'),
                                                                   (0, 70, 'Gypsy_uniqueID')],
-                                                                 dtype=loci.ReadLoci._DTYPE_LOCI),
+                                                                 dtype=loci.InformativeReadLoci._DTYPE_LOCI),
                  ('chr1:1-3000', '+', 'Copia', 'bam2'): np.array([],
-                                                                 dtype=loci.ReadLoci._DTYPE_LOCI)}
-        reads = loci.ReadLoci.from_dict(reads)
+                                                                 dtype=loci.InformativeReadLoci._DTYPE_LOCI)}
+        reads = loci.InformativeReadLoci.from_dict(reads)
         query = bins.compare(reads)
 
         answer = {('chr1:1-3000', '+', 'Copia'): np.array([(0, 20, ['bam1', 'bam2'], [3, 0], [1.0, 0.0]),
