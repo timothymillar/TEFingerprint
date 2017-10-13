@@ -587,6 +587,85 @@ class GenomicBins(GenomeLoci):
 
         return new_bins
 
+    def count_reads(self, reads, trim=True, n_common_elements=0):
+        assert isinstance(reads, InformativeReadLoci)
+        sources = np.array(list({key.source for key in list(reads.keys())}))
+        sources.sort()
+
+        dtype_element_count = np.dtype([('name', np.str_, 256),
+                                        ('count', np.int64)])
+        dtype_elements = np.dtype([(str(i), dtype_element_count) for i in range(n_common_elements)])
+
+        dtype_sample_count = np.dtype([('name', np.str_, 256),
+                                       ('count', np.int64),
+                                       ('element', dtype_elements)])
+
+        if n_common_elements == 0:
+            dtype_sample_count = drop_dtype_field(dtype_sample_count, 'element')
+
+        dtype_samples = np.dtype([(str(i), dtype_sample_count) for i, _ in enumerate(sources)])
+
+        dtype_loci = np.dtype([('start', np.int64),
+                               ('stop', np.int64),
+                               ('median', np.int64),
+                               ('sample', dtype_samples)])
+
+        # BinCounts to collect result
+        comparison = BinCounts(dtype_key=self.dtype_key,
+                               dtype_loci=dtype_loci)
+
+        # dictionary of tips from all reads
+        all_tips = reads.named_tips()
+
+        for group, bins in self.items():
+            new_loci = np.empty(len(bins), dtype=dtype_loci)
+
+            # if the loci aren't trimmed then they are the same as the bins
+            new_loci['start'] = bins['start']
+            new_loci['stop'] = bins['stop']
+
+            # sources are always the same
+            for i, name in enumerate(sources):
+                new_loci['sample'][str(i)]['name'] = name
+
+            # list of dictionary keys comparable to this group of bins
+            comparable_keys = [LociKey(*group, sample) for sample in sources]
+
+            # list of read tips comparable to this group of bins
+            comparable_tips = [all_tips[key] for key in comparable_keys]
+
+            # iterate through the new loci
+            for locus in new_loci:
+
+                # named reads tips within this locus
+                local_tips = [tips[np.logical_and(tips['tip'] >= locus['start'], tips['tip'] <= locus['stop'])] for tips in
+                              comparable_tips]
+
+                # counts of reads
+                for i, r in enumerate(local_tips):
+
+                    # total count of reads from each sample
+                    locus['sample'][str(i)]['count'] = len(r)
+
+                    # most common elements per sample per locus
+                    if n_common_elements > 0:
+                        for j, pair in enumerate(Counter(r['name']).most_common(n_common_elements)):
+                            locus['sample'][str(i)]['element'][str(j)] = pair
+
+                # find median of cluster
+                combined_tips = reduce(np.append, (tips['tip'] for tips in local_tips))
+                locus['median'] = np.median(combined_tips)
+
+                # trim the potentially buffered locus to the first and last read tips
+                if trim:
+                    locus['start'] = np.min(combined_tips)
+                    locus['stop'] = np.max(combined_tips)
+
+            # add loci to new dict
+            comparison._dict[group] = new_loci
+
+        return comparison
+
 
 class BinCounts(GenomeLoci):
     """"""
