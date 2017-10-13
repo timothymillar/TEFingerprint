@@ -110,20 +110,17 @@ class ComparisonProgram(object):
                                   min_reads=self.args.minimum_reads[0],
                                   eps=self.args.epsilon[0],
                                   min_eps=self.args.minimum_epsilon[0],
+                                  number_of_elements=self.args.number_of_elements[0],
                                   hierarchical=self.args.hierarchical_clustering,
                                   fingerprint_buffer=self.args.buffer_fingerprints[0],
-                                  bin_buffer=self.args.buffer_comparative_bins[0],
                                   cores=self.args.threads[0])
-        if self.args.long_form_gff is True:
-            print(result.as_flat_gff())
-        else:
-            print(result.as_gff())
-        if self.args.character_csv[0]:
-            with open(self.args.character_csv[0], 'w') as csv:
-                csv.write(result.as_character_csv())
+        for line in result.as_gff_lines():
+            print(line)
         if self.args.feature_csv[0]:
             with open(self.args.feature_csv[0], 'w') as csv:
-                csv.write(result.as_flat_csv())
+                for line in result.as_tabular_lines():
+                    csv.write(line)
+
 
     @staticmethod
     def parse_args(args):
@@ -178,6 +175,11 @@ class ComparisonProgram(object):
                             help='Minimum epsilon values used when calculating support for clusters. '
                                  'This is only used in hierarchical clustering and should usually be left '
                                  'as the default value of 0.')
+        parser.add_argument('-n', '--number-of-elements',
+                            type=int,
+                            default=[3],
+                            nargs=1,
+                            help='The number of most common elements contributing to each cluster that are counted.')
         parser.set_defaults(hierarchical_clustering=True)
         parser.add_argument('--non-hierarchical',
                             dest='hierarchical_clustering',
@@ -190,28 +192,11 @@ class ComparisonProgram(object):
                             help='Additional buffer to be added to margins of fingerprints. '
                                  'This is used avoid identifying small clusters as unique, when these is only '
                                  'slight miss-match in read positions across samples (i.e. false positives).')
-        parser.add_argument('--buffer-comparative-bins',
-                            type=int,
-                            default=[0],
-                            nargs=1,
-                            help='Additional buffer to be added to margins of comparative bins.')
-        parser.set_defaults(long_form_gff=False)
-        parser.add_argument('--long-form-gff',
-                            dest='long_form_gff',
-                            action='store_true',
-                            help='The resulting gff output will contain one feature per sample per bin. '
-                                 'This avoids nested lists in the feature attributes.')
         parser.add_argument('--feature-csv',
                             type=str,
                             default=[False],
                             nargs=1,
                             help='Optionally write a csv file of features (one row per sample per comparative bin).')
-        parser.add_argument('--character-csv',
-                            type=str,
-                            default=[False],
-                            nargs=1,
-                            help='Optionally write a csv file of data as character states '
-                                 '(rows of samples * columns of comparative bins).')
         parser.add_argument('-t', '--threads',
                             type=int,
                             default=[1],

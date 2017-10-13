@@ -305,7 +305,7 @@ class GenomeLoci(object):
         return array
 
     def as_tabular_lines(self, sep=','):
-        yield sep.join(map(utils.quote_str, utils.flatten_dtype_fields(self.dtype_array.descr))) + '\n'
+        yield sep.join(map(utils.quote_str, utils.flatten_dtype_fields(self.dtype_array))) + '\n'
         for f in self.features():
             yield sep.join(map(utils.quote_str, utils.flatten_numpy_element(f))) + '\n'
 

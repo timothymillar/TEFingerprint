@@ -91,9 +91,9 @@ def _comparison_worker(bams,
                        min_reads,
                        eps,
                        min_eps,
+                       number_of_elements,
                        hierarchical,
-                       fingerprint_buffer,
-                       bin_buffer):
+                       fingerprint_buffer):
     """
     Worker function for batch fingerprint comparisons.
     Runs a single job dispatched from comparison.
@@ -104,11 +104,9 @@ def _comparison_worker(bams,
                                                             quality=quality,
                                                             tag=transposon_tag)
                           for bam in bams])
-    fprint = reads.fingerprint(min_reads, eps, min_eps=min_eps, hierarchical=hierarchical)
-    fprint.buffered_melt(fingerprint_buffer)
-    bins = loci.ComparativeBins.from_fingerprints(fprint)
-    bins.buffered_melt(bin_buffer)
-    return bins.compare(reads)
+    bins = reads.cluster(min_reads, eps, min_eps=min_eps, hierarchical=hierarchical)
+    return bins.merge_sources().buffered_melt(fingerprint_buffer).count_reads(reads,
+                                                                              n_common_elements=number_of_elements)
 
 
 def comparison(bams=None,
@@ -119,9 +117,9 @@ def comparison(bams=None,
                min_reads=None,
                eps=None,
                min_eps=0,
+               number_of_elements=3,
                hierarchical=True,
                fingerprint_buffer=0,
-               bin_buffer=0,
                cores=1):
     """
     Multi-processes pipeline for batch comparison of multiple bam file(s) by transposon fingerprints.
@@ -142,17 +140,17 @@ def comparison(bams=None,
     :type eps: int
     :param min_eps: minimum epsilon used when calculating support for child clusters in the HUDC algorithm
     :type min_eps: int
+    :param number_of_elements: number of most common elements to count for ech cluster.
+    :type number_of_elements: int
     :param hierarchical: if false, the non-hierarchical UDC algorithm is used and min_eps ignored
     :type hierarchical: bool
     :param fingerprint_buffer: value to buffer fingerprints by, defaults to 0
     :type fingerprint_buffer: int
-    :param bin_buffer: value to buffer comparative-bins by, defaults to 0
-    :type bin_buffer: int
     :param cores: number of processes to use for the batch job
     :type cores: int
 
     :return: Fingerprint comparisons of bam files
-    :rtype: :class:`loci.Comparison`
+    :rtype: :class:`loci.BinCounts`
     """
     jobs = product([bams],
                    [categories],
@@ -162,9 +160,9 @@ def comparison(bams=None,
                    [min_reads],
                    [eps],
                    [min_eps],
+                   [number_of_elements],
                    [hierarchical],
-                   [fingerprint_buffer],
-                   [bin_buffer])
+                   [fingerprint_buffer])
 
     if cores == 1:
         return loci.append(*[_comparison_worker(*job) for job in jobs])
