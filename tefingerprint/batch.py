@@ -105,9 +105,9 @@ def _comparison_worker(bams,
                                                             tag=transposon_tag)
                           for bam in bams])
     fprint = reads.fingerprint(min_reads, eps, min_eps=min_eps, hierarchical=hierarchical)
-    fprint.buffer(fingerprint_buffer)
+    fprint.buffered_melt(fingerprint_buffer)
     bins = loci.ComparativeBins.from_fingerprints(fprint)
-    bins.buffer(bin_buffer)
+    bins.buffered_melt(bin_buffer)
     return bins.compare(reads)
 
 

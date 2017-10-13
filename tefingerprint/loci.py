@@ -536,19 +536,21 @@ class GenomicBins(GenomeLoci):
 
         return new_bins
 
-    def buffer(self, value):
+    def buffered_melt(self, value):
         """
-        Expand each locus by a set amount in both directions (mutates object in place.
+        Expand each locus by a set amount in both directions, a melt is performed first to ensure no overlapping loci.
         Loci can not be expanded beyond the bounds of their reference and will not overlap neighbouring loci within
         their group.
 
         :param value: the (maximum) amount to expand loci in both directions
         :type value: int
         """
+        new_bins = self.melt()
+
         if value <= 0:
             pass
         else:
-            for key, loci in self.items():
+            for key, loci in new_bins.items():
                 if len(loci) == 0:
                     pass
                 elif len(loci) == 1:
@@ -565,6 +567,8 @@ class GenomicBins(GenomeLoci):
                     loci['stop'][:-1] = loci['stop'][:-1] + np.ceil(difs)
                     loci['start'][0] = max(loci['start'][0] - value, minimum)
                     loci['stop'][-1] = min(loci['stop'][-1] + value, maximum)
+
+        return new_bins
 
     def count_reads(self, reads, trim=True, n_common_elements=0):
         assert isinstance(reads, InformativeReadLoci)

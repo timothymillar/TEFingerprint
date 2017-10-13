@@ -142,7 +142,7 @@ class TestGenomeLoci:
                                             '+',
                                             'Gypsy'): np.array([],
                                                                dtype=loci.GenomeLoci._DTYPE_LOCI)})
-        query.buffer(20)
+        query.buffered_melt(20)
         answer = loci.GenomeLoci.from_dict({('chr1:1-300',
                                              '+',
                                              'Gypsy'): np.array([(1, 35),
