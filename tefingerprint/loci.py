@@ -223,36 +223,6 @@ class GenomeLoci(object):
                     result._dict[key] = loci
             return result
 
-    def buffer(self, value):
-        """
-        Expand each locus by a set amount in both directions (mutates data in place).
-        Loci can not be expanded beyond the bounds of their reference and will not overlap neighbouring loci within
-        their group.
-
-        :param value: the (maximum) amount to expand loci in both directions
-        :type value: int
-        """
-        if value <= 0:
-            pass
-        else:
-            for key, loci in self.items():
-                if len(loci) == 0:
-                    pass
-                elif len(loci) == 1:
-                    reference = key.reference
-                    minimum, maximum = tuple(map(int, reference.split(':')[1].split('-')))
-                    loci['start'][0] = max(loci['start'][0] - value, minimum)
-                    loci['stop'][-1] = min(loci['stop'][-1] + value, maximum)
-                else:
-                    reference = key.reference
-                    minimum, maximum = tuple(map(int, reference.split(':')[1].split('-')))
-                    difs = ((loci['start'][1:] - loci['stop'][:-1]) - 1) / 2
-                    difs[difs > value] = value
-                    loci['start'][1:] = loci['start'][1:] - np.floor(difs)
-                    loci['stop'][:-1] = loci['stop'][:-1] + np.ceil(difs)
-                    loci['start'][0] = max(loci['start'][0] - value, minimum)
-                    loci['stop'][-1] = min(loci['stop'][-1] + value, maximum)
-
     def features(self):
         """
         Yields one tuple per locus.
@@ -554,7 +524,7 @@ class GenomicBins(GenomeLoci):
     Coordinates are inclusive, 1 based integers (i.e, use the SAM coordinate system).
     """
 
-    def drop_source_field(self):
+    def merge_sources(self):
         """"""
         new_bins = GenomicBins(dtype_key=drop_dtype_field(self.dtype_key, 'source'),
                                dtype_loci=self.dtype_loci)
@@ -586,6 +556,36 @@ class GenomicBins(GenomeLoci):
                 new_bins._dict[key] = np.fromiter(_loci_melter(loci), dtype=new_bins.dtype_loci)
 
         return new_bins
+
+    def buffer(self, value):
+        """
+        Expand each locus by a set amount in both directions (mutates object in place.
+        Loci can not be expanded beyond the bounds of their reference and will not overlap neighbouring loci within
+        their group.
+
+        :param value: the (maximum) amount to expand loci in both directions
+        :type value: int
+        """
+        if value <= 0:
+            pass
+        else:
+            for key, loci in self.items():
+                if len(loci) == 0:
+                    pass
+                elif len(loci) == 1:
+                    reference = key.reference
+                    minimum, maximum = tuple(map(int, reference.split(':')[1].split('-')))
+                    loci['start'][0] = max(loci['start'][0] - value, minimum)
+                    loci['stop'][-1] = min(loci['stop'][-1] + value, maximum)
+                else:
+                    reference = key.reference
+                    minimum, maximum = tuple(map(int, reference.split(':')[1].split('-')))
+                    difs = ((loci['start'][1:] - loci['stop'][:-1]) - 1) / 2
+                    difs[difs > value] = value
+                    loci['start'][1:] = loci['start'][1:] - np.floor(difs)
+                    loci['stop'][:-1] = loci['stop'][:-1] + np.ceil(difs)
+                    loci['start'][0] = max(loci['start'][0] - value, minimum)
+                    loci['stop'][-1] = min(loci['stop'][-1] + value, maximum)
 
     def count_reads(self, reads, trim=True, n_common_elements=0):
         assert isinstance(reads, InformativeReadLoci)
