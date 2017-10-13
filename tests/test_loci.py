@@ -379,7 +379,7 @@ class TestReadLoci:
                                                                   (0, 1917, 'Gypsy27_uniqueID')],
                                                                  dtype=loci.InformativeReadLoci._DTYPE_LOCI)}
         query = loci.InformativeReadLoci.from_dict(query)
-        query = query.fingerprint(10, eps=200, min_eps=10, hierarchical=True)
+        query = query.cluster(10, eps=200, min_eps=10, hierarchical=True)
         answer = loci.GenomicBins.from_dict({('chr1:1-3000',
                                               '-',
                                               'Gypsy',

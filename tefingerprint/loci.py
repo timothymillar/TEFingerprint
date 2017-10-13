@@ -464,7 +464,7 @@ class InformativeReadLoci(GenomeLoci):
             d[group].dtype.names = ('name', 'tip')
         return d
 
-    def fingerprint(self, min_reads, eps, min_eps=0, hierarchical=True):
+    def cluster(self, min_reads, eps, min_eps=0, hierarchical=True):
         """
         Fingerprint a :class:`ReadLoci` object based on density of read tips.
 
