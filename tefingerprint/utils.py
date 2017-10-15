@@ -32,7 +32,7 @@ def flatten_numpy_element(item):
         yield item
 
 
-def flatten_dtype(dtype):
+def flatten_dtype(dtype, prefix=''):
     def flatten_descr(item, prefix=''):
         if isinstance(item, tuple):
             if isinstance(item[1], list):
@@ -48,25 +48,12 @@ def flatten_dtype(dtype):
         else:
             pass
 
-    return np.dtype(list(flatten_descr(dtype.descr)))
+    return np.dtype(list(flatten_descr(dtype.descr, prefix=prefix)))
 
 
 def flatten_dtype_fields(dtype, prefix=''):
-
-    def flatten_descr_names(item, prefix=''):
-        if isinstance(item, list):
-            for element in item:
-                for item in flatten_descr_names(element, prefix=prefix):
-                    yield item
-        if isinstance(item, tuple):
-            yield prefix + item[0]
-            prefix += str(item[0]) + '_'
-            for item in flatten_descr_names(item[1], prefix=prefix):
-                yield item
-        else:
-            pass
-
-    return flatten_descr_names(dtype.descr, prefix=prefix)
+    for name in flatten_dtype(dtype, prefix=prefix).names:
+        yield name
 
 
 def quote_str(value):
