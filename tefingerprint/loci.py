@@ -79,13 +79,13 @@ class LociKey(object):
     of similar loci
 
     :param reference: name of a reference chromosome with the form 'name:min-max'
-    :type reference: str
+    :type reference: str | None
     :param strand: strand of the reference chromosome '+' or '-'
-    :type strand: str
+    :type strand: str | None
     :param category: name of transposon category/family
-    :type category: str
+    :type category: str | None
     :param source: optional name of source bam file
-    :type source: str
+    :type source: str | None
     """
     __slots__ = ['reference', 'strand', 'category', 'source']
 
@@ -108,17 +108,12 @@ class LociKey(object):
         return hash((self.reference, self.strand, self.category, self.source))
 
     def __iter__(self):
-        yield self.reference
-        yield self.strand
-        yield self.category
-        if self.source:
-            yield self.source
+        for i in (self.reference, self.strand, self.category, self.source):
+            if i:
+                yield i
 
     def __repr__(self):
-        if self.source:
-            return repr((self.reference, self.strand, self.category, self.source))
-        else:
-            return repr((self.reference, self.strand, self.category))
+        return repr((self.reference, self.strand, self.category, self.source))
 
 
 class GenomeLoci(object):
@@ -594,8 +589,8 @@ class GenomicBins(GenomeLoci):
                                ('sample', dtype_samples)])
 
         # BinCounts to collect result
-        comparison = BinCounts(dtype_key=self.dtype_key,
-                               dtype_loci=dtype_loci)
+        comparison = GenomicBins(dtype_key=self.dtype_key,
+                                 dtype_loci=dtype_loci)
 
         # dictionary of tips from all reads
         all_tips = reads.named_tips()
@@ -649,8 +644,98 @@ class GenomicBins(GenomeLoci):
 
         return comparison
 
+    def join_clusters(self):
 
-class BinCounts(GenomeLoci):
+        def sorter(forward, reverse):
+
+            dtype_sort = np.dtype([('value', np.int64), ('strand', np.int8), ('index', np.int64)])
+            f = np.empty(len(forward), dtype=dtype_sort)
+            f['value'] = forward
+            f['strand'] = 0
+            f['index'] = np.arange(0, len(forward))
+
+            r = np.empty(len(reverse), dtype=dtype_sort)
+            r['value'] = reverse
+            r['strand'] = 1
+            r['index'] = np.arange(0, len(reverse))
+
+            clusters = np.append(f, r)
+            clusters.sort(order=('value', 'strand'))
+
+            prev = None
+            for clust in clusters:
+                if prev is None:
+                    if clust['strand'] == 1:
+                        # reverse cluster can't be paired
+                        yield (None, clust['index'])
+                    else:
+                        # store forward cluster as prev
+                        prev = clust
+                else:
+                    if clust['strand'] == 0:
+                        # both forward so store cluster as prev
+                        yield (prev['index'], None)
+                        prev = clust
+                    else:
+                        # cluster is reverse and prev is forward
+                        yield (prev['index'], clust['index'])
+                        prev = None
+            if prev is not None:
+                # final cluster is un paired
+                yield (prev['index'], None)
+
+        dtype_key = np.dtype([('reference', np.str_, 256), ('category', np.str_, 256)])
+
+        dtype_loci = np.dtype([("start", np.int64),
+                               ("stop", np.int64),
+                               ("strand", '<U1'),
+                               ("paired", np.int64),
+                               ("forward", self.dtype_loci),
+                               ("reverse", self.dtype_loci)])
+
+        new_object = PairedGenomicBins(dtype_key, dtype_loci)
+
+        new_keys = {LociKey(reference=k.reference, strand=None, category=k.category) for k in self.keys()}
+
+        for key in new_keys:
+
+            # get forward and reverse loci for this key
+            forward = self[LociKey(reference=key.reference, strand='+', category=key.category)]
+            reverse = self[LociKey(reference=key.reference, strand='-', category=key.category)]
+
+            # sort them into pairs based on median
+            pairs = list(sorter(forward['median'], reverse['median']))
+
+            loci = np.empty(len(pairs), dtype=dtype_loci)
+
+            for i, (f, r) in enumerate(pairs):
+                if f is not None:
+                    loci[i]['forward'] = forward[f]
+                    loci[i]['start'] = loci[i]['forward']['stop']
+                if r is not None:
+                    loci[i]['reverse'] = reverse[r]
+                    loci[i]['stop'] = loci[i]['reverse']['start']
+                if f is not None and r is not None:
+                    loci[i]['paired'] = 1
+
+            # fill in blanks based on present data
+            missing_forward = loci['start'] == 0
+            missing_reverse = loci['stop'] == 0
+
+            loci['start'][missing_forward] = loci['stop'][missing_forward] - 1
+            loci['stop'][missing_reverse] = loci['start'][missing_reverse] + 1
+
+            # strand based on 1 or 2 clusters
+            loci['strand'] = '.'
+            loci['strand'][missing_forward] = '-'
+            loci['strand'][missing_reverse] = '+'
+
+            new_object._dict[key] = loci
+
+        return new_object
+
+
+class PairedGenomicBins(GenomeLoci):
     """"""
 
 
