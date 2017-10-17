@@ -105,8 +105,7 @@ def _comparison_worker(bams,
                                                             tag=transposon_tag)
                           for bam in bams])
     bins = reads.cluster(min_reads, eps, min_eps=min_eps, hierarchical=hierarchical)
-    return bins.merge_sources().buffered_melt(fingerprint_buffer).count_reads(reads,
-                                                                              n_common_elements=number_of_elements)
+    return bins.merge_sources().buffered_melt(fingerprint_buffer).count_reads(reads, number_of_elements).join_clusters()
 
 
 def comparison(bams=None,
