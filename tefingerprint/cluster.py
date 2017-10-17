@@ -3,6 +3,31 @@
 import numpy as np
 
 
+def core_distances(array, min_points):
+    """
+    Identify the core distance (minimum value of epsilon) for every point in an array of integers.
+    For each point, the minimum epsilon is calculated among all subclusters containing that point.
+
+    :param array: An array of integers sorted in ascending order
+    :type array: :class:`numpy.ndarray`[int]
+    :param min_points: number of points used to form a subcluster
+    :type n: int
+
+    :return: An array of minimum eps values
+    :rtype: :class:`numpy.ndarray`[int]
+    """
+    assert min_points > 1  # groups must contain at least two points
+    offset = min_points - 1  # offset for indexing because the minimum points includes itself
+    length = len(array)
+    lower = array[0:length - offset]
+    upper = array[offset:length]
+    eps_values = upper - lower
+    eps_2d = np.full((min_points, length), np.max(eps_values), dtype=int)
+    for i in range(min_points):
+        eps_2d[i, i:length - (offset - i)] = eps_values
+    return np.min(eps_2d, axis=0)
+
+
 class UDBSCANx(object):
     """
     Univariate implimentation of DBSCAN*.
@@ -254,16 +279,7 @@ class UDBSCANxH(UDBSCANx):
         :return: An array of minimum eps values
         :rtype: :class:`numpy.ndarray`[int]
         """
-        assert min_points > 1  # groups must contain at least two points
-        offset = min_points - 1  # offset for indexing because the minimum points includes itself
-        length = len(array)
-        lower = array[0:length - offset]
-        upper = array[offset:length]
-        eps_values = upper - lower
-        eps_2d = np.full((min_points, length), np.max(eps_values), dtype=int)
-        for i in range(min_points):
-            eps_2d[i, i:length - (offset - i)] = eps_values
-        return np.min(eps_2d, axis=0)
+        return core_distances(array, min_points)
 
     @staticmethod
     def _fork_epsilon(array, min_points):

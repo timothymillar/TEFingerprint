@@ -586,6 +586,7 @@ class GenomicBins(GenomeLoci):
         dtype_loci = np.dtype([('start', np.int64),
                                ('stop', np.int64),
                                ('median', np.int64),
+                               ('edge', np.int64),
                                ('sample', dtype_samples)])
 
         # BinCounts to collect result
@@ -632,7 +633,15 @@ class GenomicBins(GenomeLoci):
 
                 # find median of cluster
                 combined_tips = reduce(np.append, (tips['tip'] for tips in local_tips))
+                combined_tips.sort()
                 locus['median'] = np.median(combined_tips)
+
+                # find edge of 90% core
+                core_dists = cluster.core_distances(combined_tips, int(len(combined_tips) * 0.99))
+                if group.strand == '+':
+                    locus['edge'] = combined_tips[np.where(core_dists == np.min(core_dists))[0][-1]]
+                elif group.strand == '-':
+                    locus['edge'] = combined_tips[np.where(core_dists == np.min(core_dists))[0][0]]
 
                 # trim the potentially buffered locus to the first and last read tips
                 if trim:
@@ -711,10 +720,10 @@ class GenomicBins(GenomeLoci):
             for i, (f, r) in enumerate(pairs):
                 if f is not None:
                     loci[i]['forward'] = forward[f]
-                    loci[i]['start'] = loci[i]['forward']['stop']
+                    loci[i]['start'] = loci[i]['forward']['edge']
                 if r is not None:
                     loci[i]['reverse'] = reverse[r]
-                    loci[i]['stop'] = loci[i]['reverse']['start']
+                    loci[i]['stop'] = loci[i]['reverse']['edge']
                 if f is not None and r is not None:
                     loci[i]['paired'] = 1
 
