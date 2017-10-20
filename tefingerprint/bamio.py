@@ -200,7 +200,7 @@ def _process_bams(bams, references, categories, quality=0, tag='ME'):
             yield block
 
 
-def extract_bam_reads(bams, categories, references=None, quality=0, tag='ME'):
+def extract_informative_reads(bams, categories, references=None, quality=0, tag='ME'):
     """
     Extract reads from one or more bam file(s) and categories reads by their reference, strand, associated transposon,
     and source bam file.
@@ -235,3 +235,41 @@ def extract_bam_reads(bams, categories, references=None, quality=0, tag='ME'):
 
 if __name__ == '__main__':
     pass
+
+
+def _get_anchor_inserts(bam, reference, quality=0):
+    with pysam.AlignmentFile(bam, 'rb') as bam:
+        for r in bam.fetch(*reference):
+            if not r.is_reverse \
+                    and not r.is_unmapped \
+                    and r.is_paired \
+                    and r.is_read1 \
+                    and r.mate_is_reverse \
+                    and not r.mate_is_unmapped \
+                    and r.reference_id == r.next_reference_id \
+                    and r.mapping_quality >= quality:
+                yield r.blocks[-1][-1], r.mpos + 1
+
+
+def extract_anchor_intervals(bams, references=None, quality=0):
+    if isinstance(bams, str):
+        bams = [bams]
+
+    if isinstance(references, str):
+        references = [references]
+
+    references = list(_parse_reference_strings(bams, reference_strings=references))
+
+    jobs = product(references, bams)
+
+    for ref, bam in jobs:
+        yield ('{0}:{1}-{2}'.format(*ref), '.', bam),  _get_anchor_inserts(bam, ref, quality=quality)
+
+
+
+
+
+
+
+
+

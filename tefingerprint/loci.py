@@ -397,11 +397,11 @@ class InformativeReadLoci(GenomeLoci):
                                                          ('stop', np.int64),
                                                          ('name', np.str_, 254)]))
         reads._dict = {LociKey(*group): np.fromiter(loci, dtype=reads.dtype_loci)
-                       for group, loci in bamio.extract_bam_reads(bams,
-                                                                  categories,
-                                                                  references=references,
-                                                                  quality=quality,
-                                                                  tag=tag)}
+                       for group, loci in bamio.extract_informative_reads(bams,
+                                                                          categories,
+                                                                          references=references,
+                                                                          quality=quality,
+                                                                          tag=tag)}
         return reads
 
     def tips(self):
@@ -742,6 +742,19 @@ class GenomicBins(GenomeLoci):
             new_object._dict[key] = loci
 
         return new_object
+
+
+def read_anchor_intervals(bams, references=None, quality=0):
+    anchors = GenomicBins(dtype_key=np.dtype([('reference', np.str_, 256),
+                                              ('strand', np.str_, 1),
+                                              ('source', np.str_, 256)]),
+                          dtype_loci=np.dtype([('start', np.int64),
+                                               ('stop', np.int64)]))
+    anchors._dict = {LociKey(*group): np.fromiter(loci, dtype=anchors.dtype_loci)
+                     for group, loci in bamio.extract_anchor_intervals(bams,
+                                                                       references=references,
+                                                                       quality=quality)}
+    return anchors
 
 
 class PairedGenomicBins(GenomeLoci):
