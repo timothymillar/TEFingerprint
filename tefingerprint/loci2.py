@@ -4,6 +4,7 @@ import numpy as np
 from tefingerprint import utils
 from tefingerprint.cluster import UDBSCANx as _UDBSCANx, UDBSCANxH as _UDBSCANxH
 
+
 class Header(object):
     """
     A Loci Key is used to specify a specific 'reference', 'strand', 'category' of a genome
@@ -90,79 +91,6 @@ class Header(object):
                 'source': self._source}
         data.update(kwargs)
         return Header(**data)
-
-
-class ContigSet(object):
-
-    def __init__(self, *args, append_duplicate_headers=False):
-        self._dict = {}
-        if len(args) == 0:
-            pass
-        else:
-            assert len({ctg.header.dtype for ctg in args}) == 1
-            assert len({ctg.loci.dtype for ctg in args}) == 1
-            for arg in args:
-                if arg.header in self._dict.keys():
-                    if append_duplicate_headers:
-                        self._dict[arg.header] = append(self._dict[arg.header], arg)
-                    else:
-                        raise ValueError('More than one contig with header {0}'.format(arg.header))
-                else:
-                    self._dict[arg.header] = arg
-
-    def __len__(self):
-        return sum(map(len, self._dict.values()))
-
-    def __repr__(self):
-        return repr(self._dict)
-
-    def __getitem__(self, header):
-        return self._dict.__getitem__(header)
-
-    def _dtype_headers(self):
-        consensus = {ctg.header.dtype for ctg in self._dict.values()}
-        assert len(consensus) == 1
-        return list(consensus)[0]
-
-    def _dtype_loci(self):
-        consensus = {ctg.loci.dtype for ctg in self._dict.values()}
-        assert len(consensus) == 1
-        return list(consensus)[0]
-
-    def add(self, contig, append_duplicate_headers=False):
-        if len(self._dict.keys()) == 0:
-            pass
-        else:
-            assert contig.header.dtype == self._dtype_headers()
-            assert contig.loci.dtype == self._dtype_loci()
-        if contig.header in self._dict.keys():
-            if append_duplicate_headers:
-                self._dict[contig.header] = append(self._dict[contig.header], contig)
-            else:
-                raise ValueError('More than one contig with header {0}'.format(contig.header))
-        else:
-            self._dict[contig.header] = contig
-
-    def update(self, contigs, append_duplicate_headers=False):
-        for contig in contigs:
-            self.add(contig, append_duplicate_headers=append_duplicate_headers)
-
-    def map(self, function, append_duplicate_headers=False):
-        return ContigSet(*map(function, self._dict.values()), append_duplicate_headers=append_duplicate_headers)
-
-    def contigs(self):
-        for contig in self._dict.values():
-            yield contig
-
-    def iter_values(self):
-        for ctg in self._dict.values():
-            for val in iter_values(ctg):
-                yield val
-
-    def as_array(self):
-        data = map(tuple, map(utils.flatten_numpy_element, self.iter_values()))
-        dtype = utils.flatten_dtype(utils.append_dtypes(self._dtype_headers(), self._dtype_loci()))
-        return np.array([i for i in data], dtype=dtype)
 
 
 class Contig(object):
@@ -291,3 +219,130 @@ def unions_buffered(contig, value, lower_bound='start', upper_bound='stop'):
             contig.loci[upper_bound][-1] += value
     return contig
 
+
+class ContigSet(object):
+    def __init__(self, *args, append_duplicate_headers=False):
+        self._dict = {}
+        if len(args) == 0:
+            pass
+        else:
+            assert len({ctg.header.dtype for ctg in args}) == 1
+            assert len({ctg.loci.dtype for ctg in args}) == 1
+            for arg in args:
+                if arg.header in self._dict.keys():
+                    if append_duplicate_headers:
+                        self._dict[arg.header] = append(self._dict[arg.header], arg)
+                    else:
+                        raise ValueError('More than one contig with header {0}'.format(arg.header))
+                else:
+                    self._dict[arg.header] = arg
+
+    def __len__(self):
+        return sum(map(len, self._dict.values()))
+
+    def __repr__(self):
+        return repr(self._dict)
+
+    def __getitem__(self, header):
+        return self._dict.__getitem__(header)
+
+    def _dtype_headers(self):
+        consensus = {ctg.header.dtype for ctg in self._dict.values()}
+        assert len(consensus) == 1
+        return list(consensus)[0]
+
+    def _dtype_loci(self):
+        consensus = {ctg.loci.dtype for ctg in self._dict.values()}
+        assert len(consensus) == 1
+        return list(consensus)[0]
+
+    def add(self, contig, append_duplicate_headers=False):
+        if len(self._dict.keys()) == 0:
+            pass
+        else:
+            assert contig.header.dtype == self._dtype_headers()
+            assert contig.loci.dtype == self._dtype_loci()
+        if contig.header in self._dict.keys():
+            if append_duplicate_headers:
+                self._dict[contig.header] = append(self._dict[contig.header], contig)
+            else:
+                raise ValueError('More than one contig with header {0}'.format(contig.header))
+        else:
+            self._dict[contig.header] = contig
+
+    def update(self, contigs, append_duplicate_headers=False):
+        for contig in contigs:
+            self.add(contig, append_duplicate_headers=append_duplicate_headers)
+
+    def map(self, function, append_duplicate_headers=False):
+        return ContigSet(*map(function, self._dict.values()), append_duplicate_headers=append_duplicate_headers)
+
+    def contigs(self):
+        for contig in self._dict.values():
+            yield contig
+
+    def iter_values(self):
+        for ctg in self._dict.values():
+            for val in iter_values(ctg):
+                yield val
+
+    def as_array(self, order=False):
+        data = map(tuple, map(utils.flatten_numpy_element, self.iter_values()))
+        dtype = utils.flatten_dtype(utils.append_dtypes(self._dtype_headers(), self._dtype_loci()))
+        array = np.array([i for i in data], dtype=dtype)
+
+        if order:
+            if isinstance(order, str):
+                order = [order]
+            index = np.argsort(array[order],
+                               order=(tuple(order)))
+            array = array[index]
+
+        return array
+
+    def as_tabular_lines(self, sep=','):
+        columns = utils.flatten_dtype_fields(utils.append_dtypes(self._dtype_headers(), self._dtype_loci()))
+        yield sep.join(map(utils.quote_str, columns)) + '\n'
+        for f in self.iter_values():
+            yield sep.join(map(utils.quote_str, utils.flatten_numpy_element(f))) + '\n'
+
+    def as_gff_lines(self,
+                     order=False,
+                     reference='reference',
+                     start='start',
+                     stop='stop',
+                     strand='strand',
+                     category='category'):
+
+        array = self.as_array(order=order)
+
+        attribute_fields = list(array.dtype.names)
+        for field in (reference, start, stop, strand):
+            attribute_fields.remove(field)
+
+        template = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}\n"
+
+        for record in array:
+            if category in attribute_fields:
+                identifier = "{0}:{1}-{2}_{3}_{4}".format(record[reference],
+                                                          record[start],
+                                                          record[stop],
+                                                          record[strand],
+                                                          record[category])
+            else:
+                identifier = "{0}:{1}-{2}_{3}".format(record[reference],
+                                                      record[start],
+                                                      record[stop],
+                                                      record[strand])
+
+            attributes = ('{0}={1}'.format(field, record[field]) for field in attribute_fields)
+            attributes = 'ID=' + identifier + ';' + ';'.join(attributes)
+            yield template.format(record['reference'],
+                                  '.',
+                                  '.',
+                                  record['start'],
+                                  record['stop'],
+                                  '.',
+                                  record['strand'],
+                                  '.',
+                                  attributes)
