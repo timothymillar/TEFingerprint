@@ -95,17 +95,20 @@ class Header(object):
 class ContigSet(object):
 
     def __init__(self, *args, append_duplicate_headers=False):
-        assert len({ctg.header.dtype for ctg in args}) == 1
-        assert len({ctg.loci.dtype for ctg in args}) == 1
-        self._dict = {}  # TODO: rename dict and have method contigs() pass to dict.values()
-        for arg in args:
-            if arg.header in self._dict.keys():
-                if append_duplicate_headers:
-                    self._dict[arg.header] = append(self._dict[arg.header], arg)
+        self._dict = {}
+        if len(args) == 0:
+            pass
+        else:
+            assert len({ctg.header.dtype for ctg in args}) == 1
+            assert len({ctg.loci.dtype for ctg in args}) == 1
+            for arg in args:
+                if arg.header in self._dict.keys():
+                    if append_duplicate_headers:
+                        self._dict[arg.header] = append(self._dict[arg.header], arg)
+                    else:
+                        raise ValueError('More than one contig with header {0}'.format(arg.header))
                 else:
-                    raise ValueError('More than one contig with header {0}'.format(arg.header))
-            else:
-                self._dict[arg.header] = arg
+                    self._dict[arg.header] = arg
 
     def __len__(self):
         return sum(map(len, self._dict.values()))
@@ -127,8 +130,11 @@ class ContigSet(object):
         return list(consensus)[0]
 
     def add(self, contig, append_duplicate_headers=False):
-        assert contig.header.dtype == self._dtype_headers()
-        assert contig.loci.dtype == self._dtype_loci()
+        if len(self._dict.keys()) == 0:
+            pass
+        else:
+            assert contig.header.dtype == self._dtype_headers()
+            assert contig.loci.dtype == self._dtype_loci()
         if contig.header in self._dict.keys():
             if append_duplicate_headers:
                 self._dict[contig.header] = append(self._dict[contig.header], contig)

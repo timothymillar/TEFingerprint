@@ -75,6 +75,40 @@ def extract_informative_read_tips(bams, references, categories, quality=0, tag='
                              for header, data in dictionary.items()))
 
 
+def _parse_bam_anchor_insert_data(bam, reference, max_size, quality=0):
+    with pysam.AlignmentFile(bam, 'rb') as bam:
+        for r in bam.fetch(region=reference):
+            if not r.is_reverse \
+                    and not r.is_unmapped \
+                    and r.is_paired \
+                    and r.is_read1 \
+                    and r.mate_is_reverse \
+                    and not r.mate_is_unmapped \
+                    and r.reference_id == r.next_reference_id \
+                    and r.mapping_quality >= quality \
+                    and r.mpos > r.blocks[-1][-1] \
+                    and r.mpos - r.blocks[-1][-1] < max_size:
+                yield r.blocks[-1][-1], r.mpos + 1
+
+
+def extract_anchor_intervals(bams, references, max_size, quality=0):
+    if isinstance(bams, str):
+        bams = [bams]
+
+    if isinstance(references, str):
+        references = [references]
+
+    jobs = product(bams, references)
+    dtype = np.dtype([('start', np.int64), ('stop', np.int64)])
+    intervals = loci2.ContigSet()
+
+    for bam, reference in jobs:
+        header = loci2.Header(reference=reference.split(':')[0], source=os.path.basename(bam))
+        data = _parse_bam_anchor_insert_data(bam, reference, max_size, quality=quality)
+        intervals.add(loci2.unions(loci2.Contig(header=header, array=np.fromiter(data, dtype=dtype))))
+
+    return intervals
+
 
 
 
