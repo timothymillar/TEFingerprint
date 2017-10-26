@@ -500,7 +500,7 @@ class GenomicBins(GenomeLoci):
 
     def merge_sources(self):
         """"""
-        new_bins = GenomicBins(dtype_key=utils.drop_dtype_field(self.dtype_key, 'source'),
+        new_bins = GenomicBins(dtype_key=utils.remove_dtype_field(self.dtype_key, 'source'),
                                dtype_loci=self.dtype_loci)
 
         for key, loci in self.items():
@@ -579,7 +579,7 @@ class GenomicBins(GenomeLoci):
                                        ('element', dtype_elements)])
 
         if n_common_elements == 0:
-            dtype_sample_count = utils.drop_dtype_field(dtype_sample_count, 'element')
+            dtype_sample_count = utils.remove_dtype_field(dtype_sample_count, 'element')
 
         dtype_samples = np.dtype([(str(i), dtype_sample_count) for i, _ in enumerate(sources)])
 
@@ -652,6 +652,36 @@ class GenomicBins(GenomeLoci):
             comparison._dict[group] = new_loci
 
         return comparison
+
+    def check_heterozygosity(self, intervals):
+        """
+        Tags overlap with heterozygosity intervals
+        """
+        new_field_dtype = np.dtype([('heterozygosity', np.int8)])
+
+        new = GenomicBins(dtype_key=self.dtype_key,
+                          dtype_loci=utils.append_dtypes(self.dtype_loci,
+                                                         new_field_dtype))
+
+        for key, loci in self.items():
+
+            # need cluster tips
+            if key.strand == '+':
+                tips = loci['stop']
+            elif key.strand == '-':
+                tips = loci['start']
+            else:
+                assert False
+
+            intervals_key = LociKey(reference=key.reference, strand='.', category=None, source=key.source)
+
+            gen = (np.any(np.logical_and(tip >= intervals[intervals_key]['start'],
+                                         tip <= intervals[intervals_key]['stop'])) for tip in tips)
+            new_field = np.fromiter(gen, dtype=new_field_dtype, count=len(tips))
+
+            new._dict[key] = utils.bind_arrays(loci, new_field)
+
+        return new
 
     def join_clusters(self):
 
@@ -744,7 +774,7 @@ class GenomicBins(GenomeLoci):
         return new_object
 
 
-def read_anchor_intervals(bams, references=None, quality=0):
+def read_anchor_inserts(bams, max_size, references=None, quality=0):
     anchors = GenomicBins(dtype_key=np.dtype([('reference', np.str_, 256),
                                               ('strand', np.str_, 1),
                                               ('source', np.str_, 256)]),
@@ -752,9 +782,15 @@ def read_anchor_intervals(bams, references=None, quality=0):
                                                ('stop', np.int64)]))
     anchors._dict = {LociKey(*group): np.fromiter(loci, dtype=anchors.dtype_loci)
                      for group, loci in bamio.extract_anchor_intervals(bams,
+                                                                       max_size,
                                                                        references=references,
                                                                        quality=quality)}
     return anchors
+
+
+def rename_sources(genomicloci, dict):
+    for key in genomicloci.keys():
+        key.source = dict[key.source]
 
 
 class PairedGenomicBins(GenomeLoci):

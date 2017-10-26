@@ -237,7 +237,7 @@ if __name__ == '__main__':
     pass
 
 
-def _get_anchor_inserts(bam, reference, quality=0):
+def _get_anchor_inserts(bam, max_size, reference, quality=0):
     with pysam.AlignmentFile(bam, 'rb') as bam:
         for r in bam.fetch(*reference):
             if not r.is_reverse \
@@ -247,11 +247,12 @@ def _get_anchor_inserts(bam, reference, quality=0):
                     and r.mate_is_reverse \
                     and not r.mate_is_unmapped \
                     and r.reference_id == r.next_reference_id \
-                    and r.mapping_quality >= quality:
+                    and r.mapping_quality >= quality \
+                    and r.blocks[-1][-1] - r.mpos < max_size:
                 yield r.blocks[-1][-1], r.mpos + 1
 
 
-def extract_anchor_intervals(bams, references=None, quality=0):
+def extract_anchor_intervals(bams, max_size, references=None, quality=0):
     if isinstance(bams, str):
         bams = [bams]
 
@@ -263,7 +264,8 @@ def extract_anchor_intervals(bams, references=None, quality=0):
     jobs = product(references, bams)
 
     for ref, bam in jobs:
-        yield ('{0}:{1}-{2}'.format(*ref), '.', bam),  _get_anchor_inserts(bam, ref, quality=quality)
+        yield ('{0}:{1}-{2}'.format(*ref), '.', None, bam.split('/')[-1]),   \
+              _get_anchor_inserts(bam, max_size, ref, quality=quality)
 
 
 

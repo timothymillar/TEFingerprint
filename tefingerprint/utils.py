@@ -10,8 +10,38 @@ def append_dtypes(*args):
     return np.dtype(descr)
 
 
-def drop_dtype_field(dtype, field):  # TODO: make this work on nested dtypes
+def remove_array_field(array, field):
+    dtype = remove_dtype_field(array.dtype, field)
+    new = np.empty(len(array), dtype=dtype)
+    for field in dtype.names:
+        new[field] = array[field]
+    return new
+
+
+def remove_dtype_field(dtype, field):
     return np.dtype([i for i in dtype.descr if i[0] != field])
+
+
+def extract_dtype_field(dtype, field):
+    return np.dtype([i for i in dtype.descr if i[0] == field])
+
+
+def flatten_tuple(item):
+    """
+    Flatten a nested numpy element.
+
+    :param item: a numpy element
+    :type item: np.void[any] | any
+
+    :return: A generator
+    :rtype: generator[any]
+    """
+    if isinstance(item, tuple):
+        for element in item:
+            for item in flatten_tuple(element):
+                yield item
+    else:
+        yield item
 
 
 def flatten_numpy_element(item):
@@ -54,6 +84,18 @@ def flatten_dtype(dtype, prefix=''):
 def flatten_dtype_fields(dtype, prefix=''):
     for name in flatten_dtype(dtype, prefix=prefix).names:
         yield name
+
+
+def bind_arrays(x, y):
+    for field in x.dtype.names:
+        assert field not in y.dtype.names
+    assert len(x) == len(y)
+    new = np.empty(len(x), dtype=np.dtype(x.dtype.descr + y.dtype.descr))
+    for field in x.dtype.names:
+        new[field] = x[field]
+    for field in y.dtype.names:
+        new[field] = y[field]
+    return new
 
 
 def quote_str(value):
