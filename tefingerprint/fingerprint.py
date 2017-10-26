@@ -10,7 +10,7 @@ from tefingerprint.cluster import core_distances as _core_distances
 
 
 def count(bins, reads, trim=True, n_common_elements=0):
-    sources = np.array(list({ctg.header.source for ctg in list(reads.contigs.values())}))
+    sources = np.array(list({ctg.header.source for ctg in list(reads.contigs())}))
     sources.sort()
 
     # munging dtypes for counts
@@ -31,20 +31,24 @@ def count(bins, reads, trim=True, n_common_elements=0):
     bins = bins.map(lambda x: loci2.add_field(x, dtype_new))
 
     # loop through bins
-    for bin_contig in bins.contigs.values():
+    for bin_contig in bins.contigs():
 
         # headers of read contigs to count
         read_headers = [bin_contig.header.mutate(source=source) for source in sources]
+
+        # names of samples
+        for i, header in enumerate(read_headers):
+            bin_contig.loci['sample'][str(i)]['name'] = header.source
 
         # iterate through bins
         for locus in bin_contig.loci:
 
             # boolean masks of contained reads for each read set
-            read_masks = [np.logical_and(reads.contigs(header).loci['tip'] >= locus['start'],
-                                         reads.contigs(header).loci['tip'] <= locus['stop']) for header in read_headers]
+            read_masks = [np.logical_and(reads[header].loci['tip'] >= locus['start'],
+                                         reads[header].loci['tip'] <= locus['stop']) for header in read_headers]
 
             # read loci data of contained reads for each read set
-            read_loci = [reads.contigs(header).loci[mask] for header, mask in zip(read_headers, read_masks)]
+            read_loci = [reads[header].loci[mask] for header, mask in zip(read_headers, read_masks)]
 
             # counts of reads
             for i, r in enumerate(read_loci):

@@ -45,7 +45,7 @@ def extract_informative_read_tips(bams, references, categories, quality=0, tag='
                    ['+', '-'],
                    categories,
                    [os.path.basename(bam) for bam in bams])
-    dictionary = {contig.Header(*key): deque() for key in keys}
+    dictionary = {loci2.Header(*key): deque() for key in keys}
 
     for bam in bams:
         for reference in references:

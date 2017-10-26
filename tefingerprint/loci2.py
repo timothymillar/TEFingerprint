@@ -94,53 +94,69 @@ class Header(object):
 
 class ContigSet(object):
 
-    def __init__(self, *args):
+    def __init__(self, *args, append_duplicate_headers=False):
         assert len({ctg.header.dtype for ctg in args}) == 1
         assert len({ctg.loci.dtype for ctg in args}) == 1
-        self.contigs = {}
+        self._dict = {}  # TODO: rename dict and have method contigs() pass to dict.values()
         for arg in args:
-            if arg.header in self.contigs.keys():
-                self.contigs[arg.header] = append(self.contigs[arg.header], arg)
+            if arg.header in self._dict.keys():
+                if append_duplicate_headers:
+                    self._dict[arg.header] = append(self._dict[arg.header], arg)
+                else:
+                    raise ValueError('More than one contig with header {0}'.format(arg.header))
             else:
-                self.contigs[arg.header] = arg
+                self._dict[arg.header] = arg
 
     def __len__(self):
-        return sum(map(len, self.contigs.values()))
+        return sum(map(len, self._dict.values()))
 
     def __repr__(self):
-        repr(self.contigs)
+        return repr(self._dict)
 
-    def map(self, function):
-        return ContigSet(*map(function, self.contigs.values()))
-
-    def iter_values(self):
-        for ctg in self.contigs.values():
-            for val in iter_values(ctg):
-                yield val
+    def __getitem__(self, header):
+        return self._dict.__getitem__(header)
 
     def _dtype_headers(self):
-        consensus = {ctg.header.dtype for ctg in self.contigs.values()}
+        consensus = {ctg.header.dtype for ctg in self._dict.values()}
         assert len(consensus) == 1
         return list(consensus)[0]
 
     def _dtype_loci(self):
-        consensus = {ctg.loci.dtype for ctg in self.contigs.values()}
+        consensus = {ctg.loci.dtype for ctg in self._dict.values()}
         assert len(consensus) == 1
         return list(consensus)[0]
 
+    def add(self, contig, append_duplicate_headers=False):
+        assert contig.header.dtype == self._dtype_headers()
+        assert contig.loci.dtype == self._dtype_loci()
+        if contig.header in self._dict.keys():
+            if append_duplicate_headers:
+                self._dict[contig.header] = append(self._dict[contig.header], contig)
+            else:
+                raise ValueError('More than one contig with header {0}'.format(contig.header))
+        else:
+            self._dict[contig.header] = contig
+
+    def update(self, contigs, append_duplicate_headers=False):
+        for contig in contigs:
+            self.add(contig, append_duplicate_headers=append_duplicate_headers)
+
+    def map(self, function, append_duplicate_headers=False):
+        return ContigSet(*map(function, self._dict.values()), append_duplicate_headers=append_duplicate_headers)
+
+    def contigs(self):
+        for contig in self._dict.values():
+            yield contig
+
+    def iter_values(self):
+        for ctg in self._dict.values():
+            for val in iter_values(ctg):
+                yield val
+
     def as_array(self):
-        data = self.iter_values()
+        data = map(tuple, map(utils.flatten_numpy_element, self.iter_values()))
         dtype = utils.flatten_dtype(utils.append_dtypes(self._dtype_headers(), self._dtype_loci()))
         return np.array([i for i in data], dtype=dtype)
-
-    def as_flat_array(self):
-        data = map(tuple, map(utils.flatten_numpy_element, self.iter_values()))
-        dtype = utils.append_dtypes(self._dtype_headers(), self._dtype_loci())
-        return np.array([i for i in data], dtype=dtype)
-
-    @classmethod
-    def join(cls, *args):
-        return cls(*(ctg for ctgset in args for ctg in ctgset))
 
 
 class Contig(object):
@@ -157,18 +173,16 @@ class Contig(object):
         return len(self.loci)
 
 
+def sort(contig, order=None):
+    return Contig(contig.header, np.sort(contig.loci, order=order))
+
+
 def iter_values(contig):
     for locus in contig.loci:
         yield (*contig.header.tuple, *locus)
 
 
 def as_array(contig):
-    data = iter_values(contig)
-    dtype = utils.append_dtypes(contig.header.dtype, contig.loci.dtype)
-    return np.array([i for i in data], dtype=dtype)
-
-
-def as_flat_array(contig):
     data = map(tuple, map(utils.flatten_numpy_element, iter_values(contig)))
     dtype = utils.flatten_dtype(utils.append_dtypes(contig.header.dtype, contig.loci.dtype))
     return np.array([i for i in data], dtype=dtype)
