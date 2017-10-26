@@ -1,9 +1,8 @@
 #! /usr/bin/env python
 
 import numpy as np
-from tefingerprint import cluster
 from tefingerprint import utils
-
+from tefingerprint.cluster import UDBSCANx as _UDBSCANx, UDBSCANxH as _UDBSCANxH
 
 class Header(object):
     """
@@ -197,19 +196,19 @@ def add_field(contig, field_dtype, value=None):
     return Contig(contig.header, array=utils.bind_arrays(contig.loci, array))
 
 
-def clusters(contig,
-             field,
-             minimum_reads,
-             epsilon,
-             minimum_epsilon=0,
-             hierarchical=True,
-             lower_bound='start',
-             upper_bound='stop'):
+def cluster(contig,
+            field,
+            minimum_reads,
+            epsilon,
+            minimum_epsilon=0,
+            hierarchical=True,
+            lower_bound='start',
+            upper_bound='stop'):
 
     if hierarchical:
-        model = cluster.UDBSCANxH(minimum_reads, max_eps=epsilon, min_eps=minimum_epsilon)
+        model = _UDBSCANxH(minimum_reads, max_eps=epsilon, min_eps=minimum_epsilon)
     else:
-        model = cluster.UDBSCANx(minimum_reads, epsilon)
+        model = _UDBSCANx(minimum_reads, epsilon)
     model.fit(contig.loci[field])
 
     dtype = np.dtype([(lower_bound, np.int64), (upper_bound, np.int64)])
