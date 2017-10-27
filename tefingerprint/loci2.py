@@ -308,38 +308,33 @@ class ContigSet(object):
 
     def as_gff_lines(self,
                      order=False,
-                     reference='reference',
-                     start='start',
-                     stop='stop',
-                     strand='strand',
-                     category='category'):
+                     reference_field='reference',
+                     start_field='start',
+                     stop_field='stop',
+                     strand_field='strand',
+                     type_field=None,
+                     program_name='TEFingerprint'):
 
         array = self.as_array(order=order)
 
         attribute_fields = list(array.dtype.names)
-        for field in (reference, start, stop, strand):
+        for field in (reference_field, start_field, stop_field, strand_field):
             attribute_fields.remove(field)
+        if type_field:
+            attribute_fields.remove(type_field)
 
         template = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}\n"
 
         for record in array:
-            if category in attribute_fields:
-                identifier = "{0}:{1}-{2}_{3}_{4}".format(record[reference],
-                                                          record[start],
-                                                          record[stop],
-                                                          record[strand],
-                                                          record[category])
+            if type_field:
+                type_value = record[type_field]
             else:
-                identifier = "{0}:{1}-{2}_{3}".format(record[reference],
-                                                      record[start],
-                                                      record[stop],
-                                                      record[strand])
+                type_value = '.'
 
-            attributes = ('{0}={1}'.format(field, record[field]) for field in attribute_fields)
-            attributes = 'ID=' + identifier + ';' + ';'.join(attributes)
+            attributes = ';'.join(('{0}={1}'.format(field, record[field]) for field in attribute_fields))
             yield template.format(record['reference'],
-                                  '.',
-                                  '.',
+                                  program_name,
+                                  type_value,
                                   record['start'],
                                   record['stop'],
                                   '.',
