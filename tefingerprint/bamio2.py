@@ -110,6 +110,46 @@ def extract_anchor_intervals(bams, references, max_size, quality=0):
     return intervals
 
 
+def extract_gff_intervals(gff, references, categories):
+    if isinstance(references, str):
+        references = [references]
+
+    if isinstance(categories, str):
+        categories = [categories]
+
+    source = os.path.basename(gff)
+    references = [reference.split(':')[0] for reference in references]
+
+    keys = product(references, categories)
+    dictionary = {loci2.Header(reference=key[0],
+                               category=key[1],
+                               source=source): deque() for key in keys}
+
+    with open(gff) as infile:
+        for line in infile:
+            line = line.split('\t')
+
+            # match to reference:
+            if line[0] in references:
+
+                # match to a category
+                category_matches = tuple(filter(lambda x: line[2].startswith(x), categories))
+
+                # only include reads for specified categories
+                if category_matches:
+
+                    # longest matching category is the best category
+                    category = max(category_matches, key=len)
+
+                    header = loci2.Header(reference=line[0],
+                                          category=category,
+                                          source=source)
+
+                    dictionary[header].append((line[3], line[4], line[2]))
+
+    dtype = np.dtype([('start', np.int64), ('stop', np.int64), ('element', '<O')])
+    return loci2.ContigSet(*(loci2.Contig(header, np.array(data, dtype=dtype))
+                             for header, data in dictionary.items()))
 
 
 
