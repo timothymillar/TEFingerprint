@@ -241,22 +241,25 @@ class ContigSet(object):
     def __getitem__(self, header):
         return self._dict.__getitem__(header)
 
-    def _dtype_headers(self):
+    def dtype_headers(self):
         consensus = {ctg.header.dtype for ctg in self._dict.values()}
         assert len(consensus) == 1
         return list(consensus)[0]
 
-    def _dtype_loci(self):
+    def dtype_loci(self):
         consensus = {ctg.loci.dtype for ctg in self._dict.values()}
         assert len(consensus) == 1
         return list(consensus)[0]
+
+    def headers(self):
+        return set(self._dict.keys())
 
     def add(self, contig, append_duplicate_headers=False):
         if len(self._dict.keys()) == 0:
             pass
         else:
-            assert contig.header.dtype == self._dtype_headers()
-            assert contig.loci.dtype == self._dtype_loci()
+            assert contig.header.dtype == self.dtype_headers()
+            assert contig.loci.dtype == self.dtype_loci()
         if contig.header in self._dict.keys():
             if append_duplicate_headers:
                 self._dict[contig.header] = append(self._dict[contig.header], contig)
@@ -283,7 +286,7 @@ class ContigSet(object):
 
     def as_array(self, order=False):
         data = map(tuple, map(utils.flatten_numpy_element, self.iter_values()))
-        dtype = utils.flatten_dtype(utils.append_dtypes(self._dtype_headers(), self._dtype_loci()))
+        dtype = utils.flatten_dtype(utils.append_dtypes(self.dtype_headers(), self.dtype_loci()))
         array = np.array([i for i in data], dtype=dtype)
 
         if order:
@@ -296,7 +299,7 @@ class ContigSet(object):
         return array
 
     def as_tabular_lines(self, sep=','):
-        columns = utils.flatten_dtype_fields(utils.append_dtypes(self._dtype_headers(), self._dtype_loci()))
+        columns = utils.flatten_dtype_fields(utils.append_dtypes(self.dtype_headers(), self.dtype_loci()))
         yield sep.join(map(utils.quote_str, columns)) + '\n'
         for f in self.iter_values():
             yield sep.join(map(utils.quote_str, utils.flatten_numpy_element(f))) + '\n'

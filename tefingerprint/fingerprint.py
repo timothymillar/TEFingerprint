@@ -80,3 +80,98 @@ def count(bins, reads, trim=True, n_common_elements=0):
     return bins
 
 
+def _join_sorter(forward, reverse):
+    dtype_sort = np.dtype([('value', np.int64), ('strand', np.int8), ('index', np.int64)])
+    f = np.empty(len(forward), dtype=dtype_sort)
+    f['value'] = forward
+    f['strand'] = 0
+    f['index'] = np.arange(0, len(forward))
+
+    r = np.empty(len(reverse), dtype=dtype_sort)
+    r['value'] = reverse
+    r['strand'] = 1
+    r['index'] = np.arange(0, len(reverse))
+
+    clusters = np.append(f, r)
+    clusters.sort(order=('value', 'strand'))
+
+    prev = None
+    for clust in clusters:
+        if prev is None:
+            if clust['strand'] == 1:
+                # reverse cluster can't be paired
+                yield (None, clust['index'])
+            else:
+                # store forward cluster as prev
+                prev = clust
+        else:
+            if clust['strand'] == 0:
+                # both forward so store cluster as prev
+                yield (prev['index'], None)
+                prev = clust
+            else:
+                # cluster is reverse and prev is forward
+                yield (prev['index'], clust['index'])
+                prev = None
+    if prev is not None:
+        # final cluster is un paired
+        yield (prev['index'], None)
+
+
+def join_clusters(clusters):
+    """
+
+
+    :param clusters: a set of contigs that are not un-stranded (i.e. are on the + or - strand)
+    :return:
+    """
+    joint_clusters = loci2.ContigSet()
+
+    dtype_joint = np.dtype([("start", np.int64),
+                            ("stop", np.int64),
+                            ("strand", '<U1'),
+                            ("paired", np.int8),
+                            ("forward", clusters.dtype_loci),
+                            ("reverse", clusters.dtype_loci)])
+
+    # new headers based on old but un stranded
+    new_headers = {h.mutate(strand='.') for h in clusters.headers}
+
+    for header in new_headers:
+
+        # get forward and reverse loci for this key
+        forward = clusters[header.mutate(strand='+')]
+        reverse = clusters[header.mutate(strand='-')]
+
+        # sort them into pairs based on median
+        pairs = list(_join_sorter(forward['median'], reverse['median']))
+
+        # create an empty array based on the pairs
+        joint_loci = np.empty(len(pairs), dtype=dtype_joint)
+
+        for i, (f, r) in enumerate(pairs):
+            if f is not None:
+                joint_loci[i]['forward'] = forward[f]
+                joint_loci[i]['start'] = joint_loci[i]['forward']['edge']
+            if r is not None:
+                joint_loci[i]['reverse'] = reverse[r]
+                joint_loci[i]['stop'] = joint_loci[i]['reverse']['edge']
+            if f is not None and r is not None:
+                joint_loci[i]['paired'] = 1
+
+        # fill in blanks based on present data
+        missing_forward = joint_loci['start'] == 0
+        missing_reverse = joint_loci['stop'] == 0
+
+        joint_loci['start'][missing_forward] = joint_loci['stop'][missing_forward] - 1
+        joint_loci['stop'][missing_reverse] = joint_loci['start'][missing_reverse] + 1
+
+        # strand based on 1 or 2 clusters
+        joint_loci['strand'] = '.'
+        joint_loci['strand'][missing_forward] = '-'
+        joint_loci['strand'][missing_reverse] = '+'
+
+        joint_clusters.add(loci2.Contig(header, joint_loci))
+
+    return joint_clusters
+
