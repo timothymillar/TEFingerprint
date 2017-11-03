@@ -7,12 +7,7 @@ from tefingerprint.cluster import UDBSCANx as _UDBSCANx, UDBSCANxH as _UDBSCANxH
 
 class Header(object):
     """
-    A Loci Key is used to specify a specific 'reference', 'strand', 'category' of a genome
-    Where category is a category of transposon (e.g. a super-family).
-    An optional forth slot 'source' is used to record the data source (i.e. bam file) when appropriate.
-
-    This class is used as a dictionary key within instances of :class:`GenomeLoci` to label groups
-    of similar loci
+    Meta data for a collection (contig) of genomic loci.
 
     :param reference: name of a reference chromosome with the form 'name:min-max'
     :type reference: str | None
