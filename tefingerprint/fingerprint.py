@@ -4,12 +4,13 @@ import numpy as np
 from collections import Counter
 from functools import reduce
 from tefingerprint import utils
+from tefingerprint import interval
 from tefingerprint import bamio2
 from tefingerprint import loci2
 from tefingerprint.cluster import core_distances as _core_distances
 
 
-def count(bins, reads, trim=True, n_common_elements=0):
+def count_reads(bins, reads, trim=True, n_common_elements=0):
     sources = np.array(list({ctg.header.source for ctg in list(reads.contigs())}))
     sources.sort()
 
@@ -80,7 +81,51 @@ def count(bins, reads, trim=True, n_common_elements=0):
     return bins
 
 
+def _known_insertion_matcher(contig, known_insertions, buffer=0):
+    if contig.header.strand == '+':
+        for cluster in contig.loci:
+            mask = interval.singular_intersects_lower_bound(cluster['median'],
+                                                            cluster['stop'] + buffer,
+                                                            known_insertions)
+            if np.any(mask):
+                yield known_insertions['element'][mask][0]
+            else:
+                yield ''
+    elif contig.header.strand == '-':
+        for cluster in contig.loci:
+            mask = interval.singular_intersects_upper_bound(cluster['start'] - buffer,
+                                                            cluster['median'],
+                                                            known_insertions)
+            if np.any(mask):
+                yield known_insertions['element'][mask][-1]
+            else:
+                yield ''
+
+
+
+def match_known_insertions(clusters, known_insertions, buffer=0):
+
+    matched = loci2.ContigSet()
+
+    # make known insertion headers un-stranded and drop origin file
+    known_insertions = known_insertions.map(lambda x: loci2.mutate_header(x, strand='.', source=None))
+
+    # loop through contigs
+    for contig in clusters.contigs:
+
+        # get relevant known insertions
+        known = known_insertions[contig.header.mutate(strand='.')]
+
+        matches = np.array(list(_known_insertion_matcher(contig, known, buffer=buffer)),
+                           dtype=np.dtype([('known', '<O')]))
+
+        matched.add(loci2.Contig(contig.header, utils.bind_arrays(contig.loci, matches)))
+
+    return matched
+
+
 def _join_sorter(forward, reverse):
+    """sorts clusters into pairs with no knowledge of known insertions or distances"""
     dtype_sort = np.dtype([('value', np.int64), ('strand', np.int8), ('index', np.int64)])
     f = np.empty(len(forward), dtype=dtype_sort)
     f['value'] = forward
@@ -100,25 +145,34 @@ def _join_sorter(forward, reverse):
         if prev is None:
             if clust['strand'] == 1:
                 # reverse cluster can't be paired
-                yield (None, clust['index'])
+                yield (None, utils.dict_of_numpy(clust))
             else:
                 # store forward cluster as prev
                 prev = clust
         else:
             if clust['strand'] == 0:
                 # both forward so store cluster as prev
-                yield (prev['index'], None)
+                yield (utils.dict_of_numpy(prev), None)
                 prev = clust
             else:
                 # cluster is reverse and prev is forward
-                yield (prev['index'], clust['index'])
+                yield (utils.dict_of_numpy(prev), utils.dict_of_numpy(clust))
                 prev = None
     if prev is not None:
         # final cluster is un paired
-        yield (prev['index'], None)
+        yield (utils.dict_of_numpy(prev), None)
 
 
-def join_clusters(clusters):
+def _join_distance_checker(joins, distance, known_insertions):
+    """takes joint clusters and checks if they are within reasonable range including known insertions"""
+    for f, r in joins:
+        if f is not None and r is not None:
+            pass
+        elif f is not None:
+
+
+
+def join_clusters(clusters, known_insertions):
     """
 
 
@@ -127,15 +181,19 @@ def join_clusters(clusters):
     """
     joint_clusters = loci2.ContigSet()
 
-    dtype_joint = np.dtype([("start", np.int64),
-                            ("stop", np.int64),
-                            ("strand", '<U1'),
-                            ("paired", np.int8),
-                            ("forward", clusters.dtype_loci),
-                            ("reverse", clusters.dtype_loci)])
+    dtype_join = utils.append_dtypes(clusters.dtype_loci,
+                                     np.dtype([("ID", "<O"),
+                                               ("paired", np.int8),
+                                               ("known", '<O')]))
 
     # new headers based on old but un stranded
     new_headers = {h.mutate(strand='.') for h in clusters.headers}
+
+    # make known insertion headers un-stranded and drop origin file
+    known_insertions = known_insertions.map(lambda x: loci2.mutate_header(x, strand='.', source=None))
+
+    # template for creating insertion IDs
+    insertion_id_template = '{reference}_{start}_{stop}_{category}'
 
     for header in new_headers:
 
@@ -143,35 +201,32 @@ def join_clusters(clusters):
         forward = clusters[header.mutate(strand='+')]
         reverse = clusters[header.mutate(strand='-')]
 
+        # get known insertions of the same reference and family
+        known = known_insertions[header.mutate(source=None)]
+
         # sort them into pairs based on median
-        pairs = list(_join_sorter(forward['median'], reverse['median']))
+        pairs = _join_sorter(forward['median'], reverse['median'])
 
-        # create an empty array based on the pairs
-        joint_loci = np.empty(len(pairs), dtype=dtype_joint)
-
-        for i, (f, r) in enumerate(pairs):
-            if f is not None:
-                joint_loci[i]['forward'] = forward[f]
-                joint_loci[i]['start'] = joint_loci[i]['forward']['edge']
-            if r is not None:
-                joint_loci[i]['reverse'] = reverse[r]
-                joint_loci[i]['stop'] = joint_loci[i]['reverse']['edge']
+        # create arrays for the new data
+        forward_join_data = np.empty(len(forward), dtype=dtype_join)
+        reverse_join_data = np.empty(len(reverse), dtype=dtype_join)
+        for f, r in pairs:
             if f is not None and r is not None:
-                joint_loci[i]['paired'] = 1
+                insertion_id = insertion_id_template.format(header.reference, f['value'], r['value'], header.category)
+                forward_join_data[f['index']]["ID"] = insertion_id
+                reverse_join_data[r['index']]["ID"] = insertion_id
+            elif f is not None:
+                insertion_id = insertion_id_template.format(header.reference, f['value'], '.', header.category)
+                forward_join_data[f['index']]["ID"] = insertion_id
+            elif r is not None:
+                insertion_id = insertion_id_template.format(header.reference, '.', r['value'], header.category)
+                reverse_join_data[r['index']]["ID"] = insertion_id
 
-        # fill in blanks based on present data
-        missing_forward = joint_loci['start'] == 0
-        missing_reverse = joint_loci['stop'] == 0
-
-        joint_loci['start'][missing_forward] = joint_loci['stop'][missing_forward] - 1
-        joint_loci['stop'][missing_reverse] = joint_loci['start'][missing_reverse] + 1
-
-        # strand based on 1 or 2 clusters
-        joint_loci['strand'] = '.'
-        joint_loci['strand'][missing_forward] = '-'
-        joint_loci['strand'][missing_reverse] = '+'
-
-        joint_clusters.add(loci2.Contig(header, joint_loci))
+        # combine existing data with join data and add to new contig set
+        joint_clusters.add(loci2.Contig(header.mutate(strand='+'),
+                                        utils.bind_arrays(forward, forward_join_data)))
+        joint_clusters.add(loci2.Contig(header.mutate(strand='-'),
+                                        utils.bind_arrays(reverse, reverse_join_data)))
 
     return joint_clusters
 

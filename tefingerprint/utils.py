@@ -98,6 +98,10 @@ def bind_arrays(x, y):
     return new
 
 
+def dict_of_numpy(element):
+    return {field: element[field] for field in element.dtype.names}
+
+
 def quote_str(value):
     if isinstance(value, str):
         return '"{0}"'.format(value)
