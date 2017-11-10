@@ -182,7 +182,7 @@ def _cluster_pairer(forward, reverse, buffer=0):
         yield (prev['index'], None)
 
 
-def pair_clusters(clusters, known_insertions, buffer=0):
+def pair_clusters(clusters, buffer=0):
     """
 
 
@@ -191,52 +191,53 @@ def pair_clusters(clusters, known_insertions, buffer=0):
     """
     joint_clusters = loci2.ContigSet()
 
-    dtype_join = utils.append_dtypes(clusters.dtype_loci,
-                                     np.dtype([("ID", "<O"),
-                                               ("paired", np.int8),
-                                               ("known", '<O')]))
+    dtype_join_data = np.dtype([("ID", "<O"), ("paired", np.int8)])
 
     # new headers based on old but un-stranded
-    new_headers = {h.mutate(strand='.') for h in clusters.headers}
-
-    # make known insertion headers un-stranded and drop origin file
-    known_insertions = known_insertions.map(lambda x: loci2.mutate_header(x, strand='.', source=None))
+    new_headers = {h.mutate(strand='.') for h in clusters.headers()}
 
     # template for creating insertion IDs
-    insertion_id_template = '{reference}_{start}_{stop}_{category}'
+    insertion_id_template = '{0}_{1}_{2}_{3}'
 
     for header in new_headers:
-
         # get forward and reverse loci for this key
         forward = clusters[header.mutate(strand='+')]
         reverse = clusters[header.mutate(strand='-')]
-
-        # get known insertions of the same reference and family
-        known = known_insertions[header.mutate(source=None)]
 
         # sort them into pairs based on median
         pairs = _cluster_pairer(forward, reverse, buffer=buffer)
 
         # create arrays for the new data
-        forward_join_data = np.empty(len(forward), dtype=dtype_join)
-        reverse_join_data = np.empty(len(reverse), dtype=dtype_join)
+        forward_join_data = np.empty(len(forward), dtype=dtype_join_data)
+        reverse_join_data = np.empty(len(reverse), dtype=dtype_join_data)
         for f, r in pairs:
             if f is not None and r is not None:
-                insertion_id = insertion_id_template.format(header.reference, f['value'], r['value'], header.category)
+                insertion_id = insertion_id_template.format(header.reference,
+                                                            forward.loci[f]['median'],
+                                                            reverse.loci[r]['median'],
+                                                            header.category)
                 forward_join_data[f]["ID"] = insertion_id
                 reverse_join_data[r]["ID"] = insertion_id
+                forward_join_data[f]["paired"] = 1
+                reverse_join_data[r]["paired"] = 1
             elif f is not None:
-                insertion_id = insertion_id_template.format(header.reference, f['value'], '.', header.category)
+                insertion_id = insertion_id_template.format(header.reference,
+                                                            forward.loci[f]['median'],
+                                                            '.',
+                                                            header.category)
                 forward_join_data[f]["ID"] = insertion_id
             elif r is not None:
-                insertion_id = insertion_id_template.format(header.reference, '.', r['value'], header.category)
+                insertion_id = insertion_id_template.format(header.reference,
+                                                            '.',
+                                                            reverse.loci[r]['median'],
+                                                            header.category)
                 reverse_join_data[r]["ID"] = insertion_id
 
         # combine existing data with join data and add to new contig set
         joint_clusters.add(loci2.Contig(header.mutate(strand='+'),
-                                        utils.bind_arrays(forward, forward_join_data)))
+                                        utils.bind_arrays(forward.loci, forward_join_data)))
         joint_clusters.add(loci2.Contig(header.mutate(strand='-'),
-                                        utils.bind_arrays(reverse, reverse_join_data)))
+                                        utils.bind_arrays(reverse.loci, reverse_join_data)))
 
     return joint_clusters
 
