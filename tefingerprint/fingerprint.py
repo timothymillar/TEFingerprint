@@ -10,7 +10,7 @@ from tefingerprint import loci2
 from tefingerprint.cluster import core_distances as _core_distances
 
 
-def count_reads(bins, reads, trim=True, n_common_elements=0):
+def count_reads(clusters, reads, trim=True, n_common_elements=0):
     sources = np.array(list({ctg.header.source for ctg in list(reads.contigs())}))
     sources.sort()
 
@@ -29,10 +29,10 @@ def count_reads(bins, reads, trim=True, n_common_elements=0):
                           ('sample', dtype_samples)])
 
     # new bins based on previous with additional slots for counts
-    bins = bins.map(lambda x: loci2.add_field(x, dtype_new))
+    clusters = clusters.map(lambda x: loci2.add_field(x, dtype_new))
 
     # loop through bins
-    for bin_contig in bins.contigs():
+    for bin_contig in clusters.contigs():
 
         # headers of read contigs to count
         read_headers = [bin_contig.header.mutate(source=source) for source in sources]
@@ -78,7 +78,7 @@ def count_reads(bins, reads, trim=True, n_common_elements=0):
             if trim:
                 locus['start'] = np.min(combined_read_tips)
                 locus['stop'] = np.max(combined_read_tips)
-    return bins
+    return clusters
 
 
 def _known_insertion_matcher(contig, known_insertions, buffer=0):
@@ -102,7 +102,6 @@ def _known_insertion_matcher(contig, known_insertions, buffer=0):
                 yield ''
 
 
-
 def match_known_insertions(clusters, known_insertions, buffer=0):
 
     matched = loci2.ContigSet()
@@ -124,51 +123,62 @@ def match_known_insertions(clusters, known_insertions, buffer=0):
     return matched
 
 
-def _join_sorter(forward, reverse):
-    """sorts clusters into pairs with no knowledge of known insertions or distances"""
-    dtype_sort = np.dtype([('value', np.int64), ('strand', np.int8), ('index', np.int64)])
+def _pair_clusters(forward, reverse, buffer=0):
+    """sorts clusters into pairs with knowledge of known insertions or distances"""
+    dtype_sort = np.dtype([('start', np.int64),
+                           ('stop', np.int64),
+                           ('median', np.int64),
+                           ('known', '<O'),
+                           ('strand', '<U1'),
+                           ('index', np.int64)])
+
     f = np.empty(len(forward), dtype=dtype_sort)
-    f['value'] = forward
-    f['strand'] = 0
+    f['stop'] = forward.loci['stop']
+    f['median'] = forward.loci['median']
+    f['known'] = forward.loci['known']
+    f['strand'] = '+'
     f['index'] = np.arange(0, len(forward))
 
     r = np.empty(len(reverse), dtype=dtype_sort)
-    r['value'] = reverse
-    r['strand'] = 1
+    r['start'] = reverse.loci['start']
+    r['median'] = reverse.loci['median']
+    r['known'] = reverse.loci['known']
+    r['strand'] = '-'
     r['index'] = np.arange(0, len(reverse))
 
     clusters = np.append(f, r)
-    clusters.sort(order=('value', 'strand'))
+    clusters.sort(order=('median', 'strand'))
 
     prev = None
     for clust in clusters:
         if prev is None:
-            if clust['strand'] == 1:
+            if clust['strand'] == '-':
                 # reverse cluster can't be paired
-                yield (None, utils.dict_of_numpy(clust))
+                yield (None, clust['index'])
             else:
                 # store forward cluster as prev
                 prev = clust
         else:
-            if clust['strand'] == 0:
+            if clust['strand'] == '+':
                 # both forward so store cluster as prev
-                yield (utils.dict_of_numpy(prev), None)
+                yield (prev['index'], None)
                 prev = clust
             else:
                 # cluster is reverse and prev is forward
-                yield (utils.dict_of_numpy(prev), utils.dict_of_numpy(clust))
+                if prev['known'] != '' and prev['known'] == clust['known']:
+                    # clusters match same known element
+                    yield (prev['index'], clust['index'])
+                elif prev['stop'] + buffer >= clust['start'] - buffer:
+                    # they are within reasonable range of one another (2 * buffer)
+                    yield (prev['index'], clust['index'])
+                else:
+                    # they are not a good match
+                    yield (prev['index'], None)
+                    yield (None, clust['index'])
                 prev = None
     if prev is not None:
-        # final cluster is un paired
-        yield (utils.dict_of_numpy(prev), None)
-
-
-def _join_distance_checker(joins, distance, known_insertions):
-    """takes joint clusters and checks if they are within reasonable range including known insertions"""
-    for f, r in joins:
-        if f is not None and r is not None:
-            pass
-        elif f is not None:
+        # final cluster is un-paired
+        yield (prev['index'], None)
 
 
 
@@ -186,7 +196,7 @@ def join_clusters(clusters, known_insertions):
                                                ("paired", np.int8),
                                                ("known", '<O')]))
 
-    # new headers based on old but un stranded
+    # new headers based on old but un-stranded
     new_headers = {h.mutate(strand='.') for h in clusters.headers}
 
     # make known insertion headers un-stranded and drop origin file
