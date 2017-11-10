@@ -7,7 +7,6 @@ from tefingerprint import utils
 from tefingerprint import interval
 from tefingerprint import bamio2
 from tefingerprint import loci2
-from tefingerprint.cluster import core_distances as _core_distances
 
 
 def count_reads(clusters, reads, trim=True, n_common_elements=0):
@@ -25,7 +24,6 @@ def count_reads(clusters, reads, trim=True, n_common_elements=0):
         dtype_sample_count = utils.remove_dtype_field(dtype_sample_count, 'element')
     dtype_samples = np.dtype([(str(i), dtype_sample_count) for i, _ in enumerate(sources)])
     dtype_new = np.dtype([('median', np.int64),
-                          ('edge', np.int64),
                           ('sample', dtype_samples)])
 
     # new bins based on previous with additional slots for counts
@@ -66,13 +64,6 @@ def count_reads(clusters, reads, trim=True, n_common_elements=0):
             combined_read_tips = reduce(np.append, (tips['tip'] for tips in read_loci))
             combined_read_tips.sort()
             locus['median'] = np.median(combined_read_tips)
-
-            # find edge of 90% core
-            core_dists = _core_distances(combined_read_tips, int(len(combined_read_tips) * 0.99))
-            if bin_contig.header.strand == '+':
-                locus['edge'] = combined_read_tips[np.where(core_dists == np.min(core_dists))[0][-1]]
-            elif bin_contig.header.strand == '-':
-                locus['edge'] = combined_read_tips[np.where(core_dists == np.min(core_dists))[0][0]]
 
             # trim the potentially buffered locus to the first and last read tips
             if trim:
