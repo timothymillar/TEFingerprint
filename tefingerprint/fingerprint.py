@@ -115,7 +115,7 @@ def match_known_insertions(clusters, known_insertions, buffer=0):
     return matched
 
 
-def _cluster_pairer(forward, reverse, buffer=0):
+def _cluster_pairer(forward, reverse, buffer=0, use_known_elements=True):
     """sorts clusters into pairs with knowledge of known insertions or distances"""
     dtype_sort = np.dtype([('start', np.int64),
                            ('stop', np.int64),
@@ -127,14 +127,20 @@ def _cluster_pairer(forward, reverse, buffer=0):
     f = np.empty(len(forward), dtype=dtype_sort)
     f['stop'] = forward.loci['stop']
     f['median'] = forward.loci['median']
-    f['known_element'] = forward.loci['known_element']
+    if use_known_elements:
+        f['known_element'] = forward.loci['known_element']
+    else:
+        f['known_element'] = ''
     f['strand'] = '+'
     f['index'] = np.arange(0, len(forward))
 
     r = np.empty(len(reverse), dtype=dtype_sort)
     r['start'] = reverse.loci['start']
     r['median'] = reverse.loci['median']
-    r['known_element'] = reverse.loci['known_element']
+    if use_known_elements:
+        r['known_element'] = reverse.loci['known_element']
+    else:
+        r['known_element'] = ''
     r['strand'] = '-'
     r['index'] = np.arange(0, len(reverse))
 
@@ -173,7 +179,7 @@ def _cluster_pairer(forward, reverse, buffer=0):
         yield (prev['index'], None)
 
 
-def pair_clusters(clusters, buffer=0):
+def pair_clusters(clusters, buffer=0, use_known_elements=True):
     """
 
 
@@ -196,7 +202,7 @@ def pair_clusters(clusters, buffer=0):
         reverse = clusters[header.mutate(strand='-')]
 
         # sort them into pairs based on median
-        pairs = _cluster_pairer(forward, reverse, buffer=buffer)
+        pairs = _cluster_pairer(forward, reverse, buffer=buffer, use_known_elements=use_known_elements)
 
         # create arrays for the new data
         forward_join_data = np.empty(len(forward), dtype=dtype_join_data)
