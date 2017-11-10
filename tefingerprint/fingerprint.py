@@ -86,18 +86,18 @@ def _known_insertion_matcher(contig, known_insertions, buffer=0):
         for cluster in contig.loci:
             mask = interval.singular_intersects_lower_bound(cluster['median'],
                                                             cluster['stop'] + buffer,
-                                                            known_insertions)
+                                                            known_insertions.loci)
             if np.any(mask):
-                yield known_insertions['element'][mask][0]
+                yield known_insertions.loci['element'][mask][0]
             else:
                 yield ''
     elif contig.header.strand == '-':
         for cluster in contig.loci:
             mask = interval.singular_intersects_upper_bound(cluster['start'] - buffer,
                                                             cluster['median'],
-                                                            known_insertions)
+                                                            known_insertions.loci)
             if np.any(mask):
-                yield known_insertions['element'][mask][-1]
+                yield known_insertions.loci['element'][mask][-1]
             else:
                 yield ''
 
@@ -110,39 +110,40 @@ def match_known_insertions(clusters, known_insertions, buffer=0):
     known_insertions = known_insertions.map(lambda x: loci2.mutate_header(x, strand='.', source=None))
 
     # loop through contigs
-    for contig in clusters.contigs:
+    for contig in clusters.contigs():
 
         # get relevant known insertions
         known = known_insertions[contig.header.mutate(strand='.')]
 
-        matches = np.array(list(_known_insertion_matcher(contig, known, buffer=buffer)),
-                           dtype=np.dtype([('known', '<O')]))
+        matches = np.array(list(_known_insertion_matcher(contig, known, buffer=buffer)))
+        matches = np.array(matches,
+                           dtype=np.dtype([('known_element', '<O')]))
 
         matched.add(loci2.Contig(contig.header, utils.bind_arrays(contig.loci, matches)))
 
     return matched
 
 
-def _pair_clusters(forward, reverse, buffer=0):
+def _cluster_pairer(forward, reverse, buffer=0):
     """sorts clusters into pairs with knowledge of known insertions or distances"""
     dtype_sort = np.dtype([('start', np.int64),
                            ('stop', np.int64),
                            ('median', np.int64),
-                           ('known', '<O'),
+                           ('known_element', '<O'),
                            ('strand', '<U1'),
                            ('index', np.int64)])
 
     f = np.empty(len(forward), dtype=dtype_sort)
     f['stop'] = forward.loci['stop']
     f['median'] = forward.loci['median']
-    f['known'] = forward.loci['known']
+    f['known_element'] = forward.loci['known_element']
     f['strand'] = '+'
     f['index'] = np.arange(0, len(forward))
 
     r = np.empty(len(reverse), dtype=dtype_sort)
     r['start'] = reverse.loci['start']
     r['median'] = reverse.loci['median']
-    r['known'] = reverse.loci['known']
+    r['known_element'] = reverse.loci['known_element']
     r['strand'] = '-'
     r['index'] = np.arange(0, len(reverse))
 
@@ -165,7 +166,7 @@ def _pair_clusters(forward, reverse, buffer=0):
                 prev = clust
             else:
                 # cluster is reverse and prev is forward
-                if prev['known'] != '' and prev['known'] == clust['known']:
+                if prev['known_element'] != '' and prev['known_element'] == clust['known_element']:
                     # clusters match same known element
                     yield (prev['index'], clust['index'])
                 elif prev['stop'] + buffer >= clust['start'] - buffer:
@@ -181,8 +182,7 @@ def _pair_clusters(forward, reverse, buffer=0):
         yield (prev['index'], None)
 
 
-
-def join_clusters(clusters, known_insertions):
+def pair_clusters(clusters, known_insertions, buffer=0):
     """
 
 
@@ -215,7 +215,7 @@ def join_clusters(clusters, known_insertions):
         known = known_insertions[header.mutate(source=None)]
 
         # sort them into pairs based on median
-        pairs = _join_sorter(forward['median'], reverse['median'])
+        pairs = _cluster_pairer(forward, reverse, buffer=buffer)
 
         # create arrays for the new data
         forward_join_data = np.empty(len(forward), dtype=dtype_join)
@@ -223,14 +223,14 @@ def join_clusters(clusters, known_insertions):
         for f, r in pairs:
             if f is not None and r is not None:
                 insertion_id = insertion_id_template.format(header.reference, f['value'], r['value'], header.category)
-                forward_join_data[f['index']]["ID"] = insertion_id
-                reverse_join_data[r['index']]["ID"] = insertion_id
+                forward_join_data[f]["ID"] = insertion_id
+                reverse_join_data[r]["ID"] = insertion_id
             elif f is not None:
                 insertion_id = insertion_id_template.format(header.reference, f['value'], '.', header.category)
-                forward_join_data[f['index']]["ID"] = insertion_id
+                forward_join_data[f]["ID"] = insertion_id
             elif r is not None:
                 insertion_id = insertion_id_template.format(header.reference, '.', r['value'], header.category)
-                reverse_join_data[r['index']]["ID"] = insertion_id
+                reverse_join_data[r]["ID"] = insertion_id
 
         # combine existing data with join data and add to new contig set
         joint_clusters.add(loci2.Contig(header.mutate(strand='+'),
