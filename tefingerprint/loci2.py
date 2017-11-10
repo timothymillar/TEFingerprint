@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 
 import numpy as np
-from tefingerprint import utils
+from tefingerprint import util
 from tefingerprint.cluster import UDBSCANx as _UDBSCANx, UDBSCANxH as _UDBSCANxH
 
 
@@ -112,8 +112,8 @@ def iter_values(contig):
 
 
 def as_array(contig):
-    data = map(tuple, map(utils.flatten_numpy_element, iter_values(contig)))
-    dtype = utils.flatten_dtype(utils.append_dtypes(contig.header.dtype, contig.loci.dtype))
+    data = map(tuple, map(util.flatten_numpy_element, iter_values(contig)))
+    dtype = util.flatten_dtype(util.append_dtypes(contig.header.dtype, contig.loci.dtype))
     return np.array([i for i in data], dtype=dtype)
 
 
@@ -127,7 +127,7 @@ def append(contig_x, contig_y):
 
 
 def drop_field(contig, field):
-    return Contig(contig.header, utils.remove_array_field(contig.loci, field))
+    return Contig(contig.header, util.remove_array_field(contig.loci, field))
 
 
 def add_field(contig, field_dtype, value=None):
@@ -136,7 +136,7 @@ def add_field(contig, field_dtype, value=None):
         pass
     else:
         array.fill(value)
-    return Contig(contig.header, array=utils.bind_arrays(contig.loci, array))
+    return Contig(contig.header, array=util.bind_arrays(contig.loci, array))
 
 
 def cluster(contig,
@@ -285,8 +285,8 @@ class ContigSet(object):
                 yield val
 
     def as_array(self, order=False):
-        data = map(tuple, map(utils.flatten_numpy_element, self.iter_values()))
-        dtype = utils.flatten_dtype(utils.append_dtypes(self.dtype_headers(), self.dtype_loci()))
+        data = map(tuple, map(util.flatten_numpy_element, self.iter_values()))
+        dtype = util.flatten_dtype(util.append_dtypes(self.dtype_headers(), self.dtype_loci()))
         array = np.array([i for i in data], dtype=dtype)
 
         if order:
@@ -299,10 +299,10 @@ class ContigSet(object):
         return array
 
     def as_tabular_lines(self, sep=','):
-        columns = utils.flatten_dtype_fields(utils.append_dtypes(self.dtype_headers(), self.dtype_loci()))
-        yield sep.join(map(utils.quote_str, columns)) + '\n'
+        columns = util.flatten_dtype_fields(util.append_dtypes(self.dtype_headers(), self.dtype_loci()))
+        yield sep.join(map(util.quote_str, columns)) + '\n'
         for f in self.iter_values():
-            yield sep.join(map(utils.quote_str, utils.flatten_numpy_element(f))) + '\n'
+            yield sep.join(map(util.quote_str, util.flatten_numpy_element(f))) + '\n'
 
     def as_gff_lines(self,
                      order=False,

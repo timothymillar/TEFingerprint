@@ -5,7 +5,7 @@ from collections import Counter
 from functools import reduce
 from tefingerprint import bamio
 from tefingerprint import cluster
-from tefingerprint import utils
+from tefingerprint import util
 
 
 def _loci_melter(array):
@@ -138,7 +138,7 @@ class GenomeLoci(object):
     def __init__(self, dtype_key, dtype_loci):
         self.dtype_key = dtype_key
         self.dtype_loci = dtype_loci
-        self.dtype_array = utils.append_dtypes(dtype_key, dtype_loci)
+        self.dtype_array = util.append_dtypes(dtype_key, dtype_loci)
         self._dict = {}
 
     def __len__(self):
@@ -287,8 +287,8 @@ class GenomeLoci(object):
         return array
 
     def as_flat_array(self, order=False):
-        data = map(tuple, map(utils.flatten_numpy_element, self.features()))
-        array = np.fromiter(data, utils.flatten_dtype(dtype=self.dtype_array), count=len(self))
+        data = map(tuple, map(util.flatten_numpy_element, self.features()))
+        array = np.fromiter(data, util.flatten_dtype(dtype=self.dtype_array), count=len(self))
 
         if order:
             if isinstance(order, str):
@@ -300,9 +300,9 @@ class GenomeLoci(object):
         return array
 
     def as_tabular_lines(self, sep=','):
-        yield sep.join(map(utils.quote_str, utils.flatten_dtype_fields(self.dtype_array))) + '\n'
+        yield sep.join(map(util.quote_str, util.flatten_dtype_fields(self.dtype_array))) + '\n'
         for f in self.features():
-            yield sep.join(map(utils.quote_str, utils.flatten_numpy_element(f))) + '\n'
+            yield sep.join(map(util.quote_str, util.flatten_numpy_element(f))) + '\n'
 
     def as_gff_lines(self, order=False,
                      reference='reference',
@@ -500,7 +500,7 @@ class GenomicBins(GenomeLoci):
 
     def merge_sources(self):
         """"""
-        new_bins = GenomicBins(dtype_key=utils.remove_dtype_field(self.dtype_key, 'source'),
+        new_bins = GenomicBins(dtype_key=util.remove_dtype_field(self.dtype_key, 'source'),
                                dtype_loci=self.dtype_loci)
 
         for key, loci in self.items():
@@ -579,7 +579,7 @@ class GenomicBins(GenomeLoci):
                                        ('element', dtype_elements)])
 
         if n_common_elements == 0:
-            dtype_sample_count = utils.remove_dtype_field(dtype_sample_count, 'element')
+            dtype_sample_count = util.remove_dtype_field(dtype_sample_count, 'element')
 
         dtype_samples = np.dtype([(str(i), dtype_sample_count) for i, _ in enumerate(sources)])
 
@@ -660,8 +660,8 @@ class GenomicBins(GenomeLoci):
         new_field_dtype = np.dtype([('heterozygosity', np.int8)])
 
         new = GenomicBins(dtype_key=self.dtype_key,
-                          dtype_loci=utils.append_dtypes(self.dtype_loci,
-                                                         new_field_dtype))
+                          dtype_loci=util.append_dtypes(self.dtype_loci,
+                                                        new_field_dtype))
 
         for key, loci in self.items():
 
@@ -679,7 +679,7 @@ class GenomicBins(GenomeLoci):
                                          tip <= intervals[intervals_key]['stop'])) for tip in tips)
             new_field = np.fromiter(gen, dtype=new_field_dtype, count=len(tips))
 
-            new._dict[key] = utils.bind_arrays(loci, new_field)
+            new._dict[key] = util.bind_arrays(loci, new_field)
 
         return new
 

@@ -3,7 +3,7 @@
 import numpy as np
 from collections import Counter
 from functools import reduce
-from tefingerprint import utils
+from tefingerprint import util
 from tefingerprint import interval
 from tefingerprint import bamio2
 from tefingerprint import loci2
@@ -50,7 +50,7 @@ def count_reads(clusters, reads, trim=True, n_common_elements=0):
                                    ('count', np.int64),
                                    ('element', dtype_elements)])
     if n_common_elements == 0:
-        dtype_sample_count = utils.remove_dtype_field(dtype_sample_count, 'element')
+        dtype_sample_count = util.remove_dtype_field(dtype_sample_count, 'element')
     dtype_samples = np.dtype([(str(i), dtype_sample_count) for i, _ in enumerate(sources)])
     dtype_new = np.dtype([('median', np.int64),
                           ('sample', dtype_samples)])
@@ -165,7 +165,7 @@ def match_known_insertions(clusters, known_insertions, distance=0):
         matches = np.array(matches,
                            dtype=np.dtype([('known_element', '<O')]))
 
-        matched.add(loci2.Contig(contig.header, utils.bind_arrays(contig.loci, matches)))
+        matched.add(loci2.Contig(contig.header, util.bind_arrays(contig.loci, matches)))
 
     return matched
 
@@ -304,9 +304,9 @@ def pair_clusters(clusters, distance=0, use_known_elements=True):
 
         # combine existing data with join data and add to new contig set
         joint_clusters.add(loci2.Contig(header.mutate(strand='+'),
-                                        utils.bind_arrays(forward.loci, forward_join_data)))
+                                        util.bind_arrays(forward.loci, forward_join_data)))
         joint_clusters.add(loci2.Contig(header.mutate(strand='-'),
-                                        utils.bind_arrays(reverse.loci, reverse_join_data)))
+                                        util.bind_arrays(reverse.loci, reverse_join_data)))
 
     return joint_clusters
 
