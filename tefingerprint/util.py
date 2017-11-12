@@ -138,7 +138,8 @@ def flatten_dtype(dtype, prefix='', sep='_'):
 
 def flatten_dtype_fields(dtype, prefix='', sep='_'):
     """
-    Flatten a nested numpy dtype by appending nested field names and return field names only .
+    Flatten a nested numpy dtype by appending nested field names and
+    return field names only .
 
     :param dtype: a numpy dtype
     :type dtype: :class:`numpy.dtype`
@@ -156,7 +157,8 @@ def flatten_dtype_fields(dtype, prefix='', sep='_'):
 
 def bind_arrays(x, y):
     """
-    Bind the fields of two structered numpy arrays of the same shape into a single array.
+    Bind the fields of two structered numpy arrays of the same shape
+    into a single array.
 
     :param x: a numpy array
     :type x: :class:`numpy.array`
@@ -204,3 +206,6 @@ def quote_str(value):
         return '"{0}"'.format(value)
     else:
         return str(value)
+
+if __name__ == "__main__":
+    pass
