@@ -2,14 +2,15 @@
 
 import numpy as np
 from tefingerprint import util
-from tefingerprint.cluster import UDBSCANx as _UDBSCANx, UDBSCANxH as _UDBSCANxH
+from tefingerprint.cluster import UDBSCANx as _UDBSCANx
+from tefingerprint.cluster import UDBSCANxH as _UDBSCANxH
 
 
 class Header(object):
     """
     Meta data for a collection (contig) of genomic loci.
 
-    :param reference: name of a reference chromosome with the form 'name:min-max'
+    :param reference: name of a reference chromosome
     :type reference: str | None
     :param strand: strand of the reference chromosome '+' or '-'
     :type strand: str | None
@@ -20,7 +21,11 @@ class Header(object):
     """
     __slots__ = ['_reference', '_strand', '_category', '_source']
 
-    def __init__(self, reference=None, strand=None, category=None, source=None):
+    def __init__(self,
+                 reference=None,
+                 strand=None,
+                 category=None,
+                 source=None):
         self._reference = reference
         self._strand = strand
         self._category = category
@@ -35,15 +40,24 @@ class Header(object):
         return not self.__eq__(other)
 
     def __hash__(self):
-        return hash((self._reference, self._strand, self._category, self._source))
+        return hash((self._reference,
+                     self._strand,
+                     self._category,
+                     self._source))
 
     def __iter__(self):
-        for i in (self._reference, self._strand, self._category, self._source):
+        for i in (self._reference,
+                  self._strand,
+                  self._category,
+                  self._source):
             if i:
                 yield i
 
     def __repr__(self):
-        return repr((self._reference, self._strand, self._category, self._source))
+        return repr((self._reference,
+                     self._strand,
+                     self._category,
+                     self._source))
 
     @property
     def reference(self):
@@ -88,7 +102,8 @@ class Header(object):
         """
         Create a copy of the header with altered values.
 
-        Valid argument names are 'reference', 'strand', 'category' and 'source'
+        Valid argument names are 'reference', 'strand',
+        'category' and 'source'
 
         :param kwargs: values to alter in the new copy of the header
         :return: :class:`Header`
@@ -103,12 +118,13 @@ class Header(object):
 
 class Contig(object):
     """
-    A contig is a collection of loci belonging to a single contiguous section of the reference genome.
+    A contig is a collection of loci on a contiguous section of genome.
 
-    The contig header defines the combination of 'reference', 'strand' and 'category', 'source' that distinguish
-    this group of loci from others.
-    The loci are a structured numpy array defining the position of each locus along the contig with additional
-    metadata.
+    The contig header defines the combination of 'reference', 'strand'
+    and 'category', 'source' that distinguish this group of loci from
+    others.
+    The loci are a structured numpy array defining the position of each
+    locus along the contig with additional metadata.
     Contigs will generally contain points or intervals.
 
     :param header: a header that defines this contig
@@ -147,8 +163,8 @@ def iter_values(contig):
     """
     Iterates values of the contig including the header values.
 
-    For each element in the contigs array of loci, the values of header fields are returned with the values of that
-    element.
+    For each element in the contigs array of loci, the values of header
+    fields are returned with the values of that element.
 
     :param contig: a contig of loci
     :type contig: :class:`Contig`
@@ -174,7 +190,8 @@ def as_array(contig):
     :rtype: :class:`numpy.array`
     """
     data = map(tuple, map(util.flatten_numpy_element, iter_values(contig)))
-    dtype = util.flatten_dtype(util.append_dtypes(contig.header.dtype, contig.loci.dtype))
+    dtype = util.flatten_dtype(util.append_dtypes(contig.header.dtype,
+                                                  contig.loci.dtype))
     return np.array([i for i in data], dtype=dtype)
 
 
@@ -182,7 +199,8 @@ def mutate_header(contig, **kwargs):
     """
     Return a copy of a contig with altered header data.
 
-    Valid argument names are 'reference', 'strand', 'category' and 'source'.
+    Valid argument names are 'reference', 'strand', 'category'
+    and 'source'.
 
     :param contig: a contig of loci
     :type contig: :class:`Contig`
@@ -229,11 +247,12 @@ def add_field(contig, field_dtype, value=None):
     """
     Add a new field to the the loci of a contig.
 
-    A default value may be specified for the field or else it will be left empty.
+    A default value may be specified for the field or else it
+    will be left empty.
 
     :param contig: a contig of loci
     :type contig: :class:`Contig`
-    :param field_dtype: a numpy dtype specifying the name and data type of the added field
+    :param field_dtype: a named numpy dtype for the added field
     :type field_dtype: :class:`numpy.dtype`
     :param value: the optional default value to fill the new field with
     :type value: None | any
@@ -260,25 +279,27 @@ def cluster(contig,
     """
     Return a contig of cluster intervals based on the loci of a contig.
 
-    The new cluster intervals will contain only fields of the upper and lower bounds of clusters which may be
-    named with the lower_bound and upper_bound parameters.
+    The new cluster intervals will contain only fields of the upper and
+    lower bounds of clusters which may be named with the lower_bound
+    and upper_bound parameters.
     The field specified for cluster analysis must contain integer values.
     By default a hierarchical density based clustering algorithm is used
     (see documentation for :class:`_UDBSCANxH`).
-    Alternitively a non-hierarchical density based clustering algorithm may be used
-    (see documentation for :class:`_UDBSCAN).
+    Alternitively a non-hierarchical density based clustering algorithm
+    may be used (see documentation for :class:`_UDBSCAN).
 
     :param contig: a contig of loci
     :type contig: :class:`Contig`
     :param field: the name of the loci field to perform cluster analysis on
     :type field: str
-    :param minimum_points: the minimum number of points required to form a cluster
+    :param minimum_points: minimum number of points required to form a cluster
     :type minimum_points: int
     :param epsilon: the maximum distance among point of a cluster
     :type epsilon: int
-    :param minimum_epsilon: the minimum epsilon value used when calculating hierarchical splits
+    :param minimum_epsilon: minimum value when calculating hierarchical splits
     :type minimum_epsilon: int
-    :param hierarchical: use the hierarchical or non-hierarchical version of the algorithm (default: True)
+    :param hierarchical: use hierarchical or non-hierarchical version of
+        the algorithm (default: True)
     :type hierarchical: bool
     :param lower_bound: field name to use for lower bound of clusters
     :type lower_bound: str
@@ -289,13 +310,16 @@ def cluster(contig,
     :rtype: :class:`Contig`
     """
     if hierarchical:
-        model = _UDBSCANxH(minimum_points, max_eps=epsilon, min_eps=minimum_epsilon)
+        model = _UDBSCANxH(minimum_points,
+                           max_eps=epsilon,
+                           min_eps=minimum_epsilon)
     else:
         model = _UDBSCANx(minimum_points, epsilon)
     model.fit(contig.loci[field])
 
     dtype = np.dtype([(lower_bound, np.int64), (upper_bound, np.int64)])
-    return Contig(contig.header, np.fromiter(model.cluster_extremities(), dtype=dtype))
+    return Contig(contig.header, np.fromiter(model.cluster_extremities(),
+                                             dtype=dtype))
 
 
 def _unionise(array, lower_bound, upper_bound):
@@ -329,8 +353,9 @@ def unions(contig, lower_bound='start', upper_bound='stop'):
     """
     Calculate interval unions among loci of a contig.
 
-    The new cluster intervals will contain only fields of the upper and lower bounds of clusters which may be
-    named with the lower_bound and upper_bound parameters.
+    The new cluster intervals will contain only fields of the upper and
+    lower bounds of clusters which may be named with the lower_bound
+    and upper_bound parameters.
 
     :param contig: a contig of loci
     :type contig: :class:`Contig`
@@ -352,10 +377,12 @@ def unions(contig, lower_bound='start', upper_bound='stop'):
 
 def unions_buffered(contig, buffer, lower_bound='start', upper_bound='stop'):
     """
-    Calculate interval unions among loci of a contig and extend them with a non-overlapping buffer.
+    Calculate interval unions among loci of a contig and extend them
+    with a non-overlapping buffer.
 
-    The new cluster intervals will contain only fields of the upper and lower bounds of clusters which may be
-    named with the lower_bound and upper_bound parameters.
+    The new cluster intervals will contain only fields of the upper
+    and lower bounds of clusters which may be named with the
+    lower_bound and upper_bound parameters.
 
     :param contig: a contig of loci
     :type contig: :class:`Contig`
@@ -380,10 +407,13 @@ def unions_buffered(contig, buffer, lower_bound='start', upper_bound='stop'):
             contig.loci[lower_bound][0] -= buffer
             contig.loci[upper_bound][-1] += buffer
         else:
-            difs = ((contig.loci[lower_bound][1:] - contig.loci[upper_bound][:-1]) - 1) / 2
+            difs = ((contig.loci[lower_bound][1:] -
+                     contig.loci[upper_bound][:-1]) - 1) / 2
             difs[difs > buffer] = buffer
-            contig.loci[lower_bound][1:] = contig.loci[lower_bound][1:] - np.floor(difs)
-            contig.loci[upper_bound][:-1] = contig.loci[upper_bound][:-1] + np.ceil(difs)
+            contig.loci[lower_bound][1:] = (contig.loci[lower_bound][1:] -
+                                            np.floor(difs))
+            contig.loci[upper_bound][:-1] = (contig.loci[upper_bound][:-1] +
+                                             np.ceil(difs))
             contig.loci[lower_bound][0] -= buffer
             contig.loci[upper_bound][-1] += buffer
     return contig
@@ -393,11 +423,16 @@ class ContigSet(object):
     """
     A set of contigs of genomic loci.
 
-    A ContigSet is an unordered collection of unique contigs (each having a different header).
-    Individual contigs may be copied from the set by indexing the contig set with it's header (i.e. each contigs header
-    is a dictionary key to extract the contig) but contigs cannot be updated in place with this syntax.
-    New contigs may be added to the ContigSet by the 'add' or 'update' methods. If a contigs header clashes with that
-    of a contig already contained in the set an error will be raised. Alternatively the loci of both contigs
+    A ContigSet is an unordered collection of unique contigs (each
+    having a different header).
+    Individual contigs may be copied from the set by indexing the
+    contig set with it's header (i.e. each contigs header is a
+    dictionary key to extract the contig) but contigs cannot be
+    updated in place with this syntax.
+    New contigs may be added to the ContigSet by the 'add' or
+    'update' methods. If a contigs header clashes with that
+    of a contig already contained in the set an error will be raised.
+    Alternatively the loci of both contigs
     may be appended if the correct parameter is set.
 
     """
@@ -411,9 +446,11 @@ class ContigSet(object):
             for arg in args:
                 if arg.header in self._dict.keys():
                     if append_duplicate_headers:
-                        self._dict[arg.header] = append(self._dict[arg.header], arg)
+                        self._dict[arg.header] = append(self._dict[arg.header],
+                                                        arg)
                     else:
-                        raise ValueError('More than one contig with header {0}'.format(arg.header))
+                        message = 'More than one contig with header {0}'
+                        raise ValueError(message.format(arg.header))
                 else:
                     self._dict[arg.header] = arg
 
@@ -428,7 +465,8 @@ class ContigSet(object):
 
     def dtype_headers(self):
         """
-        Generate a dtype suitable for storing data from the headers of contained contigs.
+        Generate a dtype suitable for storing data from the headers of
+        contained contigs.
 
         :return: a numpy dytpe
         :rtype: :class:`numpy.dtype`
@@ -461,13 +499,17 @@ class ContigSet(object):
         """
         Add a single contig to the contig set.
 
-        The header and loci fields of the contig must match those already contained in the set.
-        If the contigs header is identical to one already contained in the set an error is raised,
-        this may be avoided using append_duplicate_headers to append the loci values of the matching contigs.
+        The header and loci fields of the contig must match those already
+        contained in the set.
+        If the contigs header is identical to one already contained in the
+        set an error is raised, this may be avoided using
+        append_duplicate_headers to append the loci values of the
+        matching contigs.
 
         :param contig: a contig of loci
         :type contig: :class:`Contig`
-        :param append_duplicate_headers: specify whether to append the loci of contigs with duplicate headers
+        :param append_duplicate_headers: specify whether to append the
+            loci of contigs with duplicate headers
         :type append_duplicate_headers: bool
         """
         if len(self._dict.keys()) == 0:
@@ -477,9 +519,11 @@ class ContigSet(object):
             assert contig.loci.dtype == self.dtype_loci()
         if contig.header in self._dict.keys():
             if append_duplicate_headers:
-                self._dict[contig.header] = append(self._dict[contig.header], contig)
+                self._dict[contig.header] = append(self._dict[contig.header],
+                                                   contig)
             else:
-                raise ValueError('More than one contig with header {0}'.format(contig.header))
+                message = 'More than one contig with header {0}'
+                raise ValueError(message.format(contig.header))
         else:
             self._dict[contig.header] = contig
 
@@ -487,13 +531,16 @@ class ContigSet(object):
         """
         Add a collection of contigs to the contig set.
 
-        The header and loci fields of the contigs must match those already contained in the set.
-        If any of the new contigs headers are identical to one already contained in the set an error is raised,
-        this may be avoided using append_duplicate_headers to append the loci values of the matching contigs.
+        The header and loci fields of the contigs must match those
+        already contained in the set. If any of the new contigs
+        headers are identical to one already contained in the set an
+        error is raised, this may be avoided using append_duplicate_headers
+        to append the loci values of the matching contigs.
 
         :param contigs: a collection of contigs
         :type contigs: iterable[:class:`Contig`]
-        :param append_duplicate_headers: specify whether to append the loci of contigs with duplicate headers
+        :param append_duplicate_headers: specify whether to append the
+            loci of contigs with duplicate headers
         :type append_duplicate_headers: bool
         """
         for contig in contigs:
@@ -503,20 +550,24 @@ class ContigSet(object):
         """
         Map a function to every contig within the set.
 
-        The mapped function should return :class:`Contig` to be collected into a new :class:`ContigSet`.
-        If the mapped function alters the contig headers and leads to a header clash an error is raised.
-        This may be avoided by the 'append_duplicate_headers' parameter which appends the loci of contigs with identical
-        headers.
+        The mapped function should return :class:`Contig` to be collected
+        into a new :class:`ContigSet`.
+        If the mapped function alters the contig headers and leads to a
+        header clash an error is raised.
+        This may be avoided by the 'append_duplicate_headers' parameter
+        which appends the loci of contigs with identical headers.
 
         :param function: function to apply to every contig
         :type function: callable
-        :param append_duplicate_headers: specify whether to append the loci of contigs with duplicate headers
+        :param append_duplicate_headers: specify whether to append the
+            loci of contigs with duplicate headers
         :type append_duplicate_headers: bool
 
         :return: a new ContigSet
         :rtype: :class:`ContigSet`
         """
-        return ContigSet(*map(function, self._dict.values()), append_duplicate_headers=append_duplicate_headers)
+        return ContigSet(*map(function, self._dict.values()),
+                         append_duplicate_headers=append_duplicate_headers)
 
     def contigs(self):
         """
@@ -532,8 +583,8 @@ class ContigSet(object):
         """
         Iterates values of the contigs including the header values.
 
-        For each element in each contigs array of loci, the values of header fields are returned with the
-        values of that element.
+        For each element in each contigs array of loci, the values of
+        header fields are returned with the values of that element.
 
         :return: an iterable of values
         :rtype generator[tuple[any]]
@@ -556,7 +607,8 @@ class ContigSet(object):
         :rtype: :class:`numpy.array`
         """
         data = map(tuple, map(util.flatten_numpy_element, self.iter_values()))
-        dtype = util.flatten_dtype(util.append_dtypes(self.dtype_headers(), self.dtype_loci()))
+        dtype = util.flatten_dtype(util.append_dtypes(self.dtype_headers(),
+                                                      self.dtype_loci()))
         array = np.array([i for i in data], dtype=dtype)
 
         if order:
@@ -578,13 +630,16 @@ class ContigSet(object):
         :param sep: separator value (default: ',')
         :type sep: str
 
-        :return: an iterable of string suitable for writing to a tabular plain text file
+        :return: an iterable of string suitable for writing to a tabular
+            plain text file
         :rtype: iterable[str]
         """
-        columns = util.flatten_dtype_fields(util.append_dtypes(self.dtype_headers(), self.dtype_loci()))
+        dtype = util.append_dtypes(self.dtype_headers(), self.dtype_loci())
+        columns = util.flatten_dtype_fields(dtype)
         yield sep.join(map(util.quote_str, columns)) + '\n'
         for f in self.iter_values():
-            yield sep.join(map(util.quote_str, util.flatten_numpy_element(f))) + '\n'
+            yield sep.join(map(util.quote_str,
+                               util.flatten_numpy_element(f))) + '\n'
 
     def as_gff_lines(self,
                      order=False,
@@ -602,7 +657,8 @@ class ContigSet(object):
 
         :param order: fields to sort the gff by
         :type order: tuple[str]
-        :param reference_field: name of field containing reference genome contig name
+        :param reference_field: name of field containing reference genome
+            contig name
         :type reference_field: str
         :param start_field: name of field containing start of feature
         :type start_field: str
@@ -615,7 +671,8 @@ class ContigSet(object):
         :param program_name: name of program used to generate gff file
         :type program_name: str
 
-        :return: an iterable of string suitable for writing to a gff plain text file
+        :return: an iterable of string suitable for writing to a gff
+            plain text file
         :rtype: iterable[str]
         """
         array = self.as_array(order=order)
@@ -634,7 +691,8 @@ class ContigSet(object):
             else:
                 type_value = '.'
 
-            attributes = ';'.join(('{0}={1}'.format(field, record[field]) for field in attribute_fields))
+            attributes = ';'.join(('{0}={1}'.format(field, record[field])
+                                   for field in attribute_fields))
             yield template.format(record['reference'],
                                   program_name,
                                   type_value,
@@ -644,3 +702,6 @@ class ContigSet(object):
                                   record['strand'],
                                   '.',
                                   attributes)
+
+if __name__ == "__main__":
+    pass
