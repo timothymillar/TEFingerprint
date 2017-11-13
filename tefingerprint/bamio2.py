@@ -9,19 +9,35 @@ from tefingerprint import loci2
 from tefingerprint import interval
 
 
-def extract_bam_references(bam):
+def extract_references_from_bam(bam):
     """
     Extract names of references from a bam file.
 
     :param bam: path to a bam file
     :type bam: str
 
-    :return: iterable of bam reference names
-    :rtype: iterable[str]
+    :return: list of bam reference names
+    :rtype: list[str]
     """
     with pysam.AlignmentFile(bam, 'rb') as bam:
         references = bam.header['SQ']
-        return (r['SN'] for r in references)
+        return [r['SN'] for r in references]
+
+
+def extract_references_from_bams(*args):
+    """
+    Extract names of references from a multiple bam files.
+
+    :param args: paths to bam files
+    :type args: list[str]
+
+    :return: list of bam reference names
+    :rtype: list[str]
+    """
+    reference_lists = [extract_references_from_bam(bam) for bam in args]
+    for l in reference_lists:
+        assert l == reference_lists[0]
+    return reference_lists[0]
 
 
 def _extract_bam_read_data(bam, reference, quality=0, tags=None):

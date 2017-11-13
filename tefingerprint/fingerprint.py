@@ -1,12 +1,162 @@
 #! /usr/bin/env python
 
 import numpy as np
-from collections import Counter
+from itertools import product
 from functools import reduce
+from collections import Counter
+from multiprocessing import Pool
 from tefingerprint import util
 from tefingerprint import interval
 from tefingerprint import bamio2
 from tefingerprint import loci2
+
+
+def fingerprint(bams,
+                categories,
+                references,
+                minimum_reads,
+                epsilon,
+                minimum_epsilon=0,
+                n_common_elements=0,
+                hierarchical=True,
+                fingerprint_buffer=0,
+                join_distance=0,
+                quality=0,
+                transposon_tag='ME',
+                annotation=None,
+                cores=1):
+    """
+    Create a transposon fingerprint of one or more bam files.
+
+    :param bams:
+    :param categories:
+    :param references:
+    :param minimum_reads:
+    :param epsilon:
+    :param minimum_epsilon:
+    :param n_common_elements:
+    :param hierarchical:
+    :param fingerprint_buffer:
+    :param join_distance:
+    :param quality:
+    :param transposon_tag:
+    :param annotation:
+    :param cores:
+    :return:
+    """
+
+    if isinstance(bams, str):
+        bams = [bams]
+
+    if isinstance(references, str):
+        references = [references]
+
+    if isinstance(categories, str):
+        categories = [categories]
+
+    if references is [None]:
+        references = bamio2.extract_references_from_bams(*bams)
+
+    jobs = product([bams],
+                   [annotation],
+                   [categories],
+                   references,  # job per reference
+                   [quality],
+                   [transposon_tag],
+                   [minimum_reads],
+                   [epsilon],
+                   [minimum_epsilon],
+                   [n_common_elements],
+                   [hierarchical],
+                   [fingerprint_buffer],
+                   [join_distance])
+
+    result = loci2.ContigSet()
+
+    if cores == 1:
+        # run on a single process
+        for job in jobs:
+            result.update(_fingerprint_dispatch(*job).contigs())
+    else:
+        # create a pool of processes
+        with Pool(cores) as pool:
+            for part in pool.starmap(_fingerprint_dispatch, jobs):
+                result.update(part.contigs())
+
+    return result
+
+
+def _fingerprint_dispatch(bams,
+                          annotation,
+                          categories,
+                          reference,
+                          quality,
+                          transposon_tag,
+                          minimum_reads,
+                          epsilon,
+                          minimum_epsilon,
+                          n_common_elements,
+                          hierarchical,
+                          fingerprint_buffer,
+                          join_distance):
+    """dispatch a single job of a fingerprint"""
+
+    # read informative reads
+    reads = bamio2.extract_informative_read_tips(bams,
+                                                 reference,
+                                                 categories,
+                                                 quality=quality,
+                                                 tag=transposon_tag)
+
+    # read known transposons if used
+    if annotation is None:
+        pass
+    else:
+        known = bamio2.extract_gff_intervals(annotation,
+                                             reference,
+                                             categories)
+
+    # sort reads
+    reads = reads.map(lambda x: loci2.sort(x, order='tip'))
+
+    # cluster reads
+    clusters = reads.map(lambda x:
+                         loci2.cluster(x,
+                                       'tip',
+                                       minimum_reads,
+                                       epsilon,
+                                       minimum_epsilon=minimum_epsilon,
+                                       hierarchical=hierarchical))
+
+    # drop origin files and append
+    clusters = clusters.map(lambda x:
+                            loci2.mutate_header(x, source=None),
+                            append_duplicate_headers=True)
+
+    # union of clusters
+    clusters = clusters.map(lambda x:
+                            loci2.unions_buffered(x, fingerprint_buffer))
+
+    # count reads in bins
+    clusters = count_reads(clusters,
+                           reads,
+                           n_common_elements=n_common_elements)
+
+    # match clusters to known elements if used
+    if annotation is None:
+        pass
+    else:
+        clusters = match_known_insertions(clusters,
+                                          known,
+                                          distance=join_distance)
+
+    # join cluster pairs
+    use_known_elements = False if annotation is None else True
+
+    clusters = pair_clusters(clusters,
+                             distance=join_distance,
+                             use_known_elements=use_known_elements)
+    return clusters
 
 
 def count_reads(clusters, reads, trim=True, n_common_elements=0):

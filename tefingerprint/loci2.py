@@ -151,7 +151,7 @@ def sort(contig, order=None):
     :param contig: a contig of loci
     :type contig: :class:`Contig`
     :param order: field names to sort loci by
-    :type order: tuple[str]
+    :type order: str | tuple[str]
 
     :return: a contig of sorted loci
     :rtype: :class:`Contig`
