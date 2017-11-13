@@ -80,7 +80,8 @@ def fingerprint(bams,
     else:
         # create a pool of processes
         with Pool(cores) as pool:
-            for part in pool.starmap(_fingerprint_dispatch, jobs):
+            parts = pool.starmap(_fingerprint_dispatch, jobs)
+            for part in parts:
                 result.update(part.contigs())
 
     return result
