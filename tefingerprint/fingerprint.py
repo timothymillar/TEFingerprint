@@ -54,7 +54,7 @@ def fingerprint(bams,
     if isinstance(categories, str):
         categories = [categories]
 
-    if references is [None]:
+    if references == [None]:
         references = bamio2.extract_references_from_bams(*bams)
 
     jobs = product([bams],
