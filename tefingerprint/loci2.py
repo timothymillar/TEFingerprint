@@ -144,6 +144,20 @@ class Contig(object):
         return len(self.loci)
 
 
+def contigs_equal(x, y):
+    """
+    Check that two contigs are identical.
+
+    Headers must be identical.
+    Loci must contain the same elements in the same order.
+
+    :param x:
+    :param y:
+    :return:
+    """
+    return x.header == y.header and np.array_equal(x.loci, y.loci)
+
+
 def sort(contig, order=None):
     """
     Creates a copy of a contig with sorted loci
@@ -225,8 +239,12 @@ def append(contig_x, contig_y):
     :return: a contig containing the loci of contig_x and contig_y
     :rtype: :class:`Contig`
     """
-    assert contig_x.header == contig_y.header
-    return Contig(contig_x.header, np.append(contig_x.loci, contig_y.loci))
+    try:
+        assert contig_x.header == contig_y.header
+    except AssertionError:
+        raise ValueError('Contigs must have identical headers')
+    else:
+        return Contig(contig_x.header, np.append(contig_x.loci, contig_y.loci))
 
 
 def drop_field(contig, field):
@@ -243,12 +261,9 @@ def drop_field(contig, field):
     return Contig(contig.header, util.remove_array_field(contig.loci, field))
 
 
-def add_field(contig, field_dtype, value=None):
+def add_field(contig, field_dtype):
     """
-    Add a new field to the the loci of a contig.
-
-    A default value may be specified for the field or else it
-    will be left empty.
+    Add a new empty field to the the loci of a contig.
 
     :param contig: a contig of loci
     :type contig: :class:`Contig`
@@ -260,11 +275,7 @@ def add_field(contig, field_dtype, value=None):
     :return: a contig of loci
     :rtype: :class:`Contig`
     """
-    array = np.empty(len(contig.loci), dtype=field_dtype)
-    if value is None:
-        pass
-    else:
-        array.fill(value)
+    array = np.zeros(len(contig.loci), dtype=field_dtype)
     return Contig(contig.header, array=util.bind_arrays(contig.loci, array))
 
 
