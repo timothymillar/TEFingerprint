@@ -129,14 +129,17 @@ def _fingerprint_dispatch(bams,
                                        minimum_epsilon=minimum_epsilon,
                                        hierarchical=hierarchical))
 
+    # buffered union of clusters
+    clusters = clusters.map(lambda x:
+                            loci2.unions_buffered(x, fingerprint_buffer))
+
     # drop origin files and append
     clusters = clusters.map(lambda x:
                             loci2.mutate_header(x, source=None),
                             append_duplicate_headers=True)
 
     # union of clusters
-    clusters = clusters.map(lambda x:
-                            loci2.unions_buffered(x, fingerprint_buffer))
+    clusters = clusters.map(loci2.unions)
 
     # count reads in bins
     clusters = count_reads(clusters,
