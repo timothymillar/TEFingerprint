@@ -12,6 +12,15 @@ def main():
                         nargs='+',
                         help='A list of two or more bam files to '
                              'fingerprint.')
+    parser.add_argument('-a', '--annotation-of-known-elements',
+                        type=str,
+                        nargs=1,
+                        default=[None],
+                        help='Optional annotation of known elements in '
+                             'gff format for matching to identified '
+                             'insertions. '
+                             'Known elements are also used for joining '
+                             'paris of cluster either side of an insertion.')
     parser.add_argument('-r', '--references',
                         type=str,
                         nargs='*',
@@ -28,26 +37,11 @@ def main():
                              'These must be exact string match\'s to start '
                              'of read name and are used to split '
                              'reads into categories for analysis.')
-    parser.add_argument('-a', '--annotation-of-known-elements',
-                        type=str,
-                        nargs=1,
-                        default=[None],
-                        help='Optional annotation of known elements in '
-                             'gff format for matching to identified '
-                             'insertions. '
-                             'Known elements are also used for joining '
-                             'paris of cluster either side of an insertion.')
     parser.add_argument('-q', '--mapping-quality',
                         type=int,
                         nargs=1,
                         default=[30],
                         help='Minimum mapping quality of reads.')
-    parser.add_argument('--mate-element-tag',
-                        type=str,
-                        default=['ME'],
-                        nargs=1,
-                        help='Tag used in bam file to indicate the element '
-                             'type of the mate read.')
     parser.add_argument('-m', '--minimum-reads',
                         type=int,
                         default=[10],
@@ -69,6 +63,11 @@ def main():
                              'This is only used in hierarchical clustering '
                              'and should usually be left '
                              'as the default value of 0.')
+    parser.set_defaults(hierarchical_clustering=True)
+    parser.add_argument('--non-hierarchical',
+                        dest='hierarchical_clustering',
+                        action='store_false',
+                        help='Use non-hierarchical clustering.')
     parser.add_argument('-n', '--number-of-common-elements',
                         type=int,
                         default=[3],
@@ -76,11 +75,6 @@ def main():
                         help='The number of most common elements '
                              'contributing to each cluster that are '
                              'counted.')
-    parser.set_defaults(hierarchical_clustering=True)
-    parser.add_argument('--non-hierarchical',
-                        dest='hierarchical_clustering',
-                        action='store_false',
-                        help='Use non-hierarchical clustering.')
     parser.add_argument('-b', '--buffer-fingerprints',
                         type=int,
                         default=[0],
@@ -103,6 +97,17 @@ def main():
                              'for a known transposon and half the maximum '
                              'distance to search for a paired cluster if '
                              'no a known transposon is not identified.')
+    parser.add_argument('-t', '--threads',
+                        type=int,
+                        default=[1],
+                        nargs=1,
+                        help='Maximum number of cpu threads to be used.')
+    parser.add_argument('--mate-element-tag',
+                        type=str,
+                        default=['ME'],
+                        nargs=1,
+                        help='Tag used in bam file to indicate the element '
+                             'type of the mate read.')
     parser.add_argument('--csv',
                         type=str,
                         default=[False],
@@ -117,11 +122,6 @@ def main():
                         help='File name for GFF output. '
                              'Output may be written to standard output '
                              'using "-".')
-    parser.add_argument('-t', '--threads',
-                        type=int,
-                        default=[1],
-                        nargs=1,
-                        help='Maximum number of cpu threads to be used.')
     args = parser.parse_args(sys.argv[1:])
 
     result = fingerprint(bams=args.bams,
