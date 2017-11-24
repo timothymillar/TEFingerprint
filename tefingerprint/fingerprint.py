@@ -151,6 +151,9 @@ def _fingerprint_dispatch(bams,
                                           known,
                                           distance=join_distance)
 
+    # create cluster IDs
+    clusters = clusters.map(create_contig_ids)
+
     # join cluster pairs
     use_known_elements = False if annotation is None else True
 
@@ -158,6 +161,35 @@ def _fingerprint_dispatch(bams,
                              distance=join_distance,
                              use_known_elements=use_known_elements)
     return clusters
+
+
+def create_contig_ids(contig):
+    """
+    Create ids for contig based on category, reference, strand and position.
+
+    :param clusters: a collection of cluster loci (intervals)
+    :type clusters: :class:`loci2.ContigSet`
+
+    :return: a collection of cluster loci (intervals) with 'ID' field
+    :rtype: :class:`loci2.ContigSet`
+    """
+    template = '{0}_{1}_{2}_'.format(contig.header.category,
+                                     contig.header.reference,
+                                     contig.header.strand)
+    if contig.header.strand == '+':
+        position = 'stop'
+    elif contig.header.strand == '-':
+        position = 'start'
+    else:
+        assert False
+
+    ids = [template + str(element[position]) for element in contig.loci]
+    ids = np.array(ids)
+    ids = np.array(ids, dtype=np.dtype([('ID', '<O')]))
+
+    loci = util.bind_arrays(contig.loci, ids)
+
+    return loci2.Contig(contig.header, loci)
 
 
 def count_reads(clusters, reads, trim=True, n_common_elements=0):
@@ -423,10 +455,11 @@ def pair_clusters(clusters, distance=0, use_known_elements=True):
     to the same known element.
 
     Fields required in 'clusters':
-        'start': int, 'stop': int, 'median': int, 'known_element': str
+        'start': int, 'stop': int, 'median': int,
+        'known_element': str, 'ID': str
 
     Fields appended to return value:
-        'ID': str, 'paired' int
+        'pair' str
 
 
     :param clusters: a collection of cluster loci (intervals)
@@ -437,19 +470,15 @@ def pair_clusters(clusters, distance=0, use_known_elements=True):
         common known element (default: True)
     :type use_known_elements: bool
 
-    :return: a collection of cluster loci (intervals) with 'ID' and
-        'paired' fields
+    :return: a collection of cluster loci (intervals) with 'pair' field
     :rtype: :class:`loci2.ContigSet`
     """
     joint_clusters = loci2.ContigSet()
 
-    dtype_join_data = np.dtype([("ID", "<O"), ("paired", np.int8)])
+    dtype_join_data = np.dtype([("pair", "<O")])
 
     # new headers based on old but un-stranded
     new_headers = {h.mutate(strand='.') for h in clusters.headers()}
-
-    # template for creating insertion IDs
-    template_id = '{0}_{1}_{2}_{3}'
 
     for header in new_headers:
         # get forward and reverse loci for this key
@@ -467,26 +496,10 @@ def pair_clusters(clusters, distance=0, use_known_elements=True):
         reverse_join_data = np.empty(len(reverse), dtype=dtype_join_data)
         for f, r in pairs:
             if f is not None and r is not None:
-                insertion_id = template_id.format(header.reference,
-                                                  forward.loci[f]['median'],
-                                                  reverse.loci[r]['median'],
-                                                  header.category)
-                forward_join_data[f]["ID"] = insertion_id
-                reverse_join_data[r]["ID"] = insertion_id
-                forward_join_data[f]["paired"] = 1
-                reverse_join_data[r]["paired"] = 1
-            elif f is not None:
-                insertion_id = template_id.format(header.reference,
-                                                  forward.loci[f]['median'],
-                                                  '.',
-                                                  header.category)
-                forward_join_data[f]["ID"] = insertion_id
-            elif r is not None:
-                insertion_id = template_id.format(header.reference,
-                                                  '.',
-                                                  reverse.loci[r]['median'],
-                                                  header.category)
-                reverse_join_data[r]["ID"] = insertion_id
+                forward_join_data[f]["pair"] = reverse.loci[r]["ID"]
+                reverse_join_data[r]["pair"] = forward.loci[f]["ID"]
+            else:
+                pass
 
         # combine existing data with join data and add to new contig set
         joint_clusters.add(loci2.Contig(header.mutate(strand='+'),
