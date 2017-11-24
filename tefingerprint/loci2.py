@@ -647,10 +647,10 @@ class ContigSet(object):
         """
         dtype = util.append_dtypes(self.dtype_headers(), self.dtype_loci())
         columns = util.flatten_dtype_fields(dtype)
-        yield sep.join(map(util.quote_str, columns)) + '\n'
+        yield sep.join(map(util.quote_str, columns))
         for f in self.iter_values():
             yield sep.join(map(util.quote_str,
-                               util.flatten_numpy_element(f))) + '\n'
+                               util.flatten_numpy_element(f)))
 
     def as_gff_lines(self,
                      order=False,
@@ -694,7 +694,7 @@ class ContigSet(object):
         if type_field:
             attribute_fields.remove(type_field)
 
-        template = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}\n"
+        template = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}"
 
         for record in array:
             if type_field:
