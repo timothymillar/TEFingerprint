@@ -839,7 +839,32 @@ class TestContigSet:
         npt.assert_array_equal(query.as_array(), answer.as_array())
 
     def test_iter_values(self):
-        pass
+        dtype_loci = np.dtype([('tip', np.int64), ('element', 'O')])
+
+        header_1 = loci2.Header(reference='chr1',
+                                strand='+',
+                                category='gypsy')
+        contig_1 = loci2.Contig(header_1,
+                              np.array([(1, 'gypsy1'),
+                                        (7, 'gypsy4')],
+                                       dtype=dtype_loci))
+
+        header_2 = loci2.Header(reference='chr2',
+                                strand='+',
+                                category='gypsy')
+        contig_2 = loci2.Contig(header_2,
+                              np.array([(3, 'gypsy7'),
+                                        (9, 'gypsy1')],
+                                       dtype=dtype_loci))
+
+        query = loci2.ContigSet(contig_1, contig_2)
+
+        answer = [('chr1', '+', 'gypsy', 1, 'gypsy1'),
+                  ('chr1', '+', 'gypsy', 7, 'gypsy4'),
+                  ('chr2', '+', 'gypsy', 3, 'gypsy7'),
+                  ('chr2', '+', 'gypsy', 9, 'gypsy1')]
+
+        assert list(query.iter_values()) == answer
 
     def test_as_array(self):
         pass
