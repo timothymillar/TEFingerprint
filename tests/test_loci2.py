@@ -826,7 +826,7 @@ class TestContigSet:
 
         answer = loci2.ContigSet(contig_alt_1, contig_alt_2)
 
-        npt.assert_array_equal(query.as_array(), answer.as_array())
+        assert query == answer
 
     def test_iter_values(self):
         dtype_loci = np.dtype([('tip', np.int64), ('element', 'O')])

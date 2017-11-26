@@ -467,6 +467,18 @@ class ContigSet(object):
     def __getitem__(self, header):
         return self._dict.__getitem__(header)
 
+    def __eq__(self, other):
+        headers_self = set(self.headers())
+        headers_other = set(other.headers())
+
+        if headers_self == headers_other:
+            return all([self[h] == other[h] for h in headers_self])
+        else:
+            return False
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
     def dtype_headers(self):
         """
         Generate a dtype suitable for storing data from the headers of
