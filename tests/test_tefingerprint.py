@@ -47,7 +47,6 @@ class TestTEFingerprint:
         assert output.decode() == answer
 
 
-
 class TestTEFingerprintMulticore(TestTEFingerprint):
     """Multi-core versions of integration tests for batch fingerprinting"""
     CORES = 2

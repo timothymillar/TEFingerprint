@@ -76,8 +76,8 @@ def test_sort():
                             (9, 'element4')], dtype=loci_dtype)
     answer = loci2.Contig(header, answer_loci)
 
-    assert loci2.contigs_equal(loci2.sort(query, order='tip'), answer)
-    assert not loci2.contigs_equal(loci2.sort(query, order='tip'), query)
+    assert loci2.sort(query, order='tip') == answer
+    assert loci2.sort(query, order='tip') != query
 
 
 def test_iter_values():
@@ -174,16 +174,14 @@ def test_mutate_header():
                                  source=None)
     answer = loci2.Contig(answer_header, loci)
 
-    assert loci2.contigs_equal(loci2.mutate_header(query,
-                                                   strand='.',
-                                                   category='family',
-                                                   source=None),
-                               answer)
-    assert not loci2.contigs_equal(loci2.mutate_header(query,
-                                                       strand='.',
-                                                       category='family',
-                                                       source=None),
-                                   query)
+    assert loci2.mutate_header(query,
+                               strand='.',
+                               category='family',
+                               source=None) == answer
+    assert loci2.mutate_header(query,
+                               strand='.',
+                               category='family',
+                               source=None) != query
 
 
 def test_append():
@@ -216,7 +214,7 @@ def test_append():
                                     (6, 'element5'),
                                     (2, 'element6')], dtype=loci_dtype))
 
-    assert loci2.contigs_equal(loci2.append(query_1, query_2), answer)
+    assert loci2.append(query_1, query_2) == answer
 
 
 def test_append_header_miss_match():
@@ -264,8 +262,8 @@ def test_drop_field():
                           np.array([5, 1, 7]))
     answer.loci = np.array(answer.loci, np.dtype([('tip', np.int64)]))
 
-    assert loci2.contigs_equal(loci2.drop_field(query, 'element'), answer)
-    assert not loci2.contigs_equal(loci2.drop_field(query, 'element'), query)
+    assert loci2.drop_field(query, 'element') == answer
+    assert loci2.drop_field(query, 'element') != query
 
 
 def test_add_field():
@@ -290,14 +288,8 @@ def test_add_field():
                                                    ('element', 'O'),
                                                    ('field', np.int64)])))
 
-    assert loci2.contigs_equal(loci2.add_field(query,
-                                               np.dtype([('field',
-                                                          np.int64)])),
-                               answer)
-    assert not loci2.contigs_equal(loci2.add_field(query,
-                                                   np.dtype([('field',
-                                                              np.int64)])),
-                               query)
+    assert loci2.add_field(query, np.dtype([('field', np.int64)])) == answer
+    assert loci2.add_field(query, np.dtype([('field', np.int64)])) != query
 
 
 def test_cluster():
@@ -413,13 +405,12 @@ def test_cluster():
                                            ('stop', np.int64)]))
     answer = loci2.Contig(header, answer_loci)
 
-    assert loci2.contigs_equal(loci2.cluster(query,
-                                             'tip',
-                                             10,
-                                             epsilon=200,
-                                             minimum_epsilon=10,
-                                             hierarchical=True),
-                               answer)
+    assert loci2.cluster(query,
+                         'tip',
+                         10,
+                         epsilon=200,
+                         minimum_epsilon=10,
+                         hierarchical=True) == answer
 
 
 def test_cluster_empty():
@@ -437,13 +428,12 @@ def test_cluster_empty():
                                            ('stop', np.int64)]))
     answer = loci2.Contig(header, answer_loci)
 
-    assert loci2.contigs_equal(loci2.cluster(query,
-                                             'tip',
-                                             10,
-                                             epsilon=200,
-                                             minimum_epsilon=10,
-                                             hierarchical=True),
-                               answer)
+    assert loci2.cluster(query,
+                         'tip',
+                         10,
+                         epsilon=200,
+                         minimum_epsilon=10,
+                         hierarchical=True) == answer
 
 
 @pytest.mark.parametrize("query, answer",
@@ -485,7 +475,7 @@ def test_unions(query, answer):
     answer = loci2.Contig(header,
                           np.array(answer, dtype=dtype))
 
-    assert loci2.contigs_equal(loci2.unions(query), answer)
+    assert loci2.unions(query) == answer
 
 
 def test_unions_buffered():
@@ -512,7 +502,7 @@ def test_unions_buffered():
                                     (13, 14),
                                     (15, 30)], dtype=dtype))
 
-    assert loci2.contigs_equal(loci2.unions_buffered(query, 5), answer)
+    assert loci2.unions_buffered(query, 5) == answer
 
 
 class TestContigSet:

@@ -143,19 +143,12 @@ class Contig(object):
     def __len__(self):
         return len(self.loci)
 
+    def __eq__(self, other):
+        return self.header == other.header and np.array_equal(self.loci,
+                                                              other.loci)
 
-def contigs_equal(x, y):
-    """
-    Check that two contigs are identical.
-
-    Headers must be identical.
-    Loci must contain the same elements in the same order.
-
-    :param x:
-    :param y:
-    :return:
-    """
-    return x.header == y.header and np.array_equal(x.loci, y.loci)
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
 
 def sort(contig, order=None):
