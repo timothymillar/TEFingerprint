@@ -93,6 +93,12 @@ def test_iter_values():
                                 source='bam')
     query = loci2.Contig(query_header, loci)
 
+    answer = [('chr1', '-', 'bam', 5, 'element1'),
+              ('chr1', '-', 'bam', 1, 'element2'),
+              ('chr1', '-', 'bam', 7, 'element3')]
+
+    assert list(loci2.iter_values(query)) == answer
+
 
 def test_as_array():
     """Test conversion of nested loci data to flat array"""
