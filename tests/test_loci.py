@@ -3,50 +3,50 @@
 import pytest
 import numpy as np
 import numpy.testing as npt
-from tefingerprint import loci2
+from tefingerprint import loci
 
 
 class TestHeader:
     """Tests for class Header"""
 
     @pytest.mark.parametrize("header, tuple_",
-                             [(loci2.Header(reference='chr1',
-                                            strand='-',
-                                            category='family',
-                                            source='bam'),
+                             [(loci.Header(reference='chr1',
+                                           strand='-',
+                                           category='family',
+                                           source='bam'),
                                ('chr1', '-', 'family', 'bam')),
-                              (loci2.Header(reference='chr1',
-                                            strand='-'),
+                              (loci.Header(reference='chr1',
+                                           strand='-'),
                                ('chr1', '-'))])
     def test_tuple(self, header, tuple_):
         assert header.tuple == tuple_
 
     @pytest.mark.parametrize("header, dtype",
-                             [(loci2.Header(reference='chr1',
-                                            strand='-',
-                                            category='family',
-                                            source='bam'),
+                             [(loci.Header(reference='chr1',
+                                           strand='-',
+                                           category='family',
+                                           source='bam'),
                                (np.dtype([('reference', 'O'),
                                           ('strand', '<U1'),
                                           ('category', 'O'),
                                           ('source', 'O')]))),
-                              (loci2.Header(reference='chr1',
-                                            strand='-'),
+                              (loci.Header(reference='chr1',
+                                           strand='-'),
                                (np.dtype([('reference', 'O'),
                                           ('strand', '<U1')])))])
     def test_dtype(self, header, dtype):
         assert header.dtype == dtype
 
     def test_mutate(self):
-        origional = loci2.Header(reference='chr1',
-                                 strand='-',
-                                 category=None,
-                                 source='bam')
+        origional = loci.Header(reference='chr1',
+                                strand='-',
+                                category=None,
+                                source='bam')
 
-        answer = loci2.Header(reference='chr1',
-                              strand='.',
-                              category='family',
-                              source=None)
+        answer = loci.Header(reference='chr1',
+                             strand='.',
+                             category='family',
+                             source=None)
 
         assert origional.mutate(strand='.',
                                 category='family',
@@ -56,9 +56,9 @@ class TestHeader:
 def test_sort():
     loci_dtype = np.dtype([('tip', np.int64), ('element', 'O')])
 
-    header = loci2.Header(reference='chr1',
-                          strand='-',
-                          category='family')
+    header = loci.Header(reference='chr1',
+                         strand='-',
+                         category='family')
 
     query_loci = np.array([(5, 'element1'),
                            (1, 'element2'),
@@ -66,7 +66,7 @@ def test_sort():
                            (9, 'element4'),
                            (6, 'element5'),
                            (2, 'element6')], dtype=loci_dtype)
-    query = loci2.Contig(header, query_loci)
+    query = loci.Contig(header, query_loci)
 
     answer_loci = np.array([(1, 'element2'),
                             (2, 'element6'),
@@ -74,30 +74,30 @@ def test_sort():
                             (6, 'element5'),
                             (7, 'element3'),
                             (9, 'element4')], dtype=loci_dtype)
-    answer = loci2.Contig(header, answer_loci)
+    answer = loci.Contig(header, answer_loci)
 
-    assert loci2.sort(query, order='tip') == answer
-    assert loci2.sort(query, order='tip') != query
+    assert loci.sort(query, order='tip') == answer
+    assert loci.sort(query, order='tip') != query
 
 
 def test_iter_values():
     loci_dtype = np.dtype([('tip', np.int64),
                            ('element', 'O')])
-    loci = np.array([(5, 'element1'),
+    data = np.array([(5, 'element1'),
                      (1, 'element2'),
                      (7, 'element3')], dtype=loci_dtype)
 
-    query_header = loci2.Header(reference='chr1',
-                                strand='-',
-                                category=None,
-                                source='bam')
-    query = loci2.Contig(query_header, loci)
+    query_header = loci.Header(reference='chr1',
+                               strand='-',
+                               category=None,
+                               source='bam')
+    query = loci.Contig(query_header, data)
 
     answer = [('chr1', '-', 'bam', 5, 'element1'),
               ('chr1', '-', 'bam', 1, 'element2'),
               ('chr1', '-', 'bam', 7, 'element3')]
 
-    assert list(loci2.iter_values(query)) == answer
+    assert list(loci.iter_values(query)) == answer
 
 
 def test_as_array():
@@ -116,7 +116,7 @@ def test_as_array():
                            ('sample', dtype_samples)])
 
     # 3 element array with nested structured data
-    loci = np.array([(10, 15, (('bam1', 9, (('gypsy7', 5), ('gypsy3', 3))),
+    data = np.array([(10, 15, (('bam1', 9, (('gypsy7', 5), ('gypsy3', 3))),
                                ('bam2', 8, (('gypsy7', 7), ('gypsy3', 1))))),
                      (21, 32, (('bam1', 7, (('gypsy3', 5), ('gypsy1', 2))),
                                ('bam2', 7, (('gypsy3', 7), (None, 0))))),
@@ -125,11 +125,11 @@ def test_as_array():
                      ],
                     dtype=dtype_loci)
 
-    header = loci2.Header(reference='chr1',
-                          strand='-',
-                          category='gypsy')
+    header = loci.Header(reference='chr1',
+                         strand='-',
+                         category='gypsy')
 
-    query = loci2.Contig(header, loci)
+    query = loci.Contig(header, data)
 
     # array dtype includes header fields
     answer_dtype = np.dtype([('reference', 'O'),
@@ -159,91 +159,91 @@ def test_as_array():
                         'gypsy3', 2, 'bam2', 6, 'gypsy3', 5, 'gypsy9', 1)],
                       dtype=answer_dtype)
 
-    npt.assert_array_equal(loci2.as_array(query), answer)
+    npt.assert_array_equal(loci.as_array(query), answer)
 
 
 def test_mutate_header():
     loci_dtype = np.dtype([('tip', np.int64), ('element', 'O')])
-    loci = np.array([(5, 'element1'),
+    data = np.array([(5, 'element1'),
                      (1, 'element2'),
                      (7, 'element3')], dtype=loci_dtype)
 
-    query_header = loci2.Header(reference='chr1',
-                                strand='-',
-                                category=None,
-                                source='bam')
-    query = loci2.Contig(query_header, loci)
+    query_header = loci.Header(reference='chr1',
+                               strand='-',
+                               category=None,
+                               source='bam')
+    query = loci.Contig(query_header, data)
 
-    answer_header = loci2.Header(reference='chr1',
-                                 strand='.',
-                                 category='family',
-                                 source=None)
-    answer = loci2.Contig(answer_header, loci)
+    answer_header = loci.Header(reference='chr1',
+                                strand='.',
+                                category='family',
+                                source=None)
+    answer = loci.Contig(answer_header, data)
 
-    assert loci2.mutate_header(query,
-                               strand='.',
-                               category='family',
-                               source=None) == answer
-    assert loci2.mutate_header(query,
-                               strand='.',
-                               category='family',
-                               source=None) != query
+    assert loci.mutate_header(query,
+                              strand='.',
+                              category='family',
+                              source=None) == answer
+    assert loci.mutate_header(query,
+                              strand='.',
+                              category='family',
+                              source=None) != query
 
 
 def test_append():
     loci_dtype = np.dtype([('tip', np.int64), ('element', 'O')])
 
-    query_1 = loci2.Contig(loci2.Header(reference='chr1',
-                                        strand='-',
-                                        category='family',
-                                        source='bam'),
-                           np.array([(5, 'element1'),
-                                     (1, 'element2'),
-                                     (7, 'element3')], dtype=loci_dtype))
-
-    query_2 = loci2.Contig(loci2.Header(reference='chr1',
-                                        strand='-',
-                                        category='family',
-                                        source='bam'),
-                           np.array([(9, 'element4'),
-                                     (6, 'element5'),
-                                     (2, 'element6')], dtype=loci_dtype))
-
-    answer = loci2.Contig(loci2.Header(reference='chr1',
-                                       strand='-',
-                                       category='family',
-                                       source='bam'),
+    query_1 = loci.Contig(loci.Header(reference='chr1',
+                                      strand='-',
+                                      category='family',
+                                      source='bam'),
                           np.array([(5, 'element1'),
                                     (1, 'element2'),
-                                    (7, 'element3'),
-                                    (9, 'element4'),
+                                    (7, 'element3')], dtype=loci_dtype))
+
+    query_2 = loci.Contig(loci.Header(reference='chr1',
+                                      strand='-',
+                                      category='family',
+                                      source='bam'),
+                          np.array([(9, 'element4'),
                                     (6, 'element5'),
                                     (2, 'element6')], dtype=loci_dtype))
 
-    assert loci2.append(query_1, query_2) == answer
+    answer = loci.Contig(loci.Header(reference='chr1',
+                                     strand='-',
+                                     category='family',
+                                     source='bam'),
+                         np.array([(5, 'element1'),
+                                   (1, 'element2'),
+                                   (7, 'element3'),
+                                   (9, 'element4'),
+                                   (6, 'element5'),
+                                   (2, 'element6')], dtype=loci_dtype))
+
+    assert loci.append(query_1, query_2) == answer
 
 
 def test_append_header_miss_match():
     loci_dtype = np.dtype([('tip', np.int64), ('element', 'O')])
 
-    query_1 = loci2.Contig(loci2.Header(reference='chr1',
-                                        strand='-',
-                                        category='family',
-                                        source='bam'),
-                           np.array([(5, 'element1'),
-                                     (1, 'element2'),
-                                     (7, 'element3')], dtype=loci_dtype))
+    query_1 = loci.Contig(loci.Header(reference='chr1',
+                                      strand='-',
+                                      category='family',
+                                      source='bam'),
+                          np.array([(5, 'element1'),
+                                    (1, 'element2'),
+                                    (7, 'element3')], dtype=loci_dtype))
 
-    query_2 = loci2.Contig(loci2.Header(reference='chr2', # miss-matched
-                                        strand='-',
-                                        category='family',
-                                        source='bam'),
-                           np.array([(9, 'element4'),
-                                     (6, 'element5'),
-                                     (2, 'element6')], dtype=loci_dtype))
+    query_2 = loci.Contig(loci.Header(reference='chr2', # miss-matched
+                                      strand='-',
+                                      category='family',
+                                      source='bam'),
+                          np.array([(9, 'element4'),
+                                    (6, 'element5'),
+                                    (2, 'element6')], dtype=loci_dtype))
 
     try:
-        loci2.append(query_1, query_2)
+        loci.append(query_1, query_2)
     except ValueError:
         pass
     else:
@@ -251,58 +251,58 @@ def test_append_header_miss_match():
 
 
 def test_drop_field():
-    query = loci2.Contig(loci2.Header(reference='chr1',
-                                      strand='-',
-                                      category='family',
-                                      source='bam'),
-                         np.array([(5, 'element1'),
-                                   (1, 'element2'),
-                                   (7, 'element3')],
-                                  dtype=np.dtype([('tip', np.int64),
-                                                  ('element', 'O')])))
+    query = loci.Contig(loci.Header(reference='chr1',
+                                    strand='-',
+                                    category='family',
+                                    source='bam'),
+                        np.array([(5, 'element1'),
+                                  (1, 'element2'),
+                                  (7, 'element3')],
+                                 dtype=np.dtype([('tip', np.int64),
+                                                 ('element', 'O')])))
 
-    answer = loci2.Contig(loci2.Header(reference='chr1',
-                                       strand='-',
-                                       category='family',
-                                       source='bam'),
-                          np.array([5, 1, 7]))
+    answer = loci.Contig(loci.Header(reference='chr1',
+                                     strand='-',
+                                     category='family',
+                                     source='bam'),
+                         np.array([5, 1, 7]))
     answer.loci = np.array(answer.loci, np.dtype([('tip', np.int64)]))
 
-    assert loci2.drop_field(query, 'element') == answer
-    assert loci2.drop_field(query, 'element') != query
+    assert loci.drop_field(query, 'element') == answer
+    assert loci.drop_field(query, 'element') != query
 
 
 def test_add_field():
-    query = loci2.Contig(loci2.Header(reference='chr1',
-                                      strand='-',
-                                      category='family',
-                                      source='bam'),
-                         np.array([(5, 'element1'),
-                                   (1, 'element2'),
-                                   (7, 'element3')],
-                                  dtype=np.dtype([('tip', np.int64),
-                                                  ('element', 'O')])))
+    query = loci.Contig(loci.Header(reference='chr1',
+                                    strand='-',
+                                    category='family',
+                                    source='bam'),
+                        np.array([(5, 'element1'),
+                                  (1, 'element2'),
+                                  (7, 'element3')],
+                                 dtype=np.dtype([('tip', np.int64),
+                                                 ('element', 'O')])))
 
-    answer = loci2.Contig(loci2.Header(reference='chr1',
-                                       strand='-',
-                                       category='family',
-                                       source='bam'),
-                          np.array([(5, 'element1', 0),
-                                    (1, 'element2', 0),
-                                    (7, 'element3', 0)],
-                                   dtype=np.dtype([('tip', np.int64),
+    answer = loci.Contig(loci.Header(reference='chr1',
+                                     strand='-',
+                                     category='family',
+                                     source='bam'),
+                         np.array([(5, 'element1', 0),
+                                   (1, 'element2', 0),
+                                   (7, 'element3', 0)],
+                                  dtype=np.dtype([('tip', np.int64),
                                                    ('element', 'O'),
                                                    ('field', np.int64)])))
 
-    assert loci2.add_field(query, np.dtype([('field', np.int64)])) == answer
-    assert loci2.add_field(query, np.dtype([('field', np.int64)])) != query
+    assert loci.add_field(query, np.dtype([('field', np.int64)])) == answer
+    assert loci.add_field(query, np.dtype([('field', np.int64)])) != query
 
 
 def test_cluster():
-    header = loci2.Header(reference='chr1',
-                          strand='-',
-                          category='Gypsy',
-                          source='bam')
+    header = loci.Header(reference='chr1',
+                         strand='-',
+                         category='Gypsy',
+                         source='bam')
     query_loci = np.array([(   0, 'Gypsy'),
                            (   0, 'Gypsy'),
                            (  60, 'Gypsy'),
@@ -402,44 +402,44 @@ def test_cluster():
                            (1917, 'Gypsy')],
                           dtype=np.dtype([('tip', np.int64),
                                           ('element', 'O')]))
-    query = loci2.Contig(header, query_loci)
+    query = loci.Contig(header, query_loci)
 
     answer_loci = np.array([(0, 577),
                             (879, 1234),
                             (1662, 1917)],
                            dtype=np.dtype([('start', np.int64),
                                            ('stop', np.int64)]))
-    answer = loci2.Contig(header, answer_loci)
+    answer = loci.Contig(header, answer_loci)
 
-    assert loci2.cluster(query,
-                         'tip',
-                         10,
-                         epsilon=200,
-                         minimum_epsilon=10,
-                         hierarchical=True) == answer
+    assert loci.cluster(query,
+                        'tip',
+                        10,
+                        epsilon=200,
+                        minimum_epsilon=10,
+                        hierarchical=True) == answer
 
 
 def test_cluster_empty():
-    header = loci2.Header(reference='chr1',
-                          strand='-',
-                          category='Gypsy',
-                          source='bam')
+    header = loci.Header(reference='chr1',
+                         strand='-',
+                         category='Gypsy',
+                         source='bam')
     query_loci = np.array([],
                           dtype=np.dtype([('tip', np.int64),
                                           ('element', 'O')]))
-    query = loci2.Contig(header, query_loci)
+    query = loci.Contig(header, query_loci)
 
     answer_loci = np.array([],
                            dtype=np.dtype([('start', np.int64),
                                            ('stop', np.int64)]))
-    answer = loci2.Contig(header, answer_loci)
+    answer = loci.Contig(header, answer_loci)
 
-    assert loci2.cluster(query,
-                         'tip',
-                         10,
-                         epsilon=200,
-                         minimum_epsilon=10,
-                         hierarchical=True) == answer
+    assert loci.cluster(query,
+                        'tip',
+                        10,
+                        epsilon=200,
+                        minimum_epsilon=10,
+                        hierarchical=True) == answer
 
 
 @pytest.mark.parametrize("query, answer",
@@ -468,47 +468,47 @@ def test_unions(query, answer):
      * Locus may span a single base:
         (13, 13) --> (13, 13)
     """
-    header = loci2.Header(reference='chr1',
-                          strand='-',
-                          source='bam')
+    header = loci.Header(reference='chr1',
+                         strand='-',
+                         source='bam')
 
     dtype = np.dtype([('start', np.int64),
                       ('stop', np.int64)])
 
-    query = loci2.Contig(header,
-                         np.array(query, dtype=dtype))
+    query = loci.Contig(header,
+                        np.array(query, dtype=dtype))
 
-    answer = loci2.Contig(header,
-                          np.array(answer, dtype=dtype))
+    answer = loci.Contig(header,
+                         np.array(answer, dtype=dtype))
 
-    assert loci2.unions(query) == answer
+    assert loci.unions(query) == answer
 
 
 def test_unions_buffered():
-    header = loci2.Header(reference='chr1',
-                          strand='-',
-                          source='bam')
+    header = loci.Header(reference='chr1',
+                         strand='-',
+                         source='bam')
 
     dtype = np.dtype([('start', np.int64),
                       ('stop', np.int64)])
 
-    query = loci2.Contig(header,
-                         np.array([(3, 6),
-                                   (6, 8),
-                                   (7, 9),
+    query = loci.Contig(header,
+                        np.array([(3, 6),
+                                  (6, 8),
+                                  (7, 9),
+                                  (10, 12),
+                                  (13, 13),
+                                  (15, 25),
+                                  (16, 17),
+                                  (19, 20)], dtype=dtype))
+
+    answer = loci.Contig(header,
+                         np.array([(-2, 9),
                                    (10, 12),
-                                   (13, 13),
-                                   (15, 25),
-                                   (16, 17),
-                                   (19, 20)], dtype=dtype))
+                                   (13, 14),
+                                   (15, 30)], dtype=dtype))
 
-    answer = loci2.Contig(header,
-                          np.array([(-2, 9),
-                                    (10, 12),
-                                    (13, 14),
-                                    (15, 30)], dtype=dtype))
-
-    assert loci2.unions_buffered(query, 5) == answer
+    assert loci.unions_buffered(query, 5) == answer
 
 
 class TestContigSet:
@@ -516,30 +516,30 @@ class TestContigSet:
 
     def test_init_empty(self):
         """"""
-        answer = loci2.ContigSet()
-        assert type(answer) == loci2.ContigSet
+        answer = loci.ContigSet()
+        assert type(answer) == loci.ContigSet
 
     def test_init_different_headers(self):
         """"""
         dtype_loci = np.dtype([('tip', np.int64), ('element', 'O')])
 
-        header_1 = loci2.Header(reference='chr1',
-                                strand='+',
-                                category='gypsy')
-        contig_1=loci2.Contig(header_1,
-                              np.array([(1, 'gypsy1'),
-                                        (7, 'gypsy4')],
-                                       dtype=dtype_loci))
+        header_1 = loci.Header(reference='chr1',
+                               strand='+',
+                               category='gypsy')
+        contig_1 = loci.Contig(header_1,
+                               np.array([(1, 'gypsy1'),
+                                         (7, 'gypsy4')],
+                                        dtype=dtype_loci))
 
-        header_2 = loci2.Header(reference='chr2',
-                                strand='+',
-                                category='gypsy')
-        contig_2=loci2.Contig(header_2,
-                              np.array([(3, 'gypsy7'),
-                                        (9, 'gypsy1')],
-                                       dtype=dtype_loci))
+        header_2 = loci.Header(reference='chr2',
+                               strand='+',
+                               category='gypsy')
+        contig_2 = loci.Contig(header_2,
+                               np.array([(3, 'gypsy7'),
+                                         (9, 'gypsy1')],
+                                        dtype=dtype_loci))
 
-        query = loci2.ContigSet(contig_1, contig_2)
+        query = loci.ContigSet(contig_1, contig_2)
 
         assert len(query) == 4
         assert len(list(query.contigs())) == 2
@@ -549,22 +549,22 @@ class TestContigSet:
         """Contigs with same header should cause ValueError"""
         dtype_loci = np.dtype([('tip', np.int64), ('element', 'O')])
 
-        header = loci2.Header(reference='chr1',
-                              strand='+',
-                              category='gypsy')
+        header = loci.Header(reference='chr1',
+                             strand='+',
+                             category='gypsy')
 
-        contig_1 = loci2.Contig(header,
-                                np.array([(1, 'gypsy1'),
-                                          (7, 'gypsy4')],
-                                         dtype=dtype_loci))
+        contig_1 = loci.Contig(header,
+                               np.array([(1, 'gypsy1'),
+                                         (7, 'gypsy4')],
+                                        dtype=dtype_loci))
 
-        contig_2 = loci2.Contig(header,
-                                np.array([(3, 'gypsy7'),
-                                          (9, 'gypsy1')],
-                                         dtype=dtype_loci))
+        contig_2 = loci.Contig(header,
+                               np.array([(3, 'gypsy7'),
+                                         (9, 'gypsy1')],
+                                        dtype=dtype_loci))
 
         try:
-            loci2.ContigSet(contig_1, contig_2)
+            loci.ContigSet(contig_1, contig_2)
         except ValueError:
             assert True
         else:
@@ -574,23 +574,23 @@ class TestContigSet:
         """Contigs with same header should be appended"""
         dtype_loci = np.dtype([('tip', np.int64), ('element', 'O')])
 
-        header = loci2.Header(reference='chr1',
-                              strand='+',
-                              category='gypsy')
+        header = loci.Header(reference='chr1',
+                             strand='+',
+                             category='gypsy')
 
-        contig_1 = loci2.Contig(header,
-                                np.array([(1, 'gypsy1'),
-                                          (7, 'gypsy4')],
-                                         dtype=dtype_loci))
+        contig_1 = loci.Contig(header,
+                               np.array([(1, 'gypsy1'),
+                                         (7, 'gypsy4')],
+                                        dtype=dtype_loci))
 
-        contig_2 = loci2.Contig(header,
-                                np.array([(3, 'gypsy7'),
-                                          (9, 'gypsy1')],
-                                         dtype=dtype_loci))
+        contig_2 = loci.Contig(header,
+                               np.array([(3, 'gypsy7'),
+                                         (9, 'gypsy1')],
+                                        dtype=dtype_loci))
 
-        query = loci2.ContigSet(contig_1,
-                                contig_2,
-                                append_duplicate_headers=True)
+        query = loci.ContigSet(contig_1,
+                               contig_2,
+                               append_duplicate_headers=True)
 
         assert len(query) == 4
         assert len(list(query.contigs())) == 1
@@ -609,23 +609,23 @@ class TestContigSet:
     def test_dtype_headers(self):
         dtype_loci = np.dtype([('tip', np.int64), ('element', 'O')])
 
-        header_1 = loci2.Header(reference='chr1',
-                                strand='+',
-                                category='gypsy')
-        contig_1=loci2.Contig(header_1,
-                              np.array([(1, 'gypsy1'),
-                                        (7, 'gypsy4')],
-                                       dtype=dtype_loci))
+        header_1 = loci.Header(reference='chr1',
+                               strand='+',
+                               category='gypsy')
+        contig_1=loci.Contig(header_1,
+                             np.array([(1, 'gypsy1'),
+                                       (7, 'gypsy4')],
+                                      dtype=dtype_loci))
 
-        header_2 = loci2.Header(reference='chr2',
-                                strand='+',
-                                category='gypsy')
-        contig_2=loci2.Contig(header_2,
-                              np.array([(3, 'gypsy7'),
-                                        (9, 'gypsy1')],
-                                       dtype=dtype_loci))
+        header_2 = loci.Header(reference='chr2',
+                               strand='+',
+                               category='gypsy')
+        contig_2 = loci.Contig(header_2,
+                               np.array([(3, 'gypsy7'),
+                                         (9, 'gypsy1')],
+                                        dtype=dtype_loci))
 
-        query = loci2.ContigSet(contig_1, contig_2)
+        query = loci.ContigSet(contig_1, contig_2)
 
         assert query.dtype_headers() == contig_1.header.dtype
         assert query.dtype_headers() == contig_1.header.dtype
@@ -633,23 +633,23 @@ class TestContigSet:
     def test_dtype_loci(self):
         dtype_loci = np.dtype([('tip', np.int64), ('element', 'O')])
 
-        header_1 = loci2.Header(reference='chr1',
-                                strand='+',
-                                category='gypsy')
-        contig_1 = loci2.Contig(header_1,
-                                np.array([(1, 'gypsy1'),
-                                          (7, 'gypsy4')],
-                                         dtype=dtype_loci))
+        header_1 = loci.Header(reference='chr1',
+                               strand='+',
+                               category='gypsy')
+        contig_1 = loci.Contig(header_1,
+                               np.array([(1, 'gypsy1'),
+                                         (7, 'gypsy4')],
+                                        dtype=dtype_loci))
 
-        header_2 = loci2.Header(reference='chr2',
-                                strand='+',
-                                category='gypsy')
-        contig_2 = loci2.Contig(header_2,
-                                np.array([(3, 'gypsy7'),
-                                          (9, 'gypsy1')],
-                                         dtype=dtype_loci))
+        header_2 = loci.Header(reference='chr2',
+                               strand='+',
+                               category='gypsy')
+        contig_2 = loci.Contig(header_2,
+                               np.array([(3, 'gypsy7'),
+                                         (9, 'gypsy1')],
+                                        dtype=dtype_loci))
 
-        query = loci2.ContigSet(contig_1, contig_2)
+        query = loci.ContigSet(contig_1, contig_2)
 
         assert query.dtype_loci() == contig_1.loci.dtype
         assert query.dtype_loci() == contig_1.loci.dtype
@@ -657,23 +657,23 @@ class TestContigSet:
     def test_headers(self):
         dtype_loci = np.dtype([('tip', np.int64), ('element', 'O')])
 
-        header_1 = loci2.Header(reference='chr1',
-                                strand='+',
-                                category='gypsy')
-        contig_1=loci2.Contig(header_1,
-                              np.array([(1, 'gypsy1'),
-                                        (7, 'gypsy4')],
-                                       dtype=dtype_loci))
+        header_1 = loci.Header(reference='chr1',
+                               strand='+',
+                               category='gypsy')
+        contig_1 = loci.Contig(header_1,
+                               np.array([(1, 'gypsy1'),
+                                         (7, 'gypsy4')],
+                                        dtype=dtype_loci))
 
-        header_2 = loci2.Header(reference='chr2',
-                                strand='+',
-                                category='gypsy')
-        contig_2=loci2.Contig(header_2,
-                              np.array([(3, 'gypsy7'),
-                                        (9, 'gypsy1')],
-                                       dtype=dtype_loci))
+        header_2 = loci.Header(reference='chr2',
+                               strand='+',
+                               category='gypsy')
+        contig_2 = loci.Contig(header_2,
+                               np.array([(3, 'gypsy7'),
+                                         (9, 'gypsy1')],
+                                        dtype=dtype_loci))
 
-        query = set(loci2.ContigSet(contig_1, contig_2).headers())
+        query = set(loci.ContigSet(contig_1, contig_2).headers())
         answer = {header_1, header_2}
 
         assert query == answer
@@ -682,23 +682,23 @@ class TestContigSet:
         """"""
         dtype_loci = np.dtype([('tip', np.int64), ('element', 'O')])
 
-        header_1 = loci2.Header(reference='chr1',
-                                strand='+',
-                                category='gypsy')
-        contig_1=loci2.Contig(header_1,
-                              np.array([(1, 'gypsy1'),
-                                        (7, 'gypsy4')],
-                                       dtype=dtype_loci))
+        header_1 = loci.Header(reference='chr1',
+                               strand='+',
+                               category='gypsy')
+        contig_1 = loci.Contig(header_1,
+                               np.array([(1, 'gypsy1'),
+                                         (7, 'gypsy4')],
+                                        dtype=dtype_loci))
 
-        header_2 = loci2.Header(reference='chr2',
-                                strand='+',
-                                category='gypsy')
-        contig_2=loci2.Contig(header_2,
-                              np.array([(3, 'gypsy7'),
-                                        (9, 'gypsy1')],
-                                       dtype=dtype_loci))
+        header_2 = loci.Header(reference='chr2',
+                               strand='+',
+                               category='gypsy')
+        contig_2 = loci.Contig(header_2,
+                               np.array([(3, 'gypsy7'),
+                                         (9, 'gypsy1')],
+                                        dtype=dtype_loci))
 
-        query = loci2.ContigSet(contig_1)
+        query = loci.ContigSet(contig_1)
         query.add(contig_2)
 
         assert len(query) == 4
@@ -709,21 +709,21 @@ class TestContigSet:
         """Contigs with same header should cause ValueError"""
         dtype_loci = np.dtype([('tip', np.int64), ('element', 'O')])
 
-        header = loci2.Header(reference='chr1',
-                              strand='+',
-                              category='gypsy')
+        header = loci.Header(reference='chr1',
+                             strand='+',
+                             category='gypsy')
 
-        contig_1 = loci2.Contig(header,
-                                np.array([(1, 'gypsy1'),
-                                          (7, 'gypsy4')],
-                                         dtype=dtype_loci))
+        contig_1 = loci.Contig(header,
+                               np.array([(1, 'gypsy1'),
+                                         (7, 'gypsy4')],
+                                        dtype=dtype_loci))
 
-        contig_2 = loci2.Contig(header,
-                                np.array([(3, 'gypsy7'),
-                                          (9, 'gypsy1')],
-                                         dtype=dtype_loci))
+        contig_2 = loci.Contig(header,
+                               np.array([(3, 'gypsy7'),
+                                         (9, 'gypsy1')],
+                                        dtype=dtype_loci))
 
-        query = loci2.ContigSet(contig_1)
+        query = loci.ContigSet(contig_1)
         try:
             query.add(contig_2)
         except ValueError:
@@ -735,21 +735,21 @@ class TestContigSet:
         """Contigs with same header should be appended"""
         dtype_loci = np.dtype([('tip', np.int64), ('element', 'O')])
 
-        header = loci2.Header(reference='chr1',
-                              strand='+',
-                              category='gypsy')
+        header = loci.Header(reference='chr1',
+                             strand='+',
+                             category='gypsy')
 
-        contig_1 = loci2.Contig(header,
-                                np.array([(1, 'gypsy1'),
-                                          (7, 'gypsy4')],
-                                         dtype=dtype_loci))
+        contig_1 = loci.Contig(header,
+                               np.array([(1, 'gypsy1'),
+                                         (7, 'gypsy4')],
+                                        dtype=dtype_loci))
 
-        contig_2 = loci2.Contig(header,
-                                np.array([(3, 'gypsy7'),
-                                          (9, 'gypsy1')],
-                                         dtype=dtype_loci))
+        contig_2 = loci.Contig(header,
+                               np.array([(3, 'gypsy7'),
+                                         (9, 'gypsy1')],
+                                        dtype=dtype_loci))
 
-        query = loci2.ContigSet(contig_1)
+        query = loci.ContigSet(contig_1)
         query.add(contig_2, append_duplicate_headers=True)
 
         assert len(query) == 4
@@ -769,24 +769,24 @@ class TestContigSet:
     def test_update(self):
         dtype_loci = np.dtype([('tip', np.int64), ('element', 'O')])
 
-        header_1 = loci2.Header(reference='chr1',
-                                strand='+',
-                                category='gypsy')
-        contig_1 = loci2.Contig(header_1,
-                              np.array([(1, 'gypsy1'),
-                                        (7, 'gypsy4')],
-                                       dtype=dtype_loci))
+        header_1 = loci.Header(reference='chr1',
+                               strand='+',
+                               category='gypsy')
+        contig_1 = loci.Contig(header_1,
+                             np.array([(1, 'gypsy1'),
+                                       (7, 'gypsy4')],
+                                      dtype=dtype_loci))
 
-        header_2 = loci2.Header(reference='chr2',
-                                strand='+',
-                                category='gypsy')
-        contig_2 = loci2.Contig(header_2,
-                              np.array([(3, 'gypsy7'),
-                                        (9, 'gypsy1')],
-                                       dtype=dtype_loci))
+        header_2 = loci.Header(reference='chr2',
+                               strand='+',
+                               category='gypsy')
+        contig_2 = loci.Contig(header_2,
+                               np.array([(3, 'gypsy7'),
+                                         (9, 'gypsy1')],
+                                        dtype=dtype_loci))
 
-        query = loci2.ContigSet(contig_1)
-        query_2 = loci2.ContigSet(contig_2)
+        query = loci.ContigSet(contig_1)
+        query_2 = loci.ContigSet(contig_2)
         query.update(query_2.contigs())
 
         assert len(query) == 4
@@ -796,64 +796,64 @@ class TestContigSet:
     def test_map(self):
         dtype_loci = np.dtype([('tip', np.int64), ('element', 'O')])
 
-        header_1 = loci2.Header(reference='chr1',
-                                strand='+',
-                                category='gypsy')
-        contig_1 = loci2.Contig(header_1,
-                              np.array([(1, 'gypsy1'),
-                                        (7, 'gypsy4')],
-                                       dtype=dtype_loci))
-        contig_alt_1 = loci2.Contig(header_1,
-                              np.array([(101, 'gypsy1'),
-                                        (107, 'gypsy4')],
-                                       dtype=dtype_loci))
+        header_1 = loci.Header(reference='chr1',
+                               strand='+',
+                               category='gypsy')
+        contig_1 = loci.Contig(header_1,
+                             np.array([(1, 'gypsy1'),
+                                       (7, 'gypsy4')],
+                                      dtype=dtype_loci))
+        contig_alt_1 = loci.Contig(header_1,
+                             np.array([(101, 'gypsy1'),
+                                       (107, 'gypsy4')],
+                                      dtype=dtype_loci))
 
-        header_2 = loci2.Header(reference='chr2',
-                                strand='+',
-                                category='gypsy')
-        contig_2 = loci2.Contig(header_2,
-                              np.array([(3, 'gypsy7'),
-                                        (9, 'gypsy1')],
-                                       dtype=dtype_loci))
-        contig_alt_2 = loci2.Contig(header_2,
-                              np.array([(103, 'gypsy7'),
-                                        (109, 'gypsy1')],
-                                       dtype=dtype_loci))
+        header_2 = loci.Header(reference='chr2',
+                               strand='+',
+                               category='gypsy')
+        contig_2 = loci.Contig(header_2,
+                             np.array([(3, 'gypsy7'),
+                                       (9, 'gypsy1')],
+                                      dtype=dtype_loci))
+        contig_alt_2 = loci.Contig(header_2,
+                             np.array([(103, 'gypsy7'),
+                                       (109, 'gypsy1')],
+                                      dtype=dtype_loci))
 
-        query = loci2.ContigSet(contig_1, contig_2)
+        query = loci.ContigSet(contig_1, contig_2)
 
         def func(contig):
             """dummy function that adds 100 to contig loci 'tip's"""
-            loci = np.copy(contig.loci)
-            loci['tip'] += 100
-            return loci2.Contig(contig.header, loci)
+            array = np.copy(contig.loci)
+            array['tip'] += 100
+            return loci.Contig(contig.header, array)
 
         query = query.map(func)
 
-        answer = loci2.ContigSet(contig_alt_1, contig_alt_2)
+        answer = loci.ContigSet(contig_alt_1, contig_alt_2)
 
         assert query == answer
 
     def test_iter_values(self):
         dtype_loci = np.dtype([('tip', np.int64), ('element', 'O')])
 
-        header_1 = loci2.Header(reference='chr1',
-                                strand='+',
-                                category='gypsy')
-        contig_1 = loci2.Contig(header_1,
-                              np.array([(1, 'gypsy1'),
-                                        (7, 'gypsy4')],
-                                       dtype=dtype_loci))
+        header_1 = loci.Header(reference='chr1',
+                               strand='+',
+                               category='gypsy')
+        contig_1 = loci.Contig(header_1,
+                             np.array([(1, 'gypsy1'),
+                                       (7, 'gypsy4')],
+                                      dtype=dtype_loci))
 
-        header_2 = loci2.Header(reference='chr2',
-                                strand='+',
-                                category='gypsy')
-        contig_2 = loci2.Contig(header_2,
-                              np.array([(3, 'gypsy7'),
-                                        (9, 'gypsy1')],
-                                       dtype=dtype_loci))
+        header_2 = loci.Header(reference='chr2',
+                               strand='+',
+                               category='gypsy')
+        contig_2 = loci.Contig(header_2,
+                             np.array([(3, 'gypsy7'),
+                                       (9, 'gypsy1')],
+                                      dtype=dtype_loci))
 
-        query = loci2.ContigSet(contig_1, contig_2)
+        query = loci.ContigSet(contig_1, contig_2)
 
         answer = [('chr1', '+', 'gypsy', 1, 'gypsy1'),
                   ('chr1', '+', 'gypsy', 7, 'gypsy4'),

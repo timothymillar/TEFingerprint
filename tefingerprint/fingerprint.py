@@ -7,8 +7,8 @@ from collections import Counter
 from multiprocessing import Pool
 from tefingerprint import util
 from tefingerprint import interval
-from tefingerprint import bamio2
-from tefingerprint import loci2
+from tefingerprint import bamio
+from tefingerprint import loci
 
 
 def fingerprint(bams,
@@ -55,7 +55,7 @@ def fingerprint(bams,
         categories = [categories]
 
     if references == [None]:
-        references = bamio2.extract_references_from_bams(*bams)
+        references = bamio.extract_references_from_bams(*bams)
 
     jobs = product([bams],
                    [annotation],
@@ -71,7 +71,7 @@ def fingerprint(bams,
                    [fingerprint_buffer],
                    [join_distance])
 
-    result = loci2.ContigSet()
+    result = loci.ContigSet()
 
     if cores == 1:
         # run on a single process
@@ -103,43 +103,43 @@ def _fingerprint_dispatch(bams,
     """dispatch a single job of a fingerprint"""
 
     # read informative reads
-    reads = bamio2.extract_informative_read_tips(bams,
-                                                 reference,
-                                                 categories,
-                                                 quality=quality,
-                                                 tag=transposon_tag)
+    reads = bamio.extract_informative_read_tips(bams,
+                                                reference,
+                                                categories,
+                                                quality=quality,
+                                                tag=transposon_tag)
 
     # read known transposons if used
     if annotation is None:
         pass
     else:
-        known = bamio2.extract_gff_intervals(annotation,
-                                             reference,
-                                             categories)
+        known = bamio.extract_gff_intervals(annotation,
+                                            reference,
+                                            categories)
 
     # sort reads
-    reads = reads.map(lambda x: loci2.sort(x, order='tip'))
+    reads = reads.map(lambda x: loci.sort(x, order='tip'))
 
     # cluster reads
     clusters = reads.map(lambda x:
-                         loci2.cluster(x,
-                                       'tip',
-                                       minimum_reads,
-                                       epsilon,
-                                       minimum_epsilon=minimum_epsilon,
-                                       hierarchical=hierarchical))
+                         loci.cluster(x,
+                                      'tip',
+                                      minimum_reads,
+                                      epsilon,
+                                      minimum_epsilon=minimum_epsilon,
+                                      hierarchical=hierarchical))
 
     # buffered union of clusters
     clusters = clusters.map(lambda x:
-                            loci2.unions_buffered(x, fingerprint_buffer))
+                            loci.unions_buffered(x, fingerprint_buffer))
 
     # drop origin files and append
     clusters = clusters.map(lambda x:
-                            loci2.mutate_header(x, source=None),
+                            loci.mutate_header(x, source=None),
                             append_duplicate_headers=True)
 
     # union of clusters
-    clusters = clusters.map(loci2.unions)
+    clusters = clusters.map(loci.unions)
 
     # count reads in bins
     clusters = count_reads(clusters,
@@ -190,9 +190,9 @@ def create_contig_ids(contig):
     ids = np.array(ids)
     ids = np.array(ids, dtype=np.dtype([('ID', '<O')]))
 
-    loci = util.bind_arrays(contig.loci, ids)
+    loci_data = util.bind_arrays(contig.loci, ids)
 
-    return loci2.Contig(contig.header, loci)
+    return loci.Contig(contig.header, loci_data)
 
 
 def count_reads(clusters, reads, trim=True, n_common_elements=0):
@@ -256,7 +256,7 @@ def count_reads(clusters, reads, trim=True, n_common_elements=0):
                           ('sample', dtype_samples)])
 
     # new bins based on previous with additional slots for counts
-    clusters = clusters.map(lambda x: loci2.add_field(x, dtype_new))
+    clusters = clusters.map(lambda x: loci.add_field(x, dtype_new))
 
     # loop through bins
     for bin_contig in clusters.contigs():
@@ -364,12 +364,12 @@ def match_known_insertions(clusters, known_insertions, distance=0):
         known insertions
     :rtype: :class:`loci2.ContigSet`
     """
-    matched = loci2.ContigSet()
+    matched = loci.ContigSet()
 
     # make known insertion headers un-stranded and drop origin file
     known_insertions = known_insertions.map(lambda x:
-                                            loci2.mutate_header(x, strand='.',
-                                                                source=None))
+                                            loci.mutate_header(x, strand='.',
+                                                               source=None))
 
     # loop through contigs
     for contig in clusters.contigs():
@@ -383,8 +383,8 @@ def match_known_insertions(clusters, known_insertions, distance=0):
         matches = np.array(matches,
                            dtype=np.dtype([('known_element', '<O')]))
 
-        matched.add(loci2.Contig(contig.header, util.bind_arrays(contig.loci,
-                                                                 matches)))
+        matched.add(loci.Contig(contig.header, util.bind_arrays(contig.loci,
+                                                                matches)))
 
     return matched
 
@@ -482,7 +482,7 @@ def pair_clusters(clusters, distance=0, use_known_elements=True):
     :return: a collection of cluster loci (intervals) with 'pair' field
     :rtype: :class:`loci2.ContigSet`
     """
-    joint_clusters = loci2.ContigSet()
+    joint_clusters = loci.ContigSet()
 
     dtype_join_data = np.dtype([("pair", "<O")])
 
@@ -511,12 +511,12 @@ def pair_clusters(clusters, distance=0, use_known_elements=True):
                 pass
 
         # combine existing data with join data and add to new contig set
-        joint_clusters.add(loci2.Contig(header.mutate(strand='+'),
-                                        util.bind_arrays(forward.loci,
-                                                         forward_join_data)))
-        joint_clusters.add(loci2.Contig(header.mutate(strand='-'),
-                                        util.bind_arrays(reverse.loci,
-                                                         reverse_join_data)))
+        joint_clusters.add(loci.Contig(header.mutate(strand='+'),
+                                       util.bind_arrays(forward.loci,
+                                                        forward_join_data)))
+        joint_clusters.add(loci.Contig(header.mutate(strand='-'),
+                                       util.bind_arrays(reverse.loci,
+                                                        reverse_join_data)))
 
     return joint_clusters
 

@@ -5,7 +5,7 @@ import pysam
 import numpy as np
 from itertools import product
 from collections import deque
-from tefingerprint import loci2
+from tefingerprint import loci
 from tefingerprint import interval
 
 
@@ -119,7 +119,7 @@ def extract_informative_read_tips(bams,
                    ['+', '-'],
                    categories,
                    [os.path.basename(bam) for bam in bams])
-    dictionary = {loci2.Header(*key): deque() for key in keys}
+    dictionary = {loci.Header(*key): deque() for key in keys}
 
     for bam in bams:
         for reference in references:
@@ -140,10 +140,10 @@ def extract_informative_read_tips(bams,
                     category = max(category_matches, key=len)
 
                     # read header
-                    header = loci2.Header(reference=read['reference'],
-                                          strand=read['strand'],
-                                          category=category,
-                                          source=read['source'])
+                    header = loci.Header(reference=read['reference'],
+                                         strand=read['strand'],
+                                         category=category,
+                                         source=read['source'])
 
                     # append loci data to que
                     tip = read['start'] if \
@@ -152,9 +152,9 @@ def extract_informative_read_tips(bams,
                     dictionary[header].append((tip, read[tag]))
 
     dtype = np.dtype([('tip', np.int64), ('element', 'O')])
-    return loci2.ContigSet(*(loci2.Contig(header, np.array(data,
-                                                           dtype=dtype))
-                             for header, data in dictionary.items()))
+    return loci.ContigSet(*(loci.Contig(header, np.array(data,
+                                                         dtype=dtype))
+                            for header, data in dictionary.items()))
 
 
 def _extract_bam_anchor_insert_data(bam, reference, quality=0):
@@ -233,20 +233,20 @@ def extract_anchor_intervals(bams,
 
     # simplify known transposon headers for comparison
     known_transposons = known_transposons.map(lambda x:
-                                              loci2.mutate_header(x,
-                                                                  strand='.',
-                                                                  category=None,
-                                                                  source=None),
+                                              loci.mutate_header(x,
+                                                                 strand='.',
+                                                                 category=None,
+                                                                 source=None),
                                               append_duplicate_headers=True)
 
     jobs = product(bams, references)
     dtype = np.dtype([('start', np.int64), ('stop', np.int64)])
-    intervals = loci2.ContigSet()
+    intervals = loci.ContigSet()
 
     for bam, reference in jobs:
-        header = loci2.Header(reference=reference.split(':')[0],
-                              source=os.path.basename(bam),
-                              strand='.')
+        header = loci.Header(reference=reference.split(':')[0],
+                             source=os.path.basename(bam),
+                             strand='.')
         anchors = np.fromiter(_extract_bam_anchor_insert_data(bam,
                                                               reference,
                                                               quality=quality),
@@ -255,8 +255,8 @@ def extract_anchor_intervals(bams,
 
         # calculate lengths on known tranposons within each anchor interval
         reference_name = reference.split(':')[0]
-        local_tes_header = loci2.Header(reference=reference_name,
-                                        strand='.')
+        local_tes_header = loci.Header(reference=reference_name,
+                                       strand='.')
         local_tes = known_transposons[local_tes_header]
         contained_te_lengths = interval.length_of_contains(anchors,
                                                            local_tes.loci)
@@ -266,7 +266,7 @@ def extract_anchor_intervals(bams,
         anchors = anchors[adjusted_anchor_lengths <= insert_size]
 
         # use unions of filtered anchors as loci
-        intervals.add(loci2.unions(loci2.Contig(header=header, array=anchors)))
+        intervals.add(loci.unions(loci.Contig(header=header, array=anchors)))
 
     return intervals
 
@@ -297,9 +297,9 @@ def extract_gff_intervals(gff, references, categories):
     references = [reference.split(':')[0] for reference in references]
 
     keys = product(references, categories)
-    dictionary = {loci2.Header(reference=key[0],
-                               category=key[1],
-                               source=source): deque() for key in keys}
+    dictionary = {loci.Header(reference=key[0],
+                              category=key[1],
+                              source=source): deque() for key in keys}
 
     with open(gff) as infile:
         for line in infile:
@@ -319,17 +319,17 @@ def extract_gff_intervals(gff, references, categories):
                     # longest matching category is the best category
                     category = max(category_matches, key=len)
 
-                    header = loci2.Header(reference=line[0],
-                                          category=category,
-                                          source=source)
+                    header = loci.Header(reference=line[0],
+                                         category=category,
+                                         source=source)
 
                     dictionary[header].append((line[3], line[4], line[2]))
 
     dtype = np.dtype([('start', np.int64),
                       ('stop', np.int64),
                       ('element', '<O')])
-    return loci2.ContigSet(*(loci2.Contig(header, np.array(data, dtype=dtype))
-                             for header, data in dictionary.items()))
+    return loci.ContigSet(*(loci.Contig(header, np.array(data, dtype=dtype))
+                            for header, data in dictionary.items()))
 
 
 if __name__ == "__main__":
