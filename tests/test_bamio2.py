@@ -110,7 +110,27 @@ def test_extract_informative_read_tips():
 
 
 def test_extract_gff_intervals():
-    pass
+    gff = DATA_PATH + 'testAnnotation-2017-11-27.gff'
+
+    query = bamio2.extract_gff_intervals(gff, 'chr1', ['Gypsy', 'Copia'])
+
+    dtype_loci = np.dtype([('start', np.int64),
+                           ('stop', np.int64),
+                           ('element', '<O')])
+
+    answer = loci2.ContigSet(loci2.Contig(loci2.Header(reference='chr1',
+                                                       category='Gypsy',
+                                                       source='testAnnotation-2017-11-27.gff'),
+                                          np.array([(3150, 3200, 'Gypsy-21_ClassI;chr1:3150-3200'),
+                                                    (24250, 24700, 'Gypsy-21_ClassI;chr1:24250-24700')],
+                                                   dtype=dtype_loci)),
+                             loci2.Contig(loci2.Header(reference='chr1',
+                                                       category='Copia',
+                                                       source='testAnnotation-2017-11-27.gff'),
+                                          np.array([(98260, 98322, 'Copia-10_ClassI;chr1:98260-98322')],
+                                                   dtype=dtype_loci)))
+
+    assert query == answer
 
 
 def test_extract_anchor_intervals():
