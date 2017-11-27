@@ -205,11 +205,17 @@ def count_reads(clusters, reads, trim=True, n_common_elements=0):
     most common elements found in each sample.
     By default, clusters are trimmed to the most distant reads they contain.
 
-    Fields required in 'clusters':
-        'start': int, 'stop': int, 'median': int
+    Header fields required in 'clusters':
+        reference, strand, category
 
-    Fields required in 'reads':
-        'tip': int, 'element': str, 'source': str
+    Loci fields required in 'clusters':
+        'start': int, 'stop': int
+
+    Header fields required in 'reads':
+        reference, strand, category, source
+
+    Loci fields required in 'reads':
+        'tip': int, 'element': str
 
     Fields appended to return value:
         'median': int, 'sample': ('name': str, 'count': int,
