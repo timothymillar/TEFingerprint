@@ -1,0 +1,5 @@
+chr1	RepeatMasker	PIF-Harbinger-3_ClassII;chr1:31217-31498	31217	31498	18	-	.	Target "Motif:PIF-Harbinger-3" 3383 3643
+chr1	RepeatMasker	PIF-Harbinger-3_ClassII;chr1:31541-31572	31541	31572	18	-	.	Target "Motif:PIF-Harbinger-3" 3349 3382
+chr1	RepeatMasker	Gypsy-21_ClassI;chr1:3150-3200	3150	3200	21.8	-	.	Target "Motif:Gypsy21" 262 1548
+chr1	RepeatMasker	Gypsy-21_ClassI;chr1:24250-24700	24250	24700	22.8	-	.	Target "Motif:Gypsy21" 6077 6706
+chr1	RepeatMasker	Copia-10_ClassI;chr1:98260-98322	98260	98322	16.7	-	.	Target "Motif:Copia10" 1034 1095
