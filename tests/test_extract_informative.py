@@ -3,14 +3,14 @@ import tempfile
 import os
 import pytest
 import subprocess
-from tefingerprint import preprocess
+from tefingerprint import _extract_informative
 
 
 @pytest.mark.parametrize('query,answer',
                          [('AGATC', 'GATCT'),
                           ('aGtcn', 'NGACT')])
 def test_reverse_complement(query, answer):
-    assert preprocess.reverse_complement(query) == answer
+    assert _extract_informative.reverse_complement(query) == answer
 
 
 @pytest.mark.parametrize('include_tails,minimum_tail,answer',
@@ -143,7 +143,7 @@ def test_extract_informative_reads(include_tails, minimum_tail, answer):
     Tests read extraction parsing and filtering.
     """
     data_path = os.path.dirname(os.path.realpath(__file__)) + '/data/testPreprocessInput-2017-07-28.bam'
-    query = list(preprocess.extract_informative_reads(data_path, include_tails=include_tails, minimum_tail=minimum_tail))
+    query = list(_extract_informative.extract_informative_reads(data_path, include_tails=include_tails, minimum_tail=minimum_tail))
     assert query == answer
 
 
@@ -243,7 +243,7 @@ TCCACTGTTTGGGGATTCGAACCCCCAACAAAAGGTTCAACATAT
 """
 
     with tempfile.NamedTemporaryFile() as fastq:
-        elements = preprocess.capture_elements_and_write_fastq(query, fastq.name)
+        elements = _extract_informative.capture_elements_and_write_fastq(query, fastq.name)
         assert elements == answer_elements
 
         with open(fastq.name, 'r') as handle:

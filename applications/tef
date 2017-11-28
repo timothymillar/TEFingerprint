@@ -3,7 +3,7 @@
 import sys
 import argparse
 from tefingerprint.filtergff import FilterGffProgram
-from tefingerprint.preprocess import PreProcessProgram
+from tefingerprint._extract_informative import PreProcessProgram
 from tefingerprint.programs import FingerprintProgram
 from tefingerprint.programs import ComparisonProgram
 
