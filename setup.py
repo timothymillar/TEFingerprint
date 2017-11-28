@@ -15,7 +15,8 @@ setup(name='tefingerprint',
       url='https://github.com/PlantandFoodResearch/TEFingerprint',
       description='Toolkit for identifying transposon movement',
       long_description=read_file('README.rst'),
-      scripts=['applications/tef', 'applications/tefingerprint'],
+      scripts=['applications/tefingerprint',
+               'applications/tefingerprint-extract-informative-reads'],
       packages=['tefingerprint'],
       classifiers=['Development Status :: 3 - Alpha']
       )

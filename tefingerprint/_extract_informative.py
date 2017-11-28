@@ -9,7 +9,7 @@ import sys
 from tempfile import mkdtemp
 
 
-class PreProcessProgram(object):
+class Program(object):
     """"""
     def __init__(self, input_bam,
                  reference_fasta,
@@ -33,7 +33,7 @@ class PreProcessProgram(object):
             self.keep_temp_dir = False
 
     @staticmethod
-    def _cli(args):
+    def cli(args):
         """
         Argument parser to handle commandline inputs for the preprocessing program.
 
@@ -89,15 +89,15 @@ class PreProcessProgram(object):
 
     @staticmethod
     def from_cli(args):
-        arguments = PreProcessProgram._cli(args)
-        return PreProcessProgram(arguments.bam[0],
-                                 arguments.reference[0],
-                                 arguments.output[0],
-                                 include_tails=arguments.include_tails,
-                                 tail_minimum_length=arguments.tail_minimum_length[0],
-                                 mate_element_tag=arguments.mate_element_tag[0],
-                                 temp_dir=arguments.tempdir[0],
-                                 threads=arguments.threads[0])
+        arguments = Program.cli(args)
+        return Program(arguments.bam[0],
+                       arguments.reference[0],
+                       arguments.output[0],
+                       include_tails=arguments.include_tails,
+                       tail_minimum_length=arguments.tail_minimum_length[0],
+                       mate_element_tag=arguments.mate_element_tag[0],
+                       temp_dir=arguments.tempdir[0],
+                       threads=arguments.threads[0])
 
     def _run_pipeline(self):
         """"""
@@ -333,4 +333,4 @@ def tag_danglers(dangler_bam, mate_element_dict, output_bam, tag):
 
 
 if __name__ == '__main__':
-    PreProcessProgram.from_cli(sys.argv)
+    Program.from_cli(sys.argv)
