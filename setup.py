@@ -16,7 +16,8 @@ setup(name='tefingerprint',
       description='Toolkit for identifying transposon movement',
       long_description=read_file('README.rst'),
       scripts=['applications/tefingerprint',
-               'applications/tefingerprint-extract-informative-reads'],
+               'applications/tefingerprint-extract-informative-reads',
+               'applications/tefingerprint-filter-gff'],
       packages=['tefingerprint'],
       classifiers=['Development Status :: 3 - Alpha']
       )
