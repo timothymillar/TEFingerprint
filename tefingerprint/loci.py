@@ -1,6 +1,7 @@
 #! /usr/bin/env python
 
 import numpy as np
+import urllib
 from tefingerprint import util
 from tefingerprint.cluster import UDBSCANx as _UDBSCANx
 from tefingerprint.cluster import UDBSCANxH as _UDBSCANxH
@@ -695,7 +696,8 @@ class ContigSet(object):
 
         attribute_fields = list(array.dtype.names)
         for field in (reference_field, start_field, stop_field, strand_field):
-            attribute_fields.remove(field)
+            if field in attribute_fields:
+                attribute_fields.remove(field)
         if type_field:
             attribute_fields.remove(type_field)
 
@@ -707,15 +709,16 @@ class ContigSet(object):
             else:
                 type_value = '.'
 
-            attributes = ';'.join(('{0}={1}'.format(field, record[field])
+            attributes = ';'.join(('{0}={1}'.format(field,
+                                                    record[field])
                                    for field in attribute_fields))
-            yield template.format(record['reference'],
+            yield template.format(record[reference_field],
                                   program_name,
                                   type_value,
-                                  record['start'],
-                                  record['stop'],
+                                  record[start_field],
+                                  record[stop_field],
                                   '.',
-                                  record['strand'],
+                                  record[strand_field],
                                   '.',
                                   attributes)
 
