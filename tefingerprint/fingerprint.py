@@ -320,7 +320,7 @@ def _known_insertion_matcher(contig, known_insertions, distance=0):
             if np.any(mask):
                 yield known_insertions.loci['element'][mask][0]
             else:
-                yield ''
+                yield '.'
     elif contig.header.strand == '-':
         for cluster in contig.loci:
             mask = interval.singular_intersects_upper(cluster['start'] -
@@ -330,7 +330,7 @@ def _known_insertion_matcher(contig, known_insertions, distance=0):
             if np.any(mask):
                 yield known_insertions.loci['element'][mask][-1]
             else:
-                yield ''
+                yield '.'
 
 
 def match_known_insertions(clusters, known_insertions, distance=0):
@@ -502,7 +502,9 @@ def pair_clusters(clusters, distance=0, use_known_elements=True):
 
         # create arrays for the new data
         forward_join_data = np.empty(len(forward), dtype=dtype_join_data)
+        forward_join_data["pair"] = '.'
         reverse_join_data = np.empty(len(reverse), dtype=dtype_join_data)
+        reverse_join_data["pair"] = '.'
         for f, r in pairs:
             if f is not None and r is not None:
                 forward_join_data[f]["pair"] = reverse.loci[r]["ID"]
