@@ -23,23 +23,34 @@ def parse_feature(string):
     attributes = columns["attributes"].split(';')
     attributes = {k: v for k, v in (attribute.split('=')
                                     for attribute in attributes)}
-
     del columns["attributes"]
 
-    attributes.update(columns)
+    columns = {k: decode_column(v)
+               for k, v in columns.items()}
+    attributes = {decode_attribute(k): decode_attribute(v)
+                  for k, v in attributes.items()}
 
-    return attributes
+    dictionary = attributes
+    dictionary.update(columns)
+    return dictionary
 
 
 def format_feature(dictionary):
+    column_values = (encode_column(str(dictionary[field]))
+                     for field in COLUMN_NAMES[0:8])
     columns = '{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t'
-    columns = columns.format(*map(str, (dictionary[field]
-                                        for field in COLUMN_NAMES[0:8])))
-    attributes = list(dictionary.keys())
-    attributes.sort()
-    attributes = ':'.join('{}={}'.format(k, v)
-                          for k, v in dictionary.items()
-                          if k not in COLUMN_NAMES)
+    columns = columns.format(*column_values)
+
+    attribute_names = [field for field in dictionary.keys()
+                       if field not in COLUMN_NAMES]
+    attribute_names.sort()
+    attributes_pairs = ((encode_attribute(str(field)),
+                         encode_attribute(str(dictionary[field])))
+                        for field in attribute_names)
+
+    attributes = ':'.join('{}={}'.format(field, value)
+                          for field, value in attributes_pairs)
+
     return columns + attributes
 
 
