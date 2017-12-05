@@ -3,52 +3,7 @@
 
 import re
 import fnmatch
-import argparse
-
-
-class FilterGffProgram(object):
-    """Main class for the filter gff program"""
-    def __init__(self, arguments):
-        self.args = self.parse_args(arguments)
-
-        all_filters = [parse_filter_string(string) for string in self.args.all]
-        any_filters = [parse_filter_string(string) for string in self.args.any]
-
-        with open(self.args.gff[0], 'r') as f:
-            for line in f:
-                feature = parse_feature(line)
-
-                if all_filters:
-                    all_true = apply_filters(feature, all_filters, 'ALL')
-                else:
-                    all_true = True
-
-                if any_filters:
-                    any_true = apply_filters(feature, all_filters, 'ANY')
-                else:
-                    any_true = True
-
-                if all_true and any_true:
-                    print(format_feature(feature))
-
-    @staticmethod
-    def parse_args(args):
-        """
-        Defines an argument parser to handle commandline inputs for the
-        filter-gff program.
-        """
-        parser = argparse.ArgumentParser('Identify potential TE '
-                                         'flanking regions')
-        parser.add_argument('gff',
-                            nargs=1,
-                            help='A single gff file to be filtered')
-        parser.add_argument('--all',
-                            nargs='*',
-                            help="")
-        parser.add_argument('--any',
-                            nargs='*',
-                            help="")
-        return parser.parse_args(args)
+from tefingerprint.gff import *
 
 
 COLUMN_NAMES = ["seqid",
@@ -65,9 +20,7 @@ COLUMN_NAMES = ["seqid",
 def parse_feature(string):
     columns = dict(zip(COLUMN_NAMES,
                        string.strip('\n').split()))
-    print(columns)
     attributes = columns["attributes"].split(';')
-    print(attributes)
     attributes = {k: v for k, v in (attribute.split('=')
                                     for attribute in attributes)}
 
