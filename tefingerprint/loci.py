@@ -3,6 +3,7 @@
 import numpy as np
 import urllib
 from tefingerprint import util
+from tefingerprint import gff
 from tefingerprint.cluster import UDBSCANx as _UDBSCANx
 from tefingerprint.cluster import UDBSCANxH as _UDBSCANxH
 
@@ -709,12 +710,12 @@ class ContigSet(object):
             else:
                 type_value = '.'
 
-            attributes = ';'.join(('{0}={1}'.format(field,
-                                                    record[field])
+            attributes = ';'.join(('{0}={1}'.format(gff.encode_attribute(field),
+                                                    gff.encode_attribute(str(record[field])))
                                    for field in attribute_fields))
-            yield template.format(record[reference_field],
-                                  program_name,
-                                  type_value,
+            yield template.format(gff.encode_column(record[reference_field]),
+                                  gff.encode_column(program_name),
+                                  gff.encode_column(type_value),
                                   record[start_field],
                                   record[stop_field],
                                   '.',

@@ -7,6 +7,7 @@ from itertools import product
 from collections import deque
 from tefingerprint import loci
 from tefingerprint import interval
+from tefingerprint.gff import decode_column, decode_attribute
 
 
 def extract_references_from_bam(bam):
@@ -306,11 +307,13 @@ def extract_gff_intervals(gff, references, categories):
             line = line.split('\t')
 
             # match to reference:
-            if line[0] in references:
+            reference = decode_column(line[0])
+            if reference in references:
 
                 # match to a category
+                feature_type = decode_column(line[2])
                 category_matches = tuple(filter(lambda x:
-                                                line[2].startswith(x),
+                                                feature_type.startswith(x),
                                                 categories))
 
                 # only include reads for specified categories
@@ -319,11 +322,13 @@ def extract_gff_intervals(gff, references, categories):
                     # longest matching category is the best category
                     category = max(category_matches, key=len)
 
-                    header = loci.Header(reference=line[0],
+                    header = loci.Header(reference=reference,
                                          category=category,
                                          source=source)
 
-                    dictionary[header].append((line[3], line[4], line[2]))
+                    dictionary[header].append((int(line[3]),
+                                               int(line[4]),
+                                               feature_type))
 
     dtype = np.dtype([('start', np.int64),
                       ('stop', np.int64),
