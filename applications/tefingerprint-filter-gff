@@ -39,7 +39,7 @@ def main():
 
             if any_filters:
                 any_true = _filter_gff.apply_filters(feature,
-                                                     all_filters,
+                                                     any_filters,
                                                      'ANY')
             else:
                 any_true = True
