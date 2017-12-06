@@ -45,7 +45,7 @@ def main():
                 any_true = True
 
             if all_true and any_true:
-                print(_filter_gff.format_feature(feature))
+                print(line.strip())
 
 
 if __name__ == '__main__':
