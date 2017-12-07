@@ -269,7 +269,6 @@ def test_drop_field():
     answer.loci = np.array(answer.loci, np.dtype([('tip', np.int64)]))
 
     assert loci.drop_field(query, 'element') == answer
-    assert loci.drop_field(query, 'element') != query
 
 
 def test_add_field():
@@ -295,7 +294,6 @@ def test_add_field():
                                                    ('field', np.int64)])))
 
     assert loci.add_field(query, np.dtype([('field', np.int64)])) == answer
-    assert loci.add_field(query, np.dtype([('field', np.int64)])) != query
 
 
 def test_cluster():
