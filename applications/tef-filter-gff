@@ -13,11 +13,15 @@ def main():
                         help='A single gff file to be filtered')
     parser.add_argument('--all',
                         nargs='*',
-                        help="",
+                        help=('filters to apply to apply in the "all" '
+                              'context. These should take the form '
+                              '"<column><operator><value>".'),
                         default=[])
     parser.add_argument('--any',
                         nargs='*',
-                        help="",
+                        help=('filters to apply to apply in the "any" '
+                              'context. These should take the form '
+                              '"<column><operator><value>".'),
                         default=[])
     args = parser.parse_args(sys.argv[1:])
 
