@@ -180,14 +180,14 @@ def test_count_reads_n2():
                                                    (('bam1', 8, (('gypsy1', 5),
                                                                  ('gypsy4', 2))),
                                                     ('bam2', 7, (('gypsy1', 7),
-                                                                 (0, 0))))),
+                                                                 ('.', 0))))),
                                                   (50,
                                                    50,
                                                    50,
-                                                   (('bam1', 0, ((0, 0),
-                                                                 (0, 0))),
+                                                   (('bam1', 0, (('.', 0),
+                                                                 ('.', 0))),
                                                     ('bam2', 1, (('gypsy7', 1),
-                                                                 (0, 0)))))],
+                                                                 ('.', 0)))))],
                                                  dtype=dtype_loci_answer)))
 
     assert fingerprint.count_reads(query,

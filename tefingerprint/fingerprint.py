@@ -269,6 +269,11 @@ def count_reads(clusters, reads, trim=True, n_common_elements=0):
         for i, header in enumerate(read_headers):
             bin_contig.loci['sample'][str(i)]['name'] = header.source
 
+            # default name and value for count of common elements
+            if n_common_elements > 0:
+                for j in range(n_common_elements):
+                    bin_contig.loci['sample'][str(i)]['element'][str(j)] = ('.', 0)
+
         # iterate through bins
         for locus in bin_contig.loci:
 
