@@ -20,7 +20,7 @@ def main():
                              'gff format for matching to identified '
                              'insertions. '
                              'Known elements are also used for joining '
-                             'paris of cluster either side of an insertion.')
+                             'paris of clusters either side of an insertion.')
     parser.add_argument('-r', '--references',
                         type=str,
                         nargs='*',
@@ -96,7 +96,7 @@ def main():
                              'This represents the maximum distance to search '
                              'for a known transposon and half the maximum '
                              'distance to search for a paired cluster if '
-                             'no a known transposon is not identified.')
+                             'no a known transposon is identified.')
     parser.add_argument('-t', '--threads',
                         type=int,
                         default=[1],
