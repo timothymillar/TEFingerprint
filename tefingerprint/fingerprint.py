@@ -7,7 +7,7 @@ from collections import Counter
 from multiprocessing import Pool
 from tefingerprint import util
 from tefingerprint import interval
-from tefingerprint import bamio
+from tefingerprint import fingerprintio
 from tefingerprint import loci
 
 
@@ -55,7 +55,7 @@ def fingerprint(bams,
         categories = [categories]
 
     if references == [None]:
-        references = bamio.extract_references_from_bams(*bams)
+        references = fingerprintio.extract_references_from_bams(*bams)
 
     jobs = product([bams],
                    [annotation],
@@ -103,19 +103,19 @@ def _fingerprint_dispatch(bams,
     """dispatch a single job of a fingerprint"""
 
     # read informative reads
-    reads = bamio.extract_informative_read_tips(bams,
-                                                reference,
-                                                categories,
-                                                quality=quality,
-                                                tag=transposon_tag)
+    reads = fingerprintio.extract_informative_read_tips(bams,
+                                                        reference,
+                                                        categories,
+                                                        quality=quality,
+                                                        tag=transposon_tag)
 
     # read known transposons if used
     if annotation is None:
         pass
     else:
-        known = bamio.extract_gff_intervals(annotation,
-                                            reference,
-                                            categories)
+        known = fingerprintio.extract_gff_intervals(annotation,
+                                                    reference,
+                                                    categories)
 
     # sort reads
     reads = reads.map(lambda x: loci.sort(x, order='tip'))

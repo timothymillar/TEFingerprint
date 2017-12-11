@@ -3,7 +3,7 @@
 import os
 import numpy as np
 from tefingerprint import loci
-from tefingerprint import bamio
+from tefingerprint import fingerprintio
 
 DATA_PATH = os.path.dirname(os.path.realpath(__file__)) + '/data/'
 
@@ -16,13 +16,13 @@ def test_extract_informative_read_tips():
     """
     bam = DATA_PATH + 'testA-2017-06-08.bam'
 
-    query = bamio.extract_informative_read_tips(bam,
+    query = fingerprintio.extract_informative_read_tips(bam,
                                                 'chr1',
-                                                ['Gypsy',
+                                                        ['Gypsy',
                                                  'PIF-Harbinger',
                                                  'NOT-A-FAMILY'],
-                                                quality=0,
-                                                tag='ME')
+                                                        quality=0,
+                                                        tag='ME')
 
     dtype_loci = np.dtype([('tip', np.int64),
                            ('element', 'O')])
@@ -112,7 +112,7 @@ def test_extract_informative_read_tips():
 def test_extract_gff_intervals():
     gff = DATA_PATH + 'testAnnotation-2017-11-27.gff'
 
-    query = bamio.extract_gff_intervals(gff, 'chr1', ['Gypsy', 'Copia'])
+    query = fingerprintio.extract_gff_intervals(gff, 'chr1', ['Gypsy', 'Copia'])
 
     dtype_loci = np.dtype([('start', np.int64),
                            ('stop', np.int64),
