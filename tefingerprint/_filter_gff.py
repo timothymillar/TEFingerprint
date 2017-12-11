@@ -18,6 +18,17 @@ COLUMN_NAMES = ["seqid",
 
 
 def parse_feature(string):
+    """
+    Parses a feature (line) of a gff3 file.
+
+    Feature is returned as a dictionary of columns and attributes.
+
+    :param string: single line from a gff file
+    :type string: str
+
+    :return: dictionary of key value pairs
+    :rtype: dict[str, str]
+    """
     columns = dict(zip(COLUMN_NAMES,
                        string.strip('\n').split()))
     attributes = columns["attributes"].split(';')
@@ -36,6 +47,19 @@ def parse_feature(string):
 
 
 def format_feature(dictionary):
+    """
+    Format a dictionary of feature data to line of a gff file.
+
+    Dictionary must have the following keys: "seqid", "source",
+    "type", "start", "end", "score", "strand" and "phase".
+    All other keys are treated as attribute fields.
+
+    :param dictionary: dictionary of key value pairs
+    :type dictionary: dict[str, str]
+
+    :return: single line for a gff file
+    :rtype: str
+    """
     column_values = (encode_column(str(dictionary[field]))
                      for field in COLUMN_NAMES[0:8])
     columns = '{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t'
@@ -103,6 +127,15 @@ _OPERATOR_DISPATCH = {'==': _eq,
 
 
 def parse_filter_string(string):
+    """
+    Parse a filter string into a 'field' 'operator' and 'value'
+
+    :param string: stirng with format "<field><operator><value>"
+    :type string: str
+
+    :return: dictionary with fields 'field' 'operator' and 'value'
+    :rtype: dict[str, str]
+    """
     operator = re.findall(">=|<=|==|!=|>|<|=", string)
     if len(operator) > 1:
         message = 'There is more than one operator in filter: "{0}"'
@@ -119,6 +152,25 @@ def parse_filter_string(string):
 
 
 def apply_filter(feature, filter_, combinator):
+    """
+    Apply a single (parsed) filter to (parsed) feature.
+
+    If the filter field contains a wildcard (e.g. '?' or '*') then
+    the filter is applied to each feature-field matching the expanded
+    filter-field and the results are combined based on the combinator
+    ("ANY" or "ALL").
+
+
+    :param feature: key-value pairs for a gff feature
+    :type feature: dict[str, str]
+    :param filter_: key-value pairs for a gff feature
+    :type filter_: dict[str, str]
+    :param combinator: "ANY" or "ALL"
+    :type combinator: str
+
+    :return: boolean indicating if the feature matches the filter.
+    :rtype: bool
+    """
     fields = fnmatch.filter(list(feature.keys()), filter_['field'])
     results = [_OPERATOR_DISPATCH[filter_['operator']](feature[field],
                                                        filter_['value'])
@@ -134,6 +186,21 @@ def apply_filter(feature, filter_, combinator):
 
 
 def apply_filters(feature, filters, combinator):
+    """
+    Apply a multiple (parsed) filters to (parsed) feature.
+
+    Filters are combined with 'any' or 'all' depending on the combinator.
+
+    :param feature: key-value pairs for a gff feature
+    :type feature: dict[str, str]
+    :param filters: iterable of dictionaries of a gff features
+    :type filters: list[dict[str, str]]
+    :param combinator: "ANY" or "ALL"
+    :type combinator: str
+
+    :return: boolean indicating if the feature matches the combined filters.
+    :rtype: bool
+    """
     results = [apply_filter(feature, filt, combinator) for filt in filters]
     if combinator == 'ANY':
         return any(results)
