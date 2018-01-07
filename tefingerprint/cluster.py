@@ -450,7 +450,7 @@ class UDBSCANxH(UDBSCANx):
         if fork_epsilon is None:
             # The cluster doesn't fork so it has no children
             # Epsilon_minimum would equal the minimum of core
-            # distances but it's not neededE
+            # distances but it's not needed
             return points['index'][0], points['index'][-1] + 1
 
         # If a cluster forks into children then it's minimum epsilon
