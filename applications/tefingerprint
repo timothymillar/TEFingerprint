@@ -147,7 +147,7 @@ def main():
     elif csv:
         with open(csv, 'w') as f:
             for line in result.as_tabular_lines():
-                f.write(line)
+                print(line, file=f)
     else:
         pass
 
@@ -165,7 +165,7 @@ def main():
                                                    'start',
                                                    'stop',
                                                    'category']):
-                f.write(line)
+                print(line, file=f)
     else:
         pass
 
