@@ -114,6 +114,8 @@ def main():
                         default=[False],
                         nargs=1,
                         help='File name for CSV output. '
+                             'Compression will be applied by extension '
+                             'e.g. ".gz" or ".bz2". '
                              'Output may be written to standard output '
                              'using "-".')
     parser.add_argument('--gff',
@@ -121,6 +123,8 @@ def main():
                         default=[False],
                         nargs=1,
                         help='File name for GFF output. '
+                             'Compression will be applied by extension '
+                             'e.g. ".gz" or ".bz2". '
                              'Output may be written to standard output '
                              'using "-".')
     args = parser.parse_args(sys.argv[1:])

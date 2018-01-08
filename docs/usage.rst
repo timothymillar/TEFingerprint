@@ -136,8 +136,8 @@ Example usage for comparing two bam files:
         -n 3 \
         -q 30 \
         -t 4 \
-        --gff fingerprint.gff \
-        --csv fingerprint.csv
+        --gff fingerprint.gff.gz \
+        --csv fingerprint.csv.gz
 
 Where ``danglers.bam`` is the bam file being fingerprinted and
 ``fingerprint.gff`` is the output gff file.
@@ -147,9 +147,9 @@ Arguments:
 -  A single bam file to be fingerprinted or multiple bam files for a
    comparative fingerprint.
 -  ``-a/--annotation-of-known-elements`` an optional annotation of known
-   elements in gff format for matching to identified insertions. Known
+   elements in gff (3) format for matching to identified insertions. Known
    elements are also used for joining paris of clusters either side of an
-   insertion.
+   insertion. This gff file may be compressed with gzip or bz2.
 -  ``-r/--references`` may optionally be used to specify a subset of
    chromosomes to fingerprint. By default all reference chromosomes are
    fingerprinted (based on the bam header).
@@ -183,10 +183,14 @@ Arguments:
 -  ``-t/--threads`` specifies the number of CPU threads to use. The
    maximum number of threads that may be used is the same as the number
    of references specified.
--  ``--gff`` create a gff file of the resulting data. This data can be
-   sent to standard output for piping using ``--gff -``
--  ``--csv`` create a csv file of the resulting data. This data can be
-   sent to standard output for piping using ``--csv -``
+-  ``--gff`` create a gff file of the resulting data. These data can be
+   sent to standard output for piping using ``--gff -``. If the data
+   are written to a file, this file will be compressed with gzip or bz2
+   based on the files extension e.g. ``.gff.gz`` or ``.gff.bz2``.
+-  ``--csv`` create a csv file of the resulting data. These data can be
+   sent to standard output for piping using ``--csv -``. If the data
+   are written to a file, this file will be compressed with gzip or bz2
+   based on the files extension e.g. ``.csv.gz`` or ``.csv.bz2``.
 
 Additional arguments:
 
@@ -239,26 +243,32 @@ Example usage with one column filter and two attribute filters:
 
 ::
 
-    tef-filter-gff fingerprint.gff \
+    tef-filter-gff fingerprint.gff.gz \
         --all 'seqid=chr1' 'start>=1000' 'stop<9000' \
         --any 'sample_?_count>100' \
-        > fingerprint_filtered.gff
+        -o fingerprint_filtered.gff.gz
 
-Where ``fingerprint.gff`` is a gff file and ``fingerprint_filtered.gff``
-is a filtered version of that file.
+Where ``fingerprint.gff.gz`` is a gff file compressed with gzip and
+``fingerprint_filtered.gff.gz`` is a filtered version of that file.
 
 The above example is evaluated as follows: the "all" context will select
 only feature from chromosome 1 that are in the interval 1000-8999.
 The "any" context contains a filter with the wildcard "?" which will expand
 the filter to match multiple samples and evaluate each of the resulting
-filters e.g.: with three samples it would expand to the equivilent of
+filters e.g.: with three samples it would expand to the equivalent of
 ``--any 'sample_0_count>100' 'sample_1_count>100' 'sample_2_count>100'``.
 Therefore the full command would select features where any one of the samples
 contains more than 100 reads, from within the interval chr:1000-8999.
 
 Arguments:
 
+-  A gff (3) file to be filtered. If ``-`` is specified then gff
+   lines will be read (in plain text) from standard in.
 -  ``--all`` filters to apply to apply in the "all" context. These
    should take the form ``'<column><operator><value>'``
 -  ``--any`` filters to apply to apply in the "any" context. These
    should take the form ``'<column><operator><value>'``
+-  ``-o/--output`` a file to write the data to. By default ``-`` the
+   data are written to standard out. If the data  are written to a
+   file, this file will be compressed with gzip or bz2 based on the
+   files extension e.g. ``.gff.gz`` or ``.gff.bz2``.

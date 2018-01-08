@@ -27,7 +27,7 @@ def main():
     parser.add_argument('-o', '--output',
                         nargs=1,
                         help='A output file to write to. '
-                             'Compression will be assumed by extension '
+                             'Compression will be applied by extension '
                              'e.g. ".gz" or ".bz2". '
                              'The default option ("-") writes lines to '
                              'standard out.',
