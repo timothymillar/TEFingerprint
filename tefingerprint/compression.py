@@ -17,9 +17,9 @@ def zopen(fname, *args, **kwargs):
         else:
             return f
     else:
-        if fname.endswith('gz'):
+        if fname.endswith('.gz'):
             return gzip.open(fname, *args, **kwargs)
-        elif fname.endswith('bz2'):
+        elif fname.endswith('.bz2'):
             return bz2.open(fname, *args, **kwargs)
         else:
             return open(fname, *args, **kwargs)
