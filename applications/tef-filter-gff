@@ -3,6 +3,7 @@
 import sys
 import argparse
 from tefingerprint import _filter_gff
+from tefingerprint.compression import zopen
 
 
 def main():
@@ -23,6 +24,14 @@ def main():
                               'context. These should take the form '
                               '"<column><operator><value>".'),
                         default=[])
+    parser.add_argument('-o', '--output',
+                        nargs=1,
+                        help='A output file to write to. '
+                             'Compression will be assumed by extension '
+                             'e.g. ".gz" or ".bz2". '
+                             'If this option is used then gff lines will '
+                             'not be printed to standard out.',
+                        default=[None])
     args = parser.parse_args(sys.argv[1:])
 
     all_filters = [_filter_gff.parse_filter_string(string)
@@ -30,8 +39,12 @@ def main():
     any_filters = [_filter_gff.parse_filter_string(string)
                    for string in args.any]
 
-    with open(args.gff[0], 'r') as f:
+    with zopen(args.gff[0], 'rb') as f:
+        output = args.output[0]
+        if output:
+            outfile = zopen(output, 'wb')
         for line in f:
+            line = line.decode()
             feature = _filter_gff.parse_feature(line)
 
             if all_filters:
@@ -49,7 +62,12 @@ def main():
                 any_true = True
 
             if all_true and any_true:
-                print(line.strip())
+                if output:
+                    outfile.write(line.strip().encode() + b'\n')
+                else:
+                    print(line.strip())
+        if output:
+            outfile.close()
 
 
 if __name__ == '__main__':
