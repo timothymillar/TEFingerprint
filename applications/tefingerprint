@@ -3,6 +3,7 @@
 import sys
 import argparse
 from tefingerprint.fingerprint import fingerprint
+from tefingerprint.compression import zopen
 
 
 def main():
@@ -145,9 +146,9 @@ def main():
         for line in result.as_tabular_lines():
             print(line)
     elif csv:
-        with open(csv, 'w') as f:
+        with zopen(csv, 'wb') as f:
             for line in result.as_tabular_lines():
-                print(line, file=f)
+                f.write(line.encode() + b'\n')
     else:
         pass
 
@@ -160,14 +161,15 @@ def main():
                                                'category']):
             print(line)
     elif gff:
-        with open(gff, 'w') as f:
+        with zopen(gff, 'wb') as f:
             for line in result.as_gff_lines(order=['reference',
                                                    'start',
                                                    'stop',
                                                    'category']):
-                print(line, file=f)
+                f.write(line.encode() + b'\n')
     else:
         pass
+
 
 if __name__ == '__main__':
     main()

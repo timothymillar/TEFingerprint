@@ -8,6 +8,7 @@ from collections import deque
 from tefingerprint import loci
 from tefingerprint import interval
 from tefingerprint.gff import decode_column, decode_attribute
+from tefingerprint.compression import zopen
 
 
 def extract_references_from_bam(bam):
@@ -302,9 +303,9 @@ def extract_gff_intervals(gff, references, categories):
                               category=key[1],
                               source=source): deque() for key in keys}
 
-    with open(gff) as infile:
+    with zopen(gff, 'rb') as infile:
         for line in infile:
-            line = line.split('\t')
+            line = line.decode().split('\t')
 
             # match to reference:
             reference = decode_column(line[0])
