@@ -29,9 +29,9 @@ def main():
                         help='A output file to write to. '
                              'Compression will be assumed by extension '
                              'e.g. ".gz" or ".bz2". '
-                             'If this option is used then gff lines will '
-                             'not be printed to standard out.',
-                        default=[None])
+                             'The default option ("-") writes lines to '
+                             'standard out.',
+                        default=['-'])
     args = parser.parse_args(sys.argv[1:])
 
     all_filters = [_filter_gff.parse_filter_string(string)
@@ -39,35 +39,47 @@ def main():
     any_filters = [_filter_gff.parse_filter_string(string)
                    for string in args.any]
 
-    with zopen(args.gff[0], 'rb') as f:
-        output = args.output[0]
-        if output:
-            outfile = zopen(output, 'wb')
-        for line in f:
-            line = line.decode()
-            feature = _filter_gff.parse_feature(line)
+    input_gff = args.gff[0]
+    if input_gff == '-':
+        input_lines = (line for line in sys.stdin)
+    else:
+        infile = zopen(input_gff, 'rb')
+        input_lines = (line.decode() for line in infile)
 
-            if all_filters:
-                all_true = _filter_gff.apply_filters(feature,
-                                                     all_filters,
-                                                     'ALL')
-            else:
-                all_true = True
+    output_lines = filter_features(input_lines, all_filters, any_filters)
 
-            if any_filters:
-                any_true = _filter_gff.apply_filters(feature,
-                                                     any_filters,
-                                                     'ANY')
-            else:
-                any_true = True
+    output = args.output[0]
+    if output == '-':
+        for line in output_lines:
+            print(line.strip())
+    else:
+        with zopen(output, 'wb') as outfile:
+            for line in output_lines:
+                outfile.write(line.strip().encode() + b'\n')
 
-            if all_true and any_true:
-                if output:
-                    outfile.write(line.strip().encode() + b'\n')
-                else:
-                    print(line.strip())
-        if output:
-            outfile.close()
+    if input_gff != '-':
+        infile.close()
+
+
+def filter_features(lines, all_filters, any_filters):
+    for line in lines:
+        feature = _filter_gff.parse_feature(line)
+        if all_filters:
+            all_true = _filter_gff.apply_filters(feature,
+                                                 all_filters,
+                                                 'ALL')
+        else:
+            all_true = True
+
+        if any_filters:
+            any_true = _filter_gff.apply_filters(feature,
+                                                 any_filters,
+                                                 'ANY')
+        else:
+            any_true = True
+
+        if all_true and any_true:
+            yield line
 
 
 if __name__ == '__main__':
