@@ -16,9 +16,9 @@ This is record of feature/roadmap ideas
 
    -  [x] Basic “flat” clustering
    -  [x] Hierarchical clustering to split close/nested clusters
-   -  [x] Output to GFF3 format (recorded statistics could be improved)
-   -  [ ] Associate clusters on opposite strands representing ends of
+   -  [X] Associate clusters on opposite strands representing ends of
       the same TE insertion (removed until required)
+   -  [x] Tag known transposons from annotation GFF
    -  [ ] Use of anchor reads to assess homozygosity of insertions (for
       re-sequence data)
 
@@ -32,7 +32,6 @@ This is record of feature/roadmap ideas
 4. Output filetypes:
 
    -  [x] GFF3
-   -  [x] GFF3 long form (no nested counts)
    -  [x] Tabular data (available in python using pandas)
 
 5. Filtering output:
