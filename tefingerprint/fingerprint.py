@@ -24,6 +24,7 @@ def fingerprint(bams,
                 quality=0,
                 transposon_tag='ME',
                 annotation=None,
+                colourise_output=True,
                 cores=1):
     """
     Create a transposon fingerprint of one or more bam files.
@@ -41,6 +42,7 @@ def fingerprint(bams,
     :param quality:
     :param transposon_tag:
     :param annotation:
+    :param colourise_output:
     :param cores:
     :return:
     """
@@ -69,7 +71,8 @@ def fingerprint(bams,
                    [n_common_elements],
                    [hierarchical],
                    [fingerprint_buffer],
-                   [join_distance])
+                   [join_distance],
+                   [colourise_output])
 
     result = loci.ContigSet()
 
@@ -99,7 +102,8 @@ def _fingerprint_dispatch(bams,
                           n_common_elements,
                           hierarchical,
                           fingerprint_buffer,
-                          join_distance):
+                          join_distance,
+                          colourise_output):
     """dispatch a single job of a fingerprint"""
 
     # read informative reads
@@ -146,6 +150,11 @@ def _fingerprint_dispatch(bams,
                            reads,
                            n_common_elements=n_common_elements)
 
+    # colour features based on read count proportions
+    if colourise_output:
+        if len(bams) > 1:
+            clusters = clusters.map(colourise_read_counts)
+
     # match clusters to known elements if used
     if annotation is None:
         pass
@@ -171,10 +180,10 @@ def create_contig_ids(contig):
     Create ids for contig based on category, reference, strand and position.
 
     :param clusters: a collection of cluster loci (intervals)
-    :type clusters: :class:`loci2.ContigSet`
+    :type clusters: :class:`loci.ContigSet`
 
     :return: a collection of cluster loci (intervals) with 'ID' field
-    :rtype: :class:`loci2.ContigSet`
+    :rtype: :class:`loci.ContigSet`
     """
     template = '{0}_{1}_{2}_'.format(contig.header.category,
                                      contig.header.reference,
@@ -222,9 +231,9 @@ def count_reads(clusters, reads, trim=True, n_common_elements=0):
         'element': ( 'name': str, 'count': int))
 
     :param clusters: a collection of cluster loci (intervals)
-    :type clusters: :class:`loci2.ContigSet`
+    :type clusters: :class:`loci.ContigSet`
     :param reads: a collection of read tips from one or more bam files
-    :type reads: :class:`loci2.ContigSet`
+    :type reads: :class:`loci.ContigSet`
     :param trim: if true the boundaries of each cluster are trimmed to
         the range of the reads they contain
     :type trim: bool
@@ -233,7 +242,7 @@ def count_reads(clusters, reads, trim=True, n_common_elements=0):
     :type n_common_elements: int
 
     :return: a collection of cluster loci (intervals) with read counts
-    :rtype: :class:`loci2.ContigSet`
+    :rtype: :class:`loci.ContigSet`
     """
     sources = np.array(list({ctg.header.source
                              for ctg in list(reads.contigs())}))
@@ -314,6 +323,52 @@ def count_reads(clusters, reads, trim=True, n_common_elements=0):
     return clusters
 
 
+# Colours from R scheme "blues9"
+_GFF_PROPORTION_COLOURS = {0: '#C6DBEF',
+                           1: '#C6DBEF',
+                           2: '#C6DBEF',
+                           3: '#C6DBEF',
+                           4: '#C6DBEF',
+                           5: '#C6DBEF',
+                           6: '#9ECAE1',
+                           7: '#6BAED6',
+                           8: '#2171B5',
+                           9: '#08306B',
+                           10: '#08306B'}
+
+
+def colourise_read_counts(contig):
+    """
+    Add html colour field based on read count proportions.
+
+    This field is rendered in genome browsers (e.g. IGV) when
+    viewing the gff output.
+    A darker colour is used for features where a single sample
+    contains a greater proportion of the total read count.
+    This funtion requires contig loci fields created by the
+    "count_reads" function.
+
+    :param contig: a contig of loci with read counts
+    :type contig: :class:`Contig`
+    
+    :return: a contig of loci with a 'color' field
+    :rtype: :class:`loci.Contig`
+    """
+    contig = loci.add_field(contig, np.dtype([('color', 'O')]))
+    if len(contig) > 0:
+        samples = [str(i)
+                   for i in range(len(contig.loci[0]['sample'].dtype.descr))]
+        if len(samples) > 1:
+            for i, counts in enumerate(zip(*[contig.loci['sample'][s]['count']
+                                             for s in samples])):
+                proportion = int(10 * (max(counts) / sum(counts)))
+                contig.loci['color'][i] = _GFF_PROPORTION_COLOURS[proportion]
+        else:
+            contig.loci['color'] = '#0112b6'  # default igv colour
+    return contig
+
+
+
 def _known_insertion_matcher(contig, known_insertions, distance=0):
     """matches clusters on a contig to known elements"""
     if contig.header.strand == '+':
@@ -343,7 +398,7 @@ def match_known_insertions(clusters, known_insertions, distance=0):
     Match clusters to known insertions annotated in the genome.
 
     Known insertions are represented as an object of
-    :class:`loci2.ContigSet` created from a gff file.
+    :class:`loci.ContigSet` created from a gff file.
     Clusters are matched to a known insertion if they are for the
     same category and are within the specified distance of the
     insertions end.
@@ -358,16 +413,16 @@ def match_known_insertions(clusters, known_insertions, distance=0):
         'known_element': str
 
     :param clusters: a collection of cluster loci (intervals)
-    :type clusters: :class:`loci2.ContigSet`
+    :type clusters: :class:`loci.ContigSet`
     :param known_insertions: a collection of cluster loci (intervals)
-    :type known_insertions: :class:`loci2.ContigSet`
+    :type known_insertions: :class:`loci.ContigSet`
     :param distance: maximum distance for connecting a cluster to a
         known insertion
     :type distance: int
 
     :return: a collection of cluster loci (intervals) tagged with
         known insertions
-    :rtype: :class:`loci2.ContigSet`
+    :rtype: :class:`loci.ContigSet`
     """
     matched = loci.ContigSet()
 
@@ -477,7 +532,7 @@ def pair_clusters(clusters, distance=0, use_known_elements=True):
 
 
     :param clusters: a collection of cluster loci (intervals)
-    :type clusters: :class:`loci2.ContigSet`
+    :type clusters: :class:`loci.ContigSet`
     :param distance: the distance to search out from each cluster
     :type distance: int
     :param use_known_elements: specify whether to join pairs based on a
@@ -485,7 +540,7 @@ def pair_clusters(clusters, distance=0, use_known_elements=True):
     :type use_known_elements: bool
 
     :return: a collection of cluster loci (intervals) with 'pair' field
-    :rtype: :class:`loci2.ContigSet`
+    :rtype: :class:`loci.ContigSet`
     """
     joint_clusters = loci.ContigSet()
 

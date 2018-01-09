@@ -98,6 +98,12 @@ def main():
                              'for a known transposon and half the maximum '
                              'distance to search for a paired cluster if '
                              'no a known transposon is identified.')
+    parser.set_defaults(colourise_output=True)
+    parser.add_argument('--no-colour',
+                        dest='colourise_output',
+                        action='store_false',
+                        help='Disable colour coding of gff output. '
+                             'This can improve performance')
     parser.add_argument('-t', '--threads',
                         type=int,
                         default=[1],
@@ -142,6 +148,7 @@ def main():
                          fingerprint_buffer=args.buffer_fingerprints[0],
                          join_distance=args.join_distance[0],
                          annotation=args.annotation_of_known_elements[0],
+                         colourise_output=args.colourise_output,
                          cores=args.threads[0])
 
     # CSV output
