@@ -15,6 +15,7 @@ This project is currently in a alpha state and rapidly changing.
 - Genomic paired end reads from target organism
 - Reference genome of target organism
 - Reference library of known tansposons for target organism
+- Optionally, an annotation of known tansposons within the reference genome can be used as an additional source of information
 
 **Please see the linked documentation for more information:**
 

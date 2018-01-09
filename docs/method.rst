@@ -42,7 +42,7 @@ extracted and included as (short) informative read. Any pairs in which
 neither read is mapped are uninformative and ignored.
 
 The (unmapped) informative reads are tagged with the transposon that
-their pair has mapped to and mapped to a reference genome. These reads
+their pair has mapped to, and then mapped to a reference genome. These reads
 will tend to map in stranded clusters either end of a location at which
 a transposon is resent in the sample.
 

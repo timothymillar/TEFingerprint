@@ -1,4 +1,3 @@
 from .loci import *
-from . import bamio
-from . import batch
+from . import fingerprintio
 

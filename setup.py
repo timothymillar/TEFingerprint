@@ -9,13 +9,15 @@ def read_file(file_name):
 
 
 setup(name='tefingerprint',
-      version='0.1.3',
+      version='0.1.4',
       author='Tim Millar',
       author_email='tim.millar@plantandfood.co.nz',
       url='https://github.com/PlantandFoodResearch/TEFingerprint',
       description='Toolkit for identifying transposon movement',
       long_description=read_file('README.rst'),
-      scripts=['applications/tef'],
+      scripts=['applications/tefingerprint',
+               'applications/tef-extract-informative',
+               'applications/tef-filter-gff'],
       packages=['tefingerprint'],
       classifiers=['Development Status :: 3 - Alpha']
       )

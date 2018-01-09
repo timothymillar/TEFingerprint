@@ -1,34 +1,341 @@
 #! /usr/bin/env python
 
-import re
 import numpy as np
-from tefingerprint import bamio
-from tefingerprint import cluster
+import urllib
+from tefingerprint import util
+from tefingerprint import gff
+from tefingerprint.cluster import UDBSCANx as _UDBSCANx
+from tefingerprint.cluster import UDBSCANxH as _UDBSCANxH
 
 
-def _loci_melter(array):
+class Header(object):
     """
-    Combine overlapping loci into a single locus.
+    Meta data for a collection (contig) of genomic loci.
 
-    Example::
-        loci = numpy.array([(1, 4), (2, 6), (6, 7), (8, 10), (9, 12), (14, 15)],
-                             dtype = np.dtype([('start', np.int64), ('stop', np.int64)]))
-        _loci_melter(loci)
-        list(loci)
-        [(1, 7), (8, 12), (14, 15)]
-
-    :param array: a structured numpy array with integer slots 'start' and 'stop'
-    :type array: :class:`numpy.ndarray`[(int, int, ...)]
-
-    :return: a generator of melted loci
-    :rtype: generator[(int, int)]
+    :param reference: name of a reference chromosome
+    :type reference: str | None
+    :param strand: strand of the reference chromosome '+' or '-'
+    :type strand: str | None
+    :param category: name of transposon category/family
+    :type category: str | None
+    :param source: optional name of source bam file
+    :type source: str | None
     """
+    __slots__ = ['_reference', '_strand', '_category', '_source']
+
+    def __init__(self,
+                 reference=None,
+                 strand=None,
+                 category=None,
+                 source=None):
+        self._reference = reference
+        self._strand = strand
+        self._category = category
+        self._source = source
+
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return hash(self) == hash(other)
+        return False
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __hash__(self):
+        return hash((self._reference,
+                     self._strand,
+                     self._category,
+                     self._source))
+
+    def __iter__(self):
+        for i in (self._reference,
+                  self._strand,
+                  self._category,
+                  self._source):
+            if i:
+                yield i
+
+    def __repr__(self):
+        return repr((self._reference,
+                     self._strand,
+                     self._category,
+                     self._source))
+
+    @property
+    def reference(self):
+        return self._reference
+
+    @property
+    def strand(self):
+        return self._strand
+
+    @property
+    def category(self):
+        return self._category
+
+    @property
+    def source(self):
+        return self._source
+
+    @property
+    def tuple(self):
+        return tuple(i for i in self)
+
+    @property
+    def dtype(self):
+        """
+        A numpy dtype suitable for containing the header data
+
+        :return: a numpy dtype
+        :rtype: :class:`numpy.dtype`
+        """
+        descr = []
+        if self._reference:
+            descr.append(('reference', 'O'))
+        if self._strand:
+            descr.append(('strand', '<U1'))
+        if self._category:
+            descr.append(('category', 'O'))
+        if self._source:
+            descr.append(('source', 'O'))
+        return np.dtype(descr)
+
+    def mutate(self, **kwargs):
+        """
+        Create a copy of the header with altered values.
+
+        Valid argument names are 'reference', 'strand',
+        'category' and 'source'
+
+        :param kwargs: values to alter in the new copy of the header
+        :return: :class:`Header`
+        """
+        data = {'reference': self._reference,
+                'strand': self._strand,
+                'category': self._category,
+                'source': self._source}
+        data.update(kwargs)
+        return Header(**data)
+
+
+class Contig(object):
+    """
+    A contig is a collection of loci on a contiguous section of genome.
+
+    The contig header defines the combination of 'reference', 'strand'
+    and 'category', 'source' that distinguish this group of loci from
+    others.
+    The loci are a structured numpy array defining the position of each
+    locus along the contig with additional metadata.
+    Contigs will generally contain points or intervals.
+
+    :param header: a header that defines this contig
+    :type header: :class:`Header`
+    :param loci: loci contaained in this contig
+    :type loci: :class:`numpy.array`
+    """
+    def __init__(self, header, array):
+        assert isinstance(header, Header)
+        self.header = header
+        self.loci = array
+
+    def __repr__(self):
+        return repr((self.header, self.loci))
+
+    def __len__(self):
+        return len(self.loci)
+
+    def __eq__(self, other):
+        return self.header == other.header and np.array_equal(self.loci,
+                                                              other.loci)
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+
+def sort(contig, order=None):
+    """
+    Creates a copy of a contig with sorted loci
+
+    :param contig: a contig of loci
+    :type contig: :class:`Contig`
+    :param order: field names to sort loci by
+    :type order: str | tuple[str]
+
+    :return: a contig of sorted loci
+    :rtype: :class:`Contig`
+    """
+    return Contig(contig.header, np.sort(contig.loci, order=order))
+
+
+def iter_values(contig):
+    """
+    Iterates values of the contig including the header values.
+
+    For each element in the contigs array of loci, the values of header
+    fields are returned with the values of that element.
+
+    :param contig: a contig of loci
+    :type contig: :class:`Contig`
+
+    :return: an iterable of values
+    :rtype generator[tuple[any]]
+    """
+    for locus in contig.loci:
+        yield (*contig.header.tuple, *locus)
+
+
+def as_array(contig):
+    """
+    Converts a contig to a flattened numpy array.
+
+    Header values are included for every element in the array.
+    Nested loci values are flattened by appending nested field names.
+
+    :param contig: a contig of loci
+    :type contig: :class:`Contig`
+
+    :return: a numpy array with no nested values
+    :rtype: :class:`numpy.array`
+    """
+    data = map(tuple, map(util.flatten_numpy_element, iter_values(contig)))
+    dtype = util.flatten_dtype(util.append_dtypes(contig.header.dtype,
+                                                  contig.loci.dtype))
+    return np.array([i for i in data], dtype=dtype)
+
+
+def mutate_header(contig, **kwargs):
+    """
+    Return a copy of a contig with altered header data.
+
+    Valid argument names are 'reference', 'strand', 'category'
+    and 'source'.
+
+    :param contig: a contig of loci
+    :type contig: :class:`Contig`
+    :param kwargs: values to alter in the new copy of the header
+    :type: kwargs: list[str]
+
+    :return: a contig of loci with modified header
+    :rtype: :class:`Contig`
+    """
+    return Contig(contig.header.mutate(**kwargs), contig.loci)
+
+
+def append(contig_x, contig_y):
+    """
+    Append the values of two contigs that have identical headers.
+
+    :param contig_x: a contig of loci
+    :type contig_x: :class:`Contig`
+    :param contig_y: a contig of loci
+    :type contig_y: :class:`Contig`
+
+    :return: a contig containing the loci of contig_x and contig_y
+    :rtype: :class:`Contig`
+    """
+    try:
+        assert contig_x.header == contig_y.header
+    except AssertionError:
+        raise ValueError('Contigs must have identical headers')
+    else:
+        return Contig(contig_x.header, np.append(contig_x.loci, contig_y.loci))
+
+
+def drop_field(contig, field):
+    """
+    Return a copy of a contig without data for the specified loci field.
+
+    :param contig: a contig of loci
+    :type contig: :class:`Contig`
+    :param field: name of a field in the contigs loci
+    :type field: str
+    :return: a contig of loci without the specified field
+    :rtype: :class:`Contig`
+    """
+    return Contig(contig.header, util.remove_array_field(contig.loci, field))
+
+
+def add_field(contig, field_dtype):
+    """
+    Add a new empty field to the the loci of a contig.
+
+    :param contig: a contig of loci
+    :type contig: :class:`Contig`
+    :param field_dtype: a named numpy dtype for the added field
+    :type field_dtype: :class:`numpy.dtype`
+    :param value: the optional default value to fill the new field with
+    :type value: None | any
+
+    :return: a contig of loci
+    :rtype: :class:`Contig`
+    """
+    array = np.zeros(len(contig.loci), dtype=field_dtype)
+    return Contig(contig.header, array=util.bind_arrays(contig.loci, array))
+
+
+def cluster(contig,
+            field,
+            minimum_points,
+            epsilon,
+            minimum_epsilon=0,
+            hierarchical=True,
+            lower_bound='start',
+            upper_bound='stop'):
+    """
+    Return a contig of cluster intervals based on the loci of a contig.
+
+    The new cluster intervals will contain only fields of the upper and
+    lower bounds of clusters which may be named with the lower_bound
+    and upper_bound parameters.
+    The field specified for cluster analysis must contain integer values.
+    By default a hierarchical density based clustering algorithm is used
+    (see documentation for :class:`_UDBSCANxH`).
+    Alternitively a non-hierarchical density based clustering algorithm
+    may be used (see documentation for :class:`_UDBSCAN).
+
+    :param contig: a contig of loci
+    :type contig: :class:`Contig`
+    :param field: the name of the loci field to perform cluster analysis on
+    :type field: str
+    :param minimum_points: minimum number of points required to form a cluster
+    :type minimum_points: int
+    :param epsilon: the maximum distance among point of a cluster
+    :type epsilon: int
+    :param minimum_epsilon: minimum value when calculating hierarchical splits
+    :type minimum_epsilon: int
+    :param hierarchical: use hierarchical or non-hierarchical version of
+        the algorithm (default: True)
+    :type hierarchical: bool
+    :param lower_bound: field name to use for lower bound of clusters
+    :type lower_bound: str
+    :param upper_bound: field name to use for upper bound of clusters
+    :type upper_bound: str
+
+    :return: a contig of cluster interval loci
+    :rtype: :class:`Contig`
+    """
+    if hierarchical:
+        model = _UDBSCANxH(minimum_points,
+                           max_eps=epsilon,
+                           min_eps=minimum_epsilon)
+    else:
+        model = _UDBSCANx(minimum_points, epsilon)
+    model.fit(contig.loci[field])
+
+    dtype = np.dtype([(lower_bound, np.int64), (upper_bound, np.int64)])
+    return Contig(contig.header, np.fromiter(model.cluster_extremities(),
+                                             dtype=dtype))
+
+
+def _unionise(array, lower_bound, upper_bound):
+    """worker for unions function"""
     if len(array) == 1:
-        yield array['start'], array['stop']
+        yield array[lower_bound], array[upper_bound]
 
     else:
-        array_starts = np.array(array['start'])
-        array_stops = np.array(array['stop'])
+        array_starts = np.array(array[lower_bound])
+        array_stops = np.array(array[upper_bound])
         array_starts.sort()
         array_stops.sort()
 
@@ -48,884 +355,373 @@ def _loci_melter(array):
         yield start, stop
 
 
-def append(*args):
+def unions(contig, lower_bound='start', upper_bound='stop'):
     """
-    Combine multiple objects of superclass :class:`_Loci`.
-    Every object must be of the same type.
+    Calculate interval unions among loci of a contig.
 
-    :param args: Objects to be merged
-    :type args: iterable[:class:`_Loci`]
+    The new cluster intervals will contain only fields of the upper and
+    lower bounds of clusters which may be named with the lower_bound
+    and upper_bound parameters.
 
-    :return: Merged object
-    :rtype: :class:`GenomeLoci`
+    :param contig: a contig of loci
+    :type contig: :class:`Contig`
+    :param lower_bound: field name to use for lower bound of unions
+    :type lower_bound: str
+    :param upper_bound: field name to use for upper bound of unions
+    :type upper_bound: str
+
+    :return: a contig of non-overlapping union loci
+    :rtype: :class:`Contig`
     """
-    assert len(set(map(type, args))) == 1
-    merged = type(args[0])()
-    for arg in args:
-        merged.append(arg, inplace=True)
-    return merged
+    dtype = np.dtype([(lower_bound, np.int64), (upper_bound, np.int64)])
+    if len(contig.loci) == 0:
+        return Contig(contig.header, np.empty(0, dtype=dtype))
+    else:
+        generator = _unionise(contig.loci, lower_bound, upper_bound)
+        return Contig(contig.header, np.fromiter(generator, dtype=dtype))
 
 
-class LociKey(object):
+def unions_buffered(contig, buffer, lower_bound='start', upper_bound='stop'):
     """
-    A Loci Key is used to specify a specific 'reference', 'strand', 'category' of a genome
-    Where category is a category of transposon (e.g. a super-family).
-    An optional forth slot 'source' is used to record the data source (i.e. bam file) when appropriate.
+    Calculate interval unions among loci of a contig and extend them
+    with a non-overlapping buffer.
 
-    This class is used as a dictionary key within instances of :class:`GenomeLoci` to label groups
-    of similar loci
+    The new cluster intervals will contain only fields of the upper
+    and lower bounds of clusters which may be named with the
+    lower_bound and upper_bound parameters.
 
-    :param reference: name of a reference chromosome with the form 'name:min-max'
-    :type reference: str
-    :param strand: strand of the reference chromosome '+' or '-'
-    :type strand: str
-    :param category: name of transposon category/family
-    :type category: str
-    :param source: optional name of source bam file
-    :type source: str
+    :param contig: a contig of loci
+    :type contig: :class:`Contig`
+    :param buffer: the amount to extend unions by
+    :type buffer: int
+    :param lower_bound: field name to use for lower bound of unions
+    :type lower_bound: str
+    :param upper_bound: field name to use for upper bound of unions
+    :type upper_bound: str
+
+    :return: a contig of non-overlapping union loci
+    :rtype: :class:`Contig`
     """
-    __slots__ = ['reference', 'strand', 'category', 'source']
+    contig = unions(contig, lower_bound=lower_bound, upper_bound=upper_bound)
 
-    def __init__(self, reference=None, strand=None, category=None, source=None):
-        self.reference = reference
-        self.strand = strand
-        self.category = category
-        self.source = source
-
-    def __eq__(self, other):
-        if isinstance(other, self.__class__):
-            return self.__slots__ == other.__slots__
-        return False
-
-    def __ne__(self, other):
-        """Define a non-equality test"""
-        return not self.__eq__(other)
-
-    def __hash__(self):
-        return hash((self.reference, self.strand, self.category, self.source))
-
-    def __iter__(self):
-        yield self.reference
-        yield self.strand
-        yield self.category
-        if self.source:
-            yield self.source
-
-    def __repr__(self):
-        if self.source:
-            return repr((self.reference, self.strand, self.category, self.source))
+    if buffer <= 0:
+        pass
+    else:
+        if len(contig.loci) == 0:
+            pass
+        elif len(contig.loci) == 1:
+            contig.loci[lower_bound][0] -= buffer
+            contig.loci[upper_bound][-1] += buffer
         else:
-            return repr((self.reference, self.strand, self.category))
+            difs = ((contig.loci[lower_bound][1:] -
+                     contig.loci[upper_bound][:-1]) - 1) / 2
+            difs[difs > buffer] = buffer
+            contig.loci[lower_bound][1:] = (contig.loci[lower_bound][1:] -
+                                            np.floor(difs))
+            contig.loci[upper_bound][:-1] = (contig.loci[upper_bound][:-1] +
+                                             np.ceil(difs))
+            contig.loci[lower_bound][0] -= buffer
+            contig.loci[upper_bound][-1] += buffer
+    return contig
 
 
-class GenomeLoci(object):
+class ContigSet(object):
     """
-    A collection of categorised univariate loci.
+    A set of contigs of genomic loci.
 
-    Loci are categorised into groups based on a combination of states relating to their location and or origin:
-     - reference: str
-     - strand: str
-     - category: str
-    Where 'reference' takes the form 'name:min-max', 'strand' is '+' or '-', and 'category' identifies which
-    category of transpson the loci represent.
+    A ContigSet is an unordered collection of unique contigs (each
+    having a different header).
+    Individual contigs may be copied from the set by indexing the
+    contig set with it's header (i.e. each contigs header is a
+    dictionary key to extract the contig) but contigs cannot be
+    updated in place with this syntax.
+    New contigs may be added to the ContigSet by the 'add' or
+    'update' methods. If a contigs header clashes with that
+    of a contig already contained in the set an error will be raised.
+    Alternatively the loci of both contigs
+    may be appended if the correct parameter is set.
 
-    Each locus is represented as a single element in a numpy array with the following slots:
-     - start: np.int64
-     - stop: np.int64
-    Where 'start' and 'stop' are respectively the lower and upper coordinates that define a segment of the reference.
-    Coordinates are inclusive, 1 based integers (i.e, use the SAM coordinate system).
     """
-    _DTYPE_LOCI = np.dtype([('start', np.int64), ('stop', np.int64)])
-
-    _LOCI_DEFAULT_VALUES = (0, 0)
-
-    _DTYPE_KEY = np.dtype([('reference', np.str_, 256),
-                           ('strand', np.str_, 1),
-                           ('category', np.str_, 256)])
-
-    _DTYPE_ARRAY = np.dtype([('reference', np.str_, 256),
-                             ('strand', np.str_, 1),
-                             ('category', np.str_, 256),
-                             ('start', np.int64),
-                             ('stop', np.int64)])
-
-    def __init__(self):
+    def __init__(self, *args, append_duplicate_headers=False):
         self._dict = {}
+        if len(args) == 0:
+            pass
+        else:
+            assert len({ctg.header.dtype for ctg in args}) == 1
+            assert len({ctg.loci.dtype for ctg in args}) == 1
+            for arg in args:
+                if arg.header in self._dict.keys():
+                    if append_duplicate_headers:
+                        self._dict[arg.header] = append(self._dict[arg.header],
+                                                        arg)
+                    else:
+                        message = 'More than one contig with header {0}'
+                        raise ValueError(message.format(arg.header))
+                else:
+                    self._dict[arg.header] = arg
 
     def __len__(self):
-        return sum([len(loci) for loci in self.loci()])
+        return sum(map(len, self._dict.values()))
 
     def __repr__(self):
         return repr(self._dict)
 
-    def __getitem__(self, item):
-        if isinstance(item, LociKey):
-            return self._dict[item]
+    def __getitem__(self, header):
+        return self._dict.__getitem__(header)
+
+    def __eq__(self, other):
+        headers_self = set(self.headers())
+        headers_other = set(other.headers())
+
+        if headers_self == headers_other:
+            return all([self[h] == other[h] for h in headers_self])
         else:
-            return self._dict[LociKey(*item)]
+            return False
 
-    def keys(self):
-        """
-        Return the definition (key) for each group of loci.
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
-        :return: a collection of tuples containing the character states of each group of loci
-        :rtype: :class:`dict_keys`[(str, str, ...)]
+    def dtype_headers(self):
         """
-        return self._dict.keys()
+        Generate a dtype suitable for storing data from the headers of
+        contained contigs.
 
-    def loci(self):
+        :return: a numpy dytpe
+        :rtype: :class:`numpy.dtype`
         """
-        Return the loci array (value) for each group of loci.
+        consensus = {ctg.header.dtype for ctg in self._dict.values()}
+        assert len(consensus) == 1
+        return list(consensus)[0]
 
-        :return: a collection of structured :class:`numpy.ndarray` containing the character states of each locus
-        :rtype: :class:`dict_values`[:class:`numpy.ndarray`[(int, int, ...)]]
+    def dtype_loci(self):
         """
-        return self._dict.values()
+        Generate a dtype matching the dtypes of contained contig loci.
 
-    def items(self):
+        :return: a numpy dytpe
+        :rtype: :class:`numpy.dtype`
         """
-        Return paired groups and loci where groups are tuples and loci are structured :class:`numpy.ndarray`.
+        consensus = {ctg.loci.dtype for ctg in self._dict.values()}
+        assert len(consensus) == 1
+        return list(consensus)[0]
 
-        :return: a collection of key-value pairs
-        :rtype: :class:`dict_values`[(str, str, ...): :class:`numpy.ndarray`[(int, int, ...)]]
+    def headers(self):
         """
-        return self._dict.items()
+        Return the set of headers of all the contained contigs
 
-    def split(self):
+        :return: set of contig headers
+        :rtype: :class:`header`
         """
-        Split object of :class:`GenomeLoci` by its constituent groups.
+        return set(self._dict.keys())
 
-        :return: An object of :class:`GenomeLoci` for each grouping of loci
-        :rtype: generator[:class:`GenomeLoci`]
+    def add(self, contig, append_duplicate_headers=False):
         """
-        for group, loci in self.items():
-            child = type(self)()
-            child._dict[group] = loci
-            yield child
+        Add a single contig to the contig set.
 
-    def append(self, x, inplace=False):
-        """
-        Append a Loci object.
+        The header and loci fields of the contig must match those already
+        contained in the set.
+        If the contigs header is identical to one already contained in the
+        set an error is raised, this may be avoided using
+        append_duplicate_headers to append the loci values of the
+        matching contigs.
 
-        :param x: the Loci object to append
-        :param inplace: if true, loci are appended in place rather than returning a new object
-        :type inplace: bool
+        :param contig: a contig of loci
+        :type contig: :class:`Contig`
+        :param append_duplicate_headers: specify whether to append the
+            loci of contigs with duplicate headers
+        :type append_duplicate_headers: bool
         """
-        assert type(self) == type(x)
-        keys = self.keys()
-        if inplace:
-            for key, loci in x.items():
-                if key in keys:
-                    self._dict[key] = np.append(self._dict[key], loci)
-                else:
-                    self._dict[key] = loci
-        else:
-            result = type(self)()
-            result._dict = self._dict.copy()
-            for key, loci in x.items():
-                if key in keys:
-                    result._dict[key] = np.append(result._dict[key], loci)
-                else:
-                    result._dict[key] = loci
-            return result
-
-    def buffer(self, value):
-        """
-        Expand each locus by a set amount in both directions (mutates data in place).
-        Loci can not be expanded beyond the bounds of their reference and will not overlap neighbouring loci within
-        their group.
-
-        :param value: the (maximum) amount to expand loci in both directions
-        :type value: int
-        """
-        if value <= 0:
+        if len(self._dict.keys()) == 0:
             pass
         else:
-            for key, loci in self.items():
-                if len(loci) == 0:
-                    pass
-                elif len(loci) == 1:
-                    reference = key.reference
-                    minimum, maximum = tuple(map(int, reference.split(':')[1].split('-')))
-                    loci['start'][0] = max(loci['start'][0] - value, minimum)
-                    loci['stop'][-1] = min(loci['stop'][-1] + value, maximum)
-                else:
-                    reference = key.reference
-                    minimum, maximum = tuple(map(int, reference.split(':')[1].split('-')))
-                    difs = ((loci['start'][1:] - loci['stop'][:-1]) - 1) / 2
-                    difs[difs > value] = value
-                    loci['start'][1:] = loci['start'][1:] - np.floor(difs)
-                    loci['stop'][:-1] = loci['stop'][:-1] + np.ceil(difs)
-                    loci['start'][0] = max(loci['start'][0] - value, minimum)
-                    loci['stop'][-1] = min(loci['stop'][-1] + value, maximum)
+            assert contig.header.dtype == self.dtype_headers()
+            assert contig.loci.dtype == self.dtype_loci()
+        if contig.header in self._dict.keys():
+            if append_duplicate_headers:
+                self._dict[contig.header] = append(self._dict[contig.header],
+                                                   contig)
+            else:
+                message = 'More than one contig with header {0}'
+                raise ValueError(message.format(contig.header))
+        else:
+            self._dict[contig.header] = contig
 
-    def features(self):
+    def update(self, contigs, append_duplicate_headers=False):
         """
-        Yields one tuple per locus.
+        Add a collection of contigs to the contig set.
 
-        :return: tuple of values per locus
-        :rtype: generator
-        """
-        for key, loci in self.items():
-            for locus in loci:
-                yield (*key, *locus)
+        The header and loci fields of the contigs must match those
+        already contained in the set. If any of the new contigs
+        headers are identical to one already contained in the set an
+        error is raised, this may be avoided using append_duplicate_headers
+        to append the loci values of the matching contigs.
 
-    def as_array(self):
+        :param contigs: a collection of contigs
+        :type contigs: iterable[:class:`Contig`]
+        :param append_duplicate_headers: specify whether to append the
+            loci of contigs with duplicate headers
+        :type append_duplicate_headers: bool
         """
-        Convert all loci to a structured array sorted by location.
+        for contig in contigs:
+            self.add(contig, append_duplicate_headers=append_duplicate_headers)
 
-        :return: a structured array of loci
-        :rtype: :class:`numpy.ndarray`
+    def map(self, function, append_duplicate_headers=False):
         """
-        array = np.fromiter(self.features(), type(self)._DTYPE_ARRAY)
-        index = np.argsort(array[['reference', 'start', 'stop', 'category']],
-                           order=('reference', 'start', 'stop', 'category'))
-        array = array[index]
+        Map a function to every contig within the set.
+
+        The mapped function should return :class:`Contig` to be collected
+        into a new :class:`ContigSet`.
+        If the mapped function alters the contig headers and leads to a
+        header clash an error is raised.
+        This may be avoided by the 'append_duplicate_headers' parameter
+        which appends the loci of contigs with identical headers.
+
+        :param function: function to apply to every contig
+        :type function: callable
+        :param append_duplicate_headers: specify whether to append the
+            loci of contigs with duplicate headers
+        :type append_duplicate_headers: bool
+
+        :return: a new ContigSet
+        :rtype: :class:`ContigSet`
+        """
+        return ContigSet(*map(function, self._dict.values()),
+                         append_duplicate_headers=append_duplicate_headers)
+
+    def contigs(self):
+        """
+        Yield all contigs in the set.
+
+        :return: a generator of all contigs
+        :rtype: iterable[:class:`Contig`]
+        """
+        for contig in self._dict.values():
+            yield contig
+
+    def iter_values(self):
+        """
+        Iterates values of the contigs including the header values.
+
+        For each element in each contigs array of loci, the values of
+        header fields are returned with the values of that element.
+
+        :return: an iterable of values
+        :rtype generator[tuple[any]]
+        """
+        for ctg in self._dict.values():
+            for val in iter_values(ctg):
+                yield val
+
+    def as_array(self, order=False):
+        """
+        Converts a ContigSet to a flattened numpy array.
+
+        Header values are included for every element in each contig.
+        Nested loci values are flattened by appending nested field names.
+
+        :param order: fields to sort rows by
+        :type order: tuple[str]
+
+        :return: a numpy array with no nested values
+        :rtype: :class:`numpy.array`
+        """
+        data = map(tuple, map(util.flatten_numpy_element, self.iter_values()))
+        dtype = util.flatten_dtype(util.append_dtypes(self.dtype_headers(),
+                                                      self.dtype_loci()))
+        array = np.array([i for i in data], dtype=dtype)
+
+        if order:
+            if isinstance(order, str):
+                order = [order]
+            index = np.argsort(array[order],
+                               order=(tuple(order)))
+            array = array[index]
+
         return array
 
-    @classmethod
-    def from_dict(cls, dictionary):
+    def as_tabular_lines(self, sep=','):
         """
-        Creat from a dictionary with the correct keys and dtype
+        Converts a ContigSet to an iterable of strings.
 
-        :param dictionary: dictionary of key-loci pairs
-        :type dictionary: dict[tuple(...), :class:`np.array`[...]
+        Header values are included for every element in each contig.
+        Nested loci values are flattened by appending nested field names.
 
-        :return: instance of :class:`GenomeLoci`
+        :param sep: separator value (default: ',')
+        :type sep: str
+
+        :return: an iterable of string suitable for writing to a tabular
+            plain text file
+        :rtype: iterable[str]
         """
-        d = {}
-        for key, loci in dictionary.items():
-            key = LociKey(*key)  # use named tuple for keys
-            assert loci.dtype == cls._DTYPE_LOCI
-            d[key] = loci
-        result = cls()
-        result._dict = d
-        return result
+        dtype = util.append_dtypes(self.dtype_headers(), self.dtype_loci())
+        columns = util.flatten_dtype_fields(dtype)
+        yield sep.join(map(util.quote_str, columns))
+        for f in self.iter_values():
+            yield sep.join(map(util.quote_str,
+                               util.flatten_numpy_element(f)))
 
-    @classmethod
-    def from_array(cls, array):
+    def as_gff_lines(self,
+                     order=False,
+                     reference_field='reference',
+                     start_field='start',
+                     stop_field='stop',
+                     strand_field='strand',
+                     type_field=None,
+                     program_name='TEFingerprint'):
         """
-        Create from an array with the correct dtype
+        Converts a ContigSet to an iterable of strings.
 
-        :param array: numpy array
-        :type array: :class:`np.array`[...]
+        Header values are included for every element in each contig.
+        Nested loci values are flattened by appending nested field names
 
-        :return: instance of :class:`GenomeLoci`
+        :param order: fields to sort the gff by
+        :type order: tuple[str]
+        :param reference_field: name of field containing reference genome
+            contig name
+        :type reference_field: str
+        :param start_field: name of field containing start of feature
+        :type start_field: str
+        :param stop_field: name of field containing end of feature
+        :type stop_field: str
+        :param strand_field: name of field containing strand of feature
+        :type strand_field: str
+        :param type_field: name of field containing type of feature
+        :type type_field: str
+        :param program_name: name of program used to generate gff file
+        :type program_name: str
+
+        :return: an iterable of string suitable for writing to a gff
+            plain text file
+        :rtype: iterable[str]
         """
-        assert array.dtype == cls._DTYPE_ARRAY
-        key_instances = array[list(cls._DTYPE_KEY.names)]
-        keys = np.unique(key_instances)
-        d = {}
-        for key in keys:
-            loci = array[list(cls._DTYPE_LOCI.names)][key_instances == key]
-            key = LociKey(*key)
-            d[key] = loci
-        result = cls()
-        result._dict = d
-        return result
+        array = self.as_array(order=order)
 
-    @staticmethod
-    def _format_gff_feature(record):
-        """
-        Worker method to format a single array entry as a single gff formatted string.
+        attribute_fields = list(array.dtype.names)
+        for field in (reference_field, start_field, stop_field, strand_field):
+            if field in attribute_fields:
+                attribute_fields.remove(field)
+        if type_field:
+            attribute_fields.remove(type_field)
 
-        :param record: a single entry from a structured :class:`numpy.ndarray`
-        :type record: :class:`numpy.void`
-
-        :return: gff formatted string
-        :rtype: str
-        """
-        identifier = "{0}_{1}_{2}_{3}".format(record['reference'].split(':')[0],
-                                              record['strand'],
-                                              record['category'],
-                                              record['start'])
-        attributes = '{0}={1}'.format('category', record['category'])
-        attributes = 'ID=' + identifier + ';' + attributes
         template = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}"
-        return template.format(record['reference'].split(':')[0],
-                               '.',
-                               '.',
-                               record['start'],
-                               record['stop'],
-                               '.',
-                               record['strand'],
-                               '.',
-                               attributes)
 
-    def as_gff(self):
-        """
-        Convert all loci to a GFF3 formatted string, sorted by location.
-
-        :return: A multi-line GFF3 formatted string
-        :rtype: str
-        """
-        array = self.as_array()
-        return '\n'.join((self._format_gff_feature(record) for record in array))
-
-
-class ReadLoci(GenomeLoci):
-    """
-    A collection of named sam reads, categorised by origin.
-
-    Loci are categorised into groups based on a combination of states relating to their location and origin:
-     - reference: str
-     - strand: str
-     - category: str
-     - source: str
-    Where 'reference' takes the form 'name:min-max', 'strand' is '+' or '-', 'category' identifies which
-    category of transpson the loci represent, and source is the name of the source bam file.
-
-    Each locus is represented as a single element in a numpy array with the following slots:
-     - start: np.int64
-     - stop: np.int64
-     - name: np.str_, 254
-    Where 'start' and 'stop' are respectively the lower and upper coordinates that define a segment of the reference,
-    and name is the reads name in the source bam file.
-    Coordinates are inclusive, 1 based integers (i.e, use the SAM coordinate system).
-    """
-    _DTYPE_LOCI = np.dtype([('start', np.int64), ('stop', np.int64), ('name', np.str_, 254)])
-
-    _LOCI_DEFAULT_VALUES = (0, 0, '')
-
-    _DTYPE_KEY = np.dtype([('reference', np.str_, 256),
-                           ('strand', np.str_, 1),
-                           ('category', np.str_, 256),
-                           ('source', np.str_, 256)])
-
-    _DTYPE_ARRAY = np.dtype([('reference', np.str_, 256),
-                             ('strand', np.str_, 1),
-                             ('category', np.str_, 256),
-                             ('source', np.str_, 256),
-                             ('start', np.int64),
-                             ('stop', np.int64),
-                             ('name', np.str_, 254)])
-
-    @classmethod
-    def from_bam(cls, bams, categories, references=None, quality=30, tag='ME'):
-        """
-        Create an object of :class:`ReadLoci` from a bam file.
-        The bam file should contain aligned reads without pairs where each read is tagged with the category of
-        transposon it corresponds to.
-        The tag 'ME' is used by default.
-
-        :param bams: The path to a bam file or a list of paths to multiple bam files
-        :type bams: str | list[str]
-        :param references: The name or slice of a reference chromosome to obtain reads from
-        :type references: str
-        :param categories: A list of transposon categories to group reads by
-        :type categories: list[str]
-        :param quality: minimum mapping quality
-        :type quality: int
-        :param tag: The sam tag containing the transposon each read corresponds to
-        :type tag: str
-
-        :return: An instance of :class:`ReadLoci`
-        :rtype: :class:`ReadLoci`
-        """
-        reads = ReadLoci()
-        reads._dict = {LociKey(*group): np.fromiter(loci, dtype=cls._DTYPE_LOCI)
-                       for group, loci in bamio.extract_bam_reads(bams,
-                                                                  categories,
-                                                                  references=references,
-                                                                  quality=quality,
-                                                                  tag=tag)}
-        return reads
-
-    def tips(self):
-        """
-        Returns a dictionary group-tips pairs where groups are the same those used in :class:`ReadLoci`
-        and tips are an array of integers representing the front tip of each read based on its orientation.
-
-        :return: A dictionary group-tips pairs
-        :rtype: dict[(int, int, str): :class:`numpy.ndarray`[int]]
-        """
-        d = {}
-        for group, loci in self.items():
-            if group.strand == '+':
-                d[group] = loci["stop"]
+        for record in array:
+            if type_field:
+                type_value = record[type_field]
             else:
-                d[group] = loci["start"]
-        return d
-
-    def fingerprint(self, min_reads, eps, min_eps=0, hierarchical=True):
-        """
-        Fingerprint a :class:`ReadLoci` object based on density of read tips.
-
-        The algorithm used is determined by the value of 'hierarchical' which is True by default).
-        If hierarchical is True, the :class:`HUDC` algorithm is used.
-        If hierarchical is False, the :class:`UDC` algorithm is used.
-
-        :param min_reads: Minimum number of reads required to form cluster in cluster analysis
-        :type min_reads: int
-        :param eps: The eps value to be used in the cluster analysis
-        :type eps: int
-        :param min_eps: The minimum eps value to be used in if the :class:`HUDC` algorithm is used
-        :type min_eps: int
-        :param hierarchical: Determines which clustering algorithm is used
-        :type hierarchical: bool
-
-        :return: The density based fingerprints of read loci
-        :rtype: :class:`FingerPrint`
-        """
-        dictionary = {}
-
-        for group, tips in self.tips().items():
-            tips.sort()
-
-            # fit model
-            if hierarchical:
-                model = cluster.UDBSCANxH(min_reads, max_eps=eps, min_eps=min_eps)
-            else:
-                model = cluster.UDBSCANx(min_reads, eps)
-            model.fit(tips)
-
-            # get new loci
-            positions = np.fromiter(model.cluster_extremities(),
-                                    dtype=FingerPrint._DTYPE_LOCI)
-
-            # add to fingerprint
-            dictionary[group] = positions
-
-        fprint = FingerPrint()
-        fprint._dict = dictionary
-        return fprint
-
-    @staticmethod
-    def _format_gff_feature(record):
-        """
-        Worker method to format a single array entry as a single gff formatted string.
-
-        :param record: a single entry from a structured :class:`numpy.ndarray`
-        :type record: :class:`numpy.void`
-
-        :return: gff formatted string
-        :rtype: str
-        """
-        attributes = ';'.join(['{0}={1}'.format(slot, record[slot]) for slot in ('category', 'source')])
-        attributes = 'ID=' + record['name'] + ';' + attributes
-        template = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}"
-        return template.format(record['reference'].split(':')[0],
-                               '.',
-                               '.',
-                               record['start'],
-                               record['stop'],
-                               '.',
-                               record['strand'],
-                               '.',
-                               attributes)
-
-
-class FingerPrint(GenomeLoci):
-    """
-    A collection of categorised univariate loci comprising a density based fingerprint.
-
-    Loci are categorised into groups based on a combination of states relating to their location and origin:
-     - reference: str
-     - strand: str
-     - category: str
-     - source: str
-    Where 'reference' takes the form 'name:min-max', 'strand' is '+' or '-', and 'category' identifies which
-    category of transpson the loci represent.
-
-    Each locus is represented as a single element in a numpy array with the following slots:
-     - start: np.int64
-     - stop: np.int64
-    Where 'start' and 'stop' are respectively the lower and upper coordinates that define a segment of the reference.
-    Coordinates are inclusive, 1 based integers (i.e, use the SAM coordinate system).
-    """
-    _DTYPE_KEY = np.dtype([('reference', np.str_, 256),
-                           ('strand', np.str_, 1),
-                           ('category', np.str_, 256),
-                           ('source', np.str_, 256)])
-
-    _DTYPE_ARRAY = np.dtype([('reference', np.str_, 256),
-                             ('strand', np.str_, 1),
-                             ('category', np.str_, 256),
-                             ('source', np.str_, 256),
-                             ('start', np.int64),
-                             ('stop', np.int64)])
-
-    def as_csv(self):
-        """
-        Convert all loci to a a CSV formatted string sorted by location.
-
-        :return: a CSV formatted string
-        :rtype: str
-        """
-        array = self.as_array()
-        header = ','.join(array.dtype.names)
-        data = ('"{0}","{1}","{2}","{3}",{4},{5}'.format(record['reference'].split(':')[0],
-                                                         record['strand'],
-                                                         record['category'],
-                                                         record['source'],
-                                                         record['start'],
-                                                         record['stop']) for record in array)
-
-        return header + '\n' + '\n'.join(data) + '\n'
-
-    @staticmethod
-    def _format_gff_feature(record):
-        """
-        Worker method to format a single array entry as a single gff formatted string.
-
-        :param record: a single entry from a structured :class:`numpy.ndarray`
-        :type record: :class:`numpy.void`
-
-        :return: gff formatted string
-        :rtype: str
-        """
-        identifier = "{0}_{1}_{2}_{3}".format(record['reference'].split(':')[0],
-                                              record['strand'],
-                                              record['category'],
-                                              record['start'])
-        attributes = ';'.join(['{0}={1}'.format(slot, record[slot]) for slot in ('category', 'source')])
-        attributes = 'ID=' + identifier + ';' + attributes
-        template = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}"
-        return template.format(record['reference'].split(':')[0],
-                               '.',
-                               '.',
-                               record['start'],
-                               record['stop'],
-                               '.',
-                               record['strand'],
-                               '.',
-                               attributes)
-
-
-class ComparativeBins(GenomeLoci):
-    """
-    A collection of categorised univariate bins (loci) derived from the union of fingerprint loci from multiple sources.
-    Bins can be used to compare read counts from multiple sources (i.e. bam files).
-
-    Loci are categorised into groups based on a combination of states relating to their location:
-     - reference: str
-     - strand: str
-     - category: str
-    Where 'reference' takes the form 'name:min-max', 'strand' is '+' or '-', and 'category' identifies which
-    category of transpson the loci represent.
-
-    Each locus is represented as a single element in a numpy array with the following slots:
-     - start: np.int64
-     - stop: np.int64
-    Where 'start' and 'stop' are respectively the lower and upper coordinates that define a segment of the reference.
-    Coordinates are inclusive, 1 based integers (i.e, use the SAM coordinate system).
-    """
-    @classmethod
-    def from_fingerprints(cls, *args):
-        """
-        Constructs a set of comparative bins form one or more instances of :class:`FingerPrint`.
-
-        :param args: Objects to be merged
-        :type args: iterable[:class:`GenomeLoci`]
-
-        :return: Bins to be used for comparisons
-        :rtype: :class:`ComparativeBins`
-        """
-        # Merge multiple FingerPrints objects
-        fingerprints = append(*args)
-        assert isinstance(fingerprints, FingerPrint)
-
-        # Dictionary to store loci
-        dictionary = {}
-
-        for fingerprint_key, loci in fingerprints.items():
-
-            # Use the Fingerprint key to make a ComparativeBins key
-            bin_key = LociKey(reference=fingerprint_key.reference,
-                              strand=fingerprint_key.strand,
-                              category=fingerprint_key.category)
-
-            # Populate the dictionary with loci from FingerPrint object
-            if bin_key not in dictionary.keys():
-                dictionary[bin_key] = loci
-            else:
-                dictionary[bin_key] = np.append(dictionary[bin_key], loci)
-
-        # Melt overlapping loci within each dictionary item object to produce bins
-        for key, loci in dictionary.items():
-            if len(loci) == 0:
-                dictionary[key] = np.empty(0, dtype=ComparativeBins._DTYPE_LOCI)
-            else:
-                dictionary[key] = np.fromiter(_loci_melter(loci), dtype=ComparativeBins._DTYPE_LOCI)
-
-        # Create a new ComparativeBins object and populate with the dictionary
-        bins = ComparativeBins()
-        bins._dict = dictionary
-        return bins
-
-    def compare(self, *args):
-        """
-        Compare the read counts within each bin using reads from multiple sources (bam files).
-
-        :param args: Reads to be compared
-        :type args: iterable[:class:`ReadLoci`]
-
-        :return: A comparison of read counts by source within each bin
-        :rtype: :class:`Comparison`
-        """
-        reads = append(*args)
-        assert isinstance(reads, ReadLoci)
-        sources = np.array(list({key.source for key in list(reads.keys())}))
-        sources.sort()
-        tips_dict = reads.tips()
-        results = {}
-        for group, bins in self.items():
-            group_results = np.empty(len(bins), dtype=Comparison._DTYPE_LOCI)
-            group_results['start'] = bins['start']
-            group_results['stop'] = bins['stop']
-            group_results['sources'] = [sources for _ in bins]
-
-            sample_tips = [tips_dict[LociKey(*group, sample)] for sample in sources]
-            group_results['counts'] = [np.array([np.sum(np.logical_and(tips >= start, tips <= stop)) for tips in sample_tips]) for start, stop in bins]
-            group_results['proportions'] = [np.round(a / np.sum(a), 3) for a in group_results['counts']]
-
-            results[group] = group_results
-        comparison = Comparison()
-        comparison._dict = results
-        return comparison
-
-
-class Comparison(GenomeLoci):
-    """
-    A collection of categorised univariate loci. Each locus contains read counts for each of the sources used in the
-    comparison.
-
-    Loci are categorised into groups based on a combination of states relating to their location and or origin:
-    - reference: str
-    - strand: str
-    - category: str
-    Where 'reference' takes the form 'name:min-max', 'strand' is '+' or '-', and 'category' identifies which
-    category of transpson the loci represent.
-
-    Each locus is represented as a single element in a numpy array with the following slots:
-     - start: np.int64
-     - stop: np.int64
-     - sources: np.object
-     - counts: np.object
-    Where 'start' and 'stop' are respectively the lower and upper coordinates that define a segment of the reference.
-    Coordinates are inclusive, 1 based integers (i.e, use the SAM coordinate system), sources is a numpy array of
-    strings, and counts is a numpy array of integers showing the number of reads falling within that bin per source.
-    """
-    _DTYPE_LOCI = np.dtype([('start', np.int64),
-                            ('stop', np.int64),
-                            ('sources', np.object),
-                            ('counts', np.object),
-                            ('proportions', np.object)])
-
-    _LOCI_DEFAULT_VALUES = (0, 0, None, None, None)
-
-    _DTYPE_KEY = np.dtype([('reference', np.str_, 256),
-                           ('strand', np.str_, 1),
-                           ('category', np.str_, 256)])
-
-    _DTYPE_ARRAY = np.dtype([('reference', np.str_, 256),
-                             ('strand', np.str_, 1),
-                             ('category', np.str_, 256),
-                             ('start', np.int64),
-                             ('stop', np.int64),
-                             ('sources', np.object),
-                             ('counts', np.object),
-                             ('proportions', np.object)])
-
-    _DTYPE_FLAT_ARRAY = np.dtype([('reference', np.str_, 256),
-                                  ('strand', np.str_, 1),
-                                  ('category', np.str_, 256),
-                                  ('start', np.int64),
-                                  ('stop', np.int64),
-                                  ('source', np.str_, 256),
-                                  ('count', np.int64),
-                                  ('proportion', np.float64)])
-
-    _LOCI_FLAT_DEFAULT_VALUES = (0, 0, '', 0, 0.0)
-
-    # Colours from R scheme "blues9"
-    _GFF_COLOURS = {0.0: '#C6DBEF',
-                    1.0: '#C6DBEF',
-                    2.0: '#C6DBEF',
-                    3.0: '#C6DBEF',
-                    4.0: '#C6DBEF',
-                    5.0: '#C6DBEF',
-                    6.0: '#9ECAE1',
-                    7.0: '#6BAED6',
-                    8.0: '#2171B5',
-                    9.0: '#08306B',
-                    10.0: '#08306B'}
-
-    @staticmethod
-    def _format_gff_feature(record):
-        """
-        Worker method to format a single array entry as a single gff formatted string.
-
-        :param record: a single entry from a structured :class:`numpy.ndarray`
-        :type record: :class:`numpy.void`
-
-        :return: gff formatted string
-        :rtype: str
-        """
-        identifier = "{0}_{1}_{2}_{3}".format(record['reference'].split(':')[0],
-                                              record['strand'],
-                                              record['category'],
-                                              record['start'])
-        color = Comparison._GFF_COLOURS[np.floor(np.max(record['proportions']) * 10)]
-        attributes = '{0}={1}'.format('category', record['category'])
-        attributes += ';' + ';'.join(['{0}={1}'.format(slot, ','.join(map(str, record[slot])))
-                                      for slot in ('sources', 'counts', 'proportions')])
-        attributes = 'ID=' + identifier + ';' + attributes + ';color=' + color
-        template = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}"
-        return template.format(record['reference'].split(':')[0],
-                               '.',
-                               '.',
-                               record['start'],
-                               record['stop'],
-                               '.',
-                               record['strand'],
-                               '.',
-                               attributes)
-
-    def as_array(self):
-        """
-        Convert all loci to a structured array sorted by location.
-
-        This implementation differs that of parent class because the `fromiter()` method doesn't work for arrays
-        containing regular python objects.
-
-        :return: a structured array of loci
-        :rtype: :class:`numpy.ndarray`
-        """
-        array = np.array([feature for feature in self.features()], self._DTYPE_ARRAY)
-        index = np.argsort(array[['reference', 'start', 'stop', 'category']],
-                           order=('reference', 'start', 'stop', 'category'))
-        array = array[index]
-        return array
-
-    def flat_features(self):
-        """
-        Yields one tuple per sample per locus (to avoid nested structures).
-
-        :return: tuple of values for each sample for each locus
-        :rtype: generator[(str, str, str, int, int, str, int, float)]
-        """
-        for key, loci in self.items():
-            for locus in loci:
-                for source, count, proportion in zip(locus['sources'], locus['counts'], locus['proportions']):
-                    yield (key.reference,
-                           key.strand,
-                           key.category,
-                           locus['start'],
-                           locus['stop'],
-                           source,
-                           count,
-                           proportion)
-
-    def as_flat_array(self):
-        """
-        Convert all loci to a structured array sorted by location.
-        This method creates one entry per sample per locus to avoid nested structures.
-
-        :return: a structured array of loci
-        :rtype: :class:`numpy.ndarray`
-        """
-        array = np.fromiter(self.flat_features(), dtype=self._DTYPE_FLAT_ARRAY)
-        index = np.argsort(array[['reference', 'start', 'stop', 'category']],
-                           order=('reference', 'start', 'stop', 'category'))
-        array = array[index]
-        return array
-
-    @staticmethod
-    def _format_flat_gff_feature(record, sample_numbers):
-        """
-        Worker method to format a single array entry as a single gff formatted string.
-
-        :param record: a single entry from a structured :class:`numpy.ndarray`
-        :type record: :class:`numpy.void`
-
-        :return: gff formatted string
-        :rtype: str
-        """
-        identifier = "{0}_{1}_{2}_{3}_{4}".format(record['reference'].split(':')[0],
-                                                  record['strand'],
-                                                  record['category'],
-                                                  record['start'],
-                                                  sample_numbers[record['source']])
-        color = Comparison._GFF_COLOURS[np.floor(record['proportion'] * 10)]
-        attributes = ';'.join(['{0}={1}'.format(slot, record[slot]) for slot in ('category',
-                                                                                 'source',
-                                                                                 'count',
-                                                                                 'proportion')])
-        attributes = 'ID=' + identifier + ';' + attributes + ';color=' + color
-        template = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}"
-        return template.format(record['reference'].split(':')[0],
-                               '.',
-                               '.',
-                               record['start'],
-                               record['stop'],
-                               '.',
-                               record['strand'],
-                               '.',
-                               attributes)
-
-    def as_flat_gff(self):
-        """
-        Convert all loci to a GFF3 formatted string, sorted by location.
-        This method creates one feature per sample per locus to avoid attributes containing lists.
-
-        :return: A multi-line GFF3 formatted string
-        :rtype: str
-        """
-        array = self.as_flat_array()
-        sample_numbers = {k: v for v, k in enumerate(np.sort(np.unique(array['source'])))}
-        return '\n'.join((self._format_flat_gff_feature(record, sample_numbers) for record in array))
-
-    def as_flat_csv(self):
-        """
-        Convert all loci to a a CSV formatted string sorted by location.
-        This method creates one entry per sample per locus to avoid nested structures.
-
-        :return: a CSV formatted string
-        :rtype: str
-        """
-        array = self.as_flat_array()
-        header = ','.join(array.dtype.names)
-        data = ('"{0}","{1}","{2}",{3},{4},"{5}",{6},{7}'.format(record['reference'].split(':')[0],
-                                                                 record['strand'],
-                                                                 record['category'],
-                                                                 record['start'],
-                                                                 record['stop'],
-                                                                 record['source'],
-                                                                 record['count'],
-                                                                 record['proportion']) for record in array)
-        return header + '\n' + '\n'.join(data) + '\n'
-
-    def as_character_array(self):
-        """
-        Formats comparision results as an array of character scores.
-
-        This can easily be converted to a pandas dataframe using `pandas.DataFrame(*self.as_character_array())`.
-
-        :return: a tuple containing an array of character states and an array of sample names
-        """
-        array = self.as_array()
-        dtype = [("{0}:{1}-{2}_{3}_{4}".format(item['reference'].split(':')[0],
-                                               item['start'],
-                                               item['stop'],
-                                               item['strand'],
-                                               item['category']), np.int64) for item in array]
-        dtype = np.dtype(dtype)
-        samples = array[0]['sources']
-        characters = np.array([*array['counts']]).transpose().ravel().view(dtype=dtype)
-        return characters, samples
-
-    def as_character_csv(self):
-        """
-        Formats comparision results as an csv of character scores.
-
-        :return: a csv formatted string of character scores
-        :rtype: str
-        """
-        array, names = self.as_character_array()
-        columns = '"sample",' + str(array.dtype.names).strip('()').replace("'", '"').replace(" ", "")
-        characters = '\n'.join([str(row[1]) + ', ' + str(row[0]).strip('()').replace(" ", "") for row in zip(array, names)])
-        return columns + '\n' + characters
-
-if __name__ == '__main__':
+                type_value = '.'
+
+            attributes = ';'.join(('{0}={1}'.format(gff.encode_attribute(field),
+                                                    gff.encode_attribute(str(record[field])))
+                                   for field in attribute_fields))
+            yield template.format(gff.encode_column(record[reference_field]),
+                                  gff.encode_column(program_name),
+                                  gff.encode_column(type_value),
+                                  record[start_field],
+                                  record[stop_field],
+                                  '.',
+                                  record[strand_field],
+                                  '.',
+                                  attributes)
+
+if __name__ == "__main__":
     pass
