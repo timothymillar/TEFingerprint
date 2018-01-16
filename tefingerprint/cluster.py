@@ -425,7 +425,11 @@ class UDBSCANxH(UDBSCANx):
             yield item
 
     @staticmethod
-    def _traverse_cluster_tree(points, epsilon_maximum, min_points):
+    def _traverse_cluster_tree(points,
+                               epsilon_maximum,
+                               epsilon_base,
+                               min_points,
+                               method):
         """
         Traverse a tree of nested density clusters and recursively
         identify clusters based on their area.
@@ -436,9 +440,13 @@ class UDBSCANxH(UDBSCANx):
         :param epsilon_maximum: Maximum distance allowed in among
             each set of n points
         :type epsilon_maximum: int
+        :param epsilon_base: The initial maximum epsilon at the root of the tree
+        :type epsilon_base: int
         :param min_points: The minimum number of points allowed in
             each (sub)cluster
         :type min_points: int
+        :param method: 'aggressive' or 'conservative'
+        :type method: str
 
         :return: A nested list of upper and (half-open) indices
             of selected clusters
@@ -458,8 +466,13 @@ class UDBSCANxH(UDBSCANx):
         epsilon_minimum = fork_epsilon
 
         # Compare support for cluster and its children
-        support = np.sum(epsilon_maximum - np.maximum(epsilon_minimum,
-                                                      points['core_dist']))
+        if method == 'aggressive':
+            support = np.sum(epsilon_maximum - np.maximum(epsilon_minimum,
+                                                          points['core_dist']))
+        elif method == 'conservative':
+            support = np.sum(epsilon_base - np.maximum(epsilon_minimum,
+                                                       points['core_dist']))
+
         support_children = np.sum(np.maximum(0,
                                              epsilon_minimum -
                                              points['core_dist']))
@@ -484,11 +497,13 @@ class UDBSCANxH(UDBSCANx):
             # support is calculated from epsilon 4.999...
             return [UDBSCANxH._traverse_cluster_tree(points,
                                                      epsilon_minimum,
-                                                     min_points)
+                                                     epsilon_base,
+                                                     min_points,
+                                                     method)
                     for points in child_points]
 
     @staticmethod
-    def udbscanxh(array, min_points, max_eps=None, min_eps=None):
+    def udbscanxh(array, min_points, max_eps=None, min_eps=None, method='aggressive'):
         """
         See documentation for :class: `UDBSCANxH`.
 
@@ -503,12 +518,15 @@ class UDBSCANxH(UDBSCANx):
         :param min_eps: An optional value for the minimum value of
             eps to be used when calculating cluster depth
         :type min_eps: int
+        :param method: 'aggressive' or 'conservative'
+        :type method: str
 
         :return: An array of paired lower and upper indices for each
             cluster found in the array
         :rtype: :class:`numpy.ndarray`[(int, int)]
         """
         assert UDBSCANxH._sorted_ascending(array)
+        assert method in {'aggressive', 'conservative'}
 
         if len(array) < min_points:
             # not enough points to form a cluster
@@ -544,7 +562,9 @@ class UDBSCANxH(UDBSCANx):
             # core_distance == max_eps are counted
             clusters = [UDBSCANxH._traverse_cluster_tree(points,
                                                          max_eps + 1,
-                                                         min_points)
+                                                         max_eps + 1,
+                                                         min_points,
+                                                         method)
                         for points in child_points]
             return np.fromiter(UDBSCANxH._flatten_list(clusters),
                                dtype=UDBSCANx._DTYPE_SLICE)
