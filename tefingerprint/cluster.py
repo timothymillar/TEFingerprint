@@ -580,7 +580,9 @@ class UDBSCANxH(UDBSCANx):
                   min_eps=None,
                   method='aggressive'):
         """
-        See documentation for :class: `UDBSCANxH`.
+        Provides functional use of :class:`UDBSCANxH`.
+
+        See documentation for :class:`UDBSCANxH`.
 
         :param array: An array of integers sorted in ascending order
         :type array: :class:`numpy.ndarray`[int]
