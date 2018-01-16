@@ -167,10 +167,26 @@ class UDBSCANx(object):
             slices = UDBSCANx._melt_slices(slices)
         return slices
 
+    def fit(self, array):
+        """
+        Fit an array to a Univariate Density Cluster model.
+        The input array must be sorted in ascending order.
+
+        :param array: An array of integers sorted in ascending order
+        :type array: :class:`numpy.ndarray`[int]
+        """
+        assert self._sorted_ascending(array)
+        self.input_array = np.array(array, copy=True)
+        self.slices = self._cluster(self.input_array,
+                                    self.epsilon,
+                                    self.min_points)
+
     @staticmethod
     def udbscanx(array, min_points, epsilon):
         """
-        See documentation for :class: `UDBSCANx`.
+        Provides functional use of :class:`UDBSCANx`.
+
+        See documentation for :class:`UDBSCANx`.
 
         :param array: An array of ints sorted in ascending order
         :type array: :class:`numpy.ndarray`[int]
@@ -185,22 +201,9 @@ class UDBSCANx(object):
             each cluster found in the array
         :rtype: :class:`numpy.ndarray`[int, int]
         """
-        assert UDBSCANx._sorted_ascending(array)
-        slices = UDBSCANx._cluster(array, epsilon, min_points)
-        return slices
-
-    def fit(self, array):
-        """
-        Fit an array to a Univariate Density Cluster model.
-        The input array must be sorted in ascending order.
-
-        :param array: An array of integers sorted in ascending order
-        :type array: :class:`numpy.ndarray`[int]
-        """
-        self.input_array = np.array(array, copy=True)
-        self.slices = UDBSCANx.udbscanx(self.input_array,
-                                        self.min_points,
-                                        self.epsilon)
+        model = UDBSCANx(min_points, epsilon)
+        model.fit(array)
+        return model.slices
 
     def clusters(self):
         """
@@ -304,7 +307,11 @@ class UDBSCANxH(UDBSCANx):
     :type min_eps: int
     """
 
-    def __init__(self, min_points, max_eps=None, min_eps=None, method='aggressive'):
+    def __init__(self,
+                 min_points,
+                 max_eps=None,
+                 min_eps=None,
+                 method='aggressive'):
         self.min_points = min_points
         self.max_eps = max_eps
         self.min_eps = min_eps
