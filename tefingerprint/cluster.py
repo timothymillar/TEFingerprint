@@ -304,10 +304,11 @@ class UDBSCANxH(UDBSCANx):
     :type min_eps: int
     """
 
-    def __init__(self, min_points, max_eps=None, min_eps=None):
+    def __init__(self, min_points, max_eps=None, min_eps=None, method='aggressive'):
         self.min_pts = min_points
         self.max_eps = max_eps
         self.min_eps = min_eps
+        self.method = method
         self.slices = np.array([], dtype=UDBSCANx._DTYPE_SLICE)
         self.input_array = np.array([], dtype=int)
 
@@ -581,7 +582,8 @@ class UDBSCANxH(UDBSCANx):
         self.slices = UDBSCANxH.udbscanxh(self.input_array,
                                           self.min_pts,
                                           max_eps=self.max_eps,
-                                          min_eps=self.min_eps)
+                                          min_eps=self.min_eps,
+                                          method=self.method)
 
 
 if __name__ == '__main__':

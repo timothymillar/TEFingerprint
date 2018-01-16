@@ -280,6 +280,7 @@ def cluster(contig,
             epsilon,
             minimum_epsilon=0,
             hierarchical=True,
+            method='aggressive',
             lower_bound='start',
             upper_bound='stop'):
     """
@@ -318,7 +319,8 @@ def cluster(contig,
     if hierarchical:
         model = _UDBSCANxH(minimum_points,
                            max_eps=epsilon,
-                           min_eps=minimum_epsilon)
+                           min_eps=minimum_epsilon,
+                           method=method)
     else:
         model = _UDBSCANx(minimum_points, epsilon)
     model.fit(contig.loci[field])

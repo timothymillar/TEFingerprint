@@ -69,6 +69,11 @@ def main():
                         dest='hierarchical_clustering',
                         action='store_false',
                         help='Use non-hierarchical clustering.')
+    parser.add_argument('-s', '--hierarchical-support-method',
+                        type=str,
+                        default=['aggressive'],
+                        nargs=1,
+                        help='TODO')
     parser.add_argument('-n', '--number-of-common-elements',
                         type=int,
                         default=[3],
@@ -145,6 +150,7 @@ def main():
                          minimum_epsilon=args.minimum_epsilon[0],
                          n_common_elements=args.number_of_common_elements[0],
                          hierarchical=args.hierarchical_clustering,
+                         method=args.hierarchical_support_method[0],
                          fingerprint_buffer=args.buffer_fingerprints[0],
                          join_distance=args.join_distance[0],
                          annotation=args.annotation_of_known_elements[0],

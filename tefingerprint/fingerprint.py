@@ -19,6 +19,7 @@ def fingerprint(bams,
                 minimum_epsilon=0,
                 n_common_elements=0,
                 hierarchical=True,
+                method='aggressive',
                 fingerprint_buffer=0,
                 join_distance=0,
                 quality=0,
@@ -70,6 +71,7 @@ def fingerprint(bams,
                    [minimum_epsilon],
                    [n_common_elements],
                    [hierarchical],
+                   [method],
                    [fingerprint_buffer],
                    [join_distance],
                    [colourise_output])
@@ -101,6 +103,7 @@ def _fingerprint_dispatch(bams,
                           minimum_epsilon,
                           n_common_elements,
                           hierarchical,
+                          method,
                           fingerprint_buffer,
                           join_distance,
                           colourise_output):
@@ -131,7 +134,8 @@ def _fingerprint_dispatch(bams,
                                       minimum_reads,
                                       epsilon,
                                       minimum_epsilon=minimum_epsilon,
-                                      hierarchical=hierarchical))
+                                      hierarchical=hierarchical,
+                                      method=method))
 
     # buffered union of clusters
     clusters = clusters.map(lambda x:
