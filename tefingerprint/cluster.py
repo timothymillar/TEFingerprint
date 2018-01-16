@@ -116,7 +116,7 @@ class UDBSCANx(object):
                            dtype=UDBSCANx._DTYPE_SLICE)
 
     @staticmethod
-    def _subcluster(array, epsilon, min_points):
+    def _subcluster(array, min_points, epsilon):
         """
         Calculate subclusters of an array and return their slice indices.
 
@@ -125,9 +125,12 @@ class UDBSCANx(object):
         is returned.
 
         :param array: An array of ints sorted in ascending order
-        :param epsilon: The number of points in each subcluster
+        :type array: :class:`numpy.ndarray`[int]
         :param min_points: The maximum distance allowed in among points
             of each subcluster
+        :type min_points: int
+        :param epsilon: The number of points in each subcluster
+        :type epsilon: int
 
         :return: An array of paired lower and upper indices for each
             subcluster found in the array
@@ -145,7 +148,7 @@ class UDBSCANx(object):
                            dtype=UDBSCANx._DTYPE_SLICE)
 
     @staticmethod
-    def _cluster(array, epsilon, min_points):
+    def _cluster(array, min_points, epsilon):
         """
         Calculate clusters of an array and return their slice indices.
         The input array must be sorted in ascending order.
@@ -153,16 +156,19 @@ class UDBSCANx(object):
         is returned.
 
         :param array: An array of ints sorted in ascending order
-        :param epsilon: The minimum number of points in each (sub)cluster
+        :type array: :class:`numpy.ndarray`[int]
         :param min_points: The maximum distance allowed in among each set
             of n points
+        :type min_points: int
+        :param epsilon: The minimum number of points in each (sub)cluster
+        :type epsilon: int
 
         :return: An array of paired lower and upper indices for each
             cluster found in the array
         :rtype: :class:`numpy.ndarray`[(int, int)]
         """
         # sorted-ascending checked in method _subcluster
-        slices = UDBSCANx._subcluster(array, epsilon, min_points)
+        slices = UDBSCANx._subcluster(array, min_points, epsilon)
         if len(slices) > 1:
             slices = UDBSCANx._melt_slices(slices)
         return slices
@@ -178,8 +184,8 @@ class UDBSCANx(object):
         assert self._sorted_ascending(array)
         self.input_array = np.array(array, copy=True)
         self.slices = self._cluster(self.input_array,
-                                    self.epsilon,
-                                    self.min_points)
+                                    self.min_points,
+                                    self.epsilon)
 
     @staticmethod
     def udbscanx(array, min_points, epsilon):
@@ -493,8 +499,8 @@ class UDBSCANxH(UDBSCANx):
             # we calculate the child clusters using epsilon 4 which will
             # produce the same clusters as 4.999...
             child_cluster_bounds = self._cluster(local_points['value'],
-                                                 local_min_eps - 1,
-                                                 self.min_points)
+                                                 self.min_points,
+                                                 local_min_eps - 1)
             child_points = (local_points[left:right]
                             for left, right in child_cluster_bounds)
             # but then use epsilon 5 as the new maximum epsilon so that
@@ -543,8 +549,8 @@ class UDBSCANxH(UDBSCANx):
 
             # initial splits based on the specified max_eps
             initial_cluster_bounds = self._cluster(points['value'],
-                                                   self.max_eps,
-                                                   self.min_points)
+                                                   self.min_points,
+                                                   self.max_eps)
             child_points = (points[left:right]
                             for left, right in initial_cluster_bounds)
             # recursively run on all clusters

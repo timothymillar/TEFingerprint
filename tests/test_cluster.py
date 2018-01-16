@@ -64,7 +64,7 @@ class TestUDC:
                          dtype=int)
         slices = np.array([(2, 6), (3, 7), (8, 12), (12, 16), (13, 17)],
                           dtype=UDBSCANx._DTYPE_SLICE)
-        npt.assert_array_equal(UDBSCANx._subcluster(array, 5, 4), slices)
+        npt.assert_array_equal(UDBSCANx._subcluster(array, 4, 5), slices)
 
     def test_flat_cluster(self):
         """
@@ -75,7 +75,7 @@ class TestUDC:
                               dtype=int)
         slices = np.array([(2, 7), (8, 12), (12, 17)],
                           dtype=UDBSCANx._DTYPE_SLICE)
-        npt.assert_array_equal(UDBSCANx._cluster(sub_slices, 5, 4), slices)
+        npt.assert_array_equal(UDBSCANx._cluster(sub_slices, 4, 5), slices)
 
     @pytest.mark.parametrize("array,slices",
                              [(np.array([], dtype=int),
