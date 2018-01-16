@@ -305,7 +305,7 @@ class UDBSCANxH(UDBSCANx):
     """
 
     def __init__(self, min_points, max_eps=None, min_eps=None, method='aggressive'):
-        self.min_pts = min_points
+        self.min_points = min_points
         self.max_eps = max_eps
         self.min_eps = min_eps
         self.method = method
@@ -425,62 +425,58 @@ class UDBSCANxH(UDBSCANx):
         else:
             yield item
 
-    @staticmethod
-    def _traverse_cluster_tree(points,
-                               epsilon_maximum,
-                               epsilon_base,
-                               min_points,
-                               method):
+    def _traverse_cluster_tree(self,
+                               local_points,
+                               local_max_eps):
         """
         Traverse a tree of nested density clusters and recursively
         identify clusters based on their area.
 
-        :param points: An array of points with the slots 'value',
+        :param local_points: An array of points with the slots 'value',
             'index' and 'eps
-        :type points: :class:`numpy.ndarray`[(int, int, int)]
-        :param epsilon_maximum: Maximum distance allowed in among
+        :type local_points: :class:`numpy.ndarray`[(int, int, int)]
+        :param local_max_eps: Maximum distance allowed in among
             each set of n points
-        :type epsilon_maximum: int
-        :param epsilon_base: The initial maximum epsilon at the root of the tree
-        :type epsilon_base: int
-        :param min_points: The minimum number of points allowed in
-            each (sub)cluster
-        :type min_points: int
-        :param method: 'aggressive' or 'conservative'
-        :type method: str
+        :type local_max_eps: int
 
         :return: A nested list of upper and (half-open) indices
             of selected clusters
         :rtype: list[list[]]
         """
         # Values of epsilon bellow which the cluster forks
-        fork_epsilon = UDBSCANxH._fork_epsilon(points['value'], min_points)
+        fork_epsilon = self._fork_epsilon(local_points['value'],
+                                          self.min_points)
 
         if fork_epsilon is None:
             # The cluster doesn't fork so it has no children
             # Epsilon_minimum would equal the minimum of core
             # distances but it's not needed
-            return points['index'][0], points['index'][-1] + 1
+            return local_points['index'][0], local_points['index'][-1] + 1
 
         # If a cluster forks into children then it's minimum epsilon
         # is the value at which forks
-        epsilon_minimum = fork_epsilon
+        local_min_eps = fork_epsilon
 
         # Compare support for cluster and its children
-        if method == 'aggressive':
-            support = np.sum(epsilon_maximum - np.maximum(epsilon_minimum,
-                                                          points['core_dist']))
-        elif method == 'conservative':
-            support = np.sum(epsilon_base - np.maximum(epsilon_minimum,
-                                                       points['core_dist']))
+        if self.method == 'aggressive':
+            support = np.sum(local_max_eps -
+                             np.maximum(local_min_eps,
+                                        local_points['core_dist']))
+        elif self.method == 'conservative':
+            support = np.sum(self.max_eps -
+                             np.maximum(local_min_eps,
+                                        local_points['core_dist']))
+        else:
+            message = 'Clustering method not recognised {0}'
+            raise ValueError(message.format(self.method))
 
         support_children = np.sum(np.maximum(0,
-                                             epsilon_minimum -
-                                             points['core_dist']))
+                                             local_min_eps -
+                                             local_points['core_dist']))
 
         if support > support_children:
             # Parent is supported so return slice indices
-            return points['index'][0], points['index'][-1] + 1
+            return local_points['index'][0], local_points['index'][-1] + 1
 
         else:
             # Combined support of children is larger so divide
@@ -489,22 +485,87 @@ class UDBSCANxH(UDBSCANx):
             # starts at epsilon 4.999...
             # we calculate the child clusters using epsilon 4 which will
             # produce the same clusters as 4.999...
-            child_cluster_bounds = UDBSCANxH._cluster(points['value'],
-                                                      epsilon_minimum - 1,
-                                                      min_points)
-            child_points = (points[left:right]
+            child_cluster_bounds = self._cluster(local_points['value'],
+                                                 local_min_eps - 1,
+                                                 self.min_points)
+            child_points = (local_points[left:right]
                             for left, right in child_cluster_bounds)
             # but then use epsilon 5 as the new maximum epsilon so that
             # support is calculated from epsilon 4.999...
-            return [UDBSCANxH._traverse_cluster_tree(points,
-                                                     epsilon_minimum,
-                                                     epsilon_base,
-                                                     min_points,
-                                                     method)
+            return [self._traverse_cluster_tree(points,
+                                                local_min_eps)
                     for points in child_points]
 
+    def _run(self, array):
+        """
+        See documentation for :class: `UDBSCANxH`.
+
+        :param array: An array of integers sorted in ascending order
+        :type array: :class:`numpy.ndarray`[int]
+
+        :return: An array of paired lower and upper indices for each
+            cluster found in the array
+        :rtype: :class:`numpy.ndarray`[(int, int)]
+        """
+        assert self._sorted_ascending(array)
+        assert self.method in {'aggressive', 'conservative'}
+
+        if len(array) < self.min_points:
+            # not enough points to form a cluster
+            return np.array([], dtype=UDBSCANx._DTYPE_SLICE)
+
+        else:
+            # create a structured array for tracking value, index and
+            # core distance of each individual
+            points = np.empty(len(array),
+                              dtype=np.dtype([('value', np.int64),
+                                              ('index', np.int64),
+                                              ('core_dist', np.int64)]))
+            points['value'] = array
+            points['index'] = np.arange(len(array), dtype=int)
+            points['core_dist'] = self._core_distances(array, self.min_points)
+            if not self.max_eps:
+                # start at first fork, i.e. bellow root node
+                # as in HDBSCAN* (Campello 2015)
+                self.max_eps = self._fork_epsilon(points['value'],
+                                                  self.min_points) - 1
+            if self.min_eps:
+                # overwrite lower eps
+                points['core_dist'] = np.maximum(self.min_eps,
+                                                 points['core_dist'])
+
+            # initial splits based on the specified max_eps
+            initial_cluster_bounds = self._cluster(points['value'],
+                                                   self.max_eps,
+                                                   self.min_points)
+            child_points = (points[left:right]
+                            for left, right in initial_cluster_bounds)
+            # recursively run on all clusters
+            # initialise with max_eps + 1 to ensure points with
+            # core_distance == max_eps are counted
+            clusters = [self._traverse_cluster_tree(points,
+                                                    self.max_eps + 1)
+                        for points in child_points]
+            return np.fromiter(self._flatten_list(clusters),
+                               dtype=UDBSCANx._DTYPE_SLICE)
+
+    def fit(self, array):
+        """
+        Fit an array to a Hierarchical Univariate Density Cluster model.
+        The input array must be sorted in ascending order.
+
+        :param array: An array of integers sorted in ascending order
+        :type array: :class:`numpy.ndarray`[int]
+        """
+        self.input_array = np.array(array, copy=True)
+        self.slices = self._run(self.input_array)
+
     @staticmethod
-    def udbscanxh(array, min_points, max_eps=None, min_eps=None, method='aggressive'):
+    def udbscanxh(array,
+                  min_points,
+                  max_eps=None,
+                  min_eps=None,
+                  method='aggressive'):
         """
         See documentation for :class: `UDBSCANxH`.
 
@@ -526,64 +587,12 @@ class UDBSCANxH(UDBSCANx):
             cluster found in the array
         :rtype: :class:`numpy.ndarray`[(int, int)]
         """
-        assert UDBSCANxH._sorted_ascending(array)
-        assert method in {'aggressive', 'conservative'}
-
-        if len(array) < min_points:
-            # not enough points to form a cluster
-            return np.array([], dtype=UDBSCANx._DTYPE_SLICE)
-
-        else:
-            # create a structured array for tracking value, index and
-            # core distance of each individual
-            points = np.empty(len(array),
-                              dtype=np.dtype([('value', np.int64),
-                                              ('index', np.int64),
-                                              ('core_dist', np.int64)]))
-            points['value'] = array
-            points['index'] = np.arange(len(array), dtype=int)
-            points['core_dist'] = UDBSCANxH._core_distances(array, min_points)
-            if not max_eps:
-                # start at first fork, i.e. bellow root node
-                # as in HDBSCAN* (Campello 2015)
-                max_eps = UDBSCANxH._fork_epsilon(points['value'],
-                                                  min_points) - 1
-            if min_eps:
-                # overwrite lower eps
-                points['core_dist'] = np.maximum(min_eps, points['core_dist'])
-
-            # initial splits based on the specified max_eps
-            initial_cluster_bounds = UDBSCANxH._cluster(points['value'],
-                                                        max_eps,
-                                                        min_points)
-            child_points = (points[left:right]
-                            for left, right in initial_cluster_bounds)
-            # recursively run on all clusters
-            # initialise with max_eps + 1 to ensure points with
-            # core_distance == max_eps are counted
-            clusters = [UDBSCANxH._traverse_cluster_tree(points,
-                                                         max_eps + 1,
-                                                         max_eps + 1,
-                                                         min_points,
-                                                         method)
-                        for points in child_points]
-            return np.fromiter(UDBSCANxH._flatten_list(clusters),
-                               dtype=UDBSCANx._DTYPE_SLICE)
-
-    def fit(self, array):
-        """
-        Fit an array to a Hierarchical Univariate Density Cluster model.
-        The input array must be sorted in ascending order.
-
-        :param array: An array of integers sorted in ascending order
-        :type array: :class:`numpy.ndarray`[int]
-        """
-        self.input_array = np.array(array, copy=True)
-        self.slices = UDBSCANxH.udbscanxh(self.input_array,
-                                          self.min_pts,
-                                          max_eps=self.max_eps,
-                                          min_eps=self.min_eps,
-                                          method=self.method)
+        model = UDBSCANxH(min_points,
+                          max_eps=max_eps,
+                          min_eps=min_eps,
+                          method=method)
+        model.fit(array)
+        return model.slices
 
 
 if __name__ == '__main__':
