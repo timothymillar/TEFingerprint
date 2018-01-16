@@ -318,6 +318,7 @@ class UDBSCANxH(UDBSCANx):
                  max_eps=None,
                  min_eps=None,
                  method='aggressive'):
+        assert method in {'aggressive', 'conservative'}
         self.min_points = min_points
         self.max_eps = max_eps
         self.min_eps = min_eps

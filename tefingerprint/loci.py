@@ -279,8 +279,7 @@ def cluster(contig,
             minimum_points,
             epsilon,
             minimum_epsilon=0,
-            hierarchical=True,
-            method='aggressive',
+            hierarchical_method='aggressive',
             lower_bound='start',
             upper_bound='stop'):
     """
@@ -305,9 +304,9 @@ def cluster(contig,
     :type epsilon: int
     :param minimum_epsilon: minimum value when calculating hierarchical splits
     :type minimum_epsilon: int
-    :param hierarchical: use hierarchical or non-hierarchical version of
-        the algorithm (default: True)
-    :type hierarchical: bool
+    :param hierarchical_method: use hierarchical or non-hierarchical version of
+        the algorithm. one of None, 'none', 'aggressive', 'conservative'
+    :type hierarchical_method: None | str
     :param lower_bound: field name to use for lower bound of clusters
     :type lower_bound: str
     :param upper_bound: field name to use for upper bound of clusters
@@ -316,11 +315,13 @@ def cluster(contig,
     :return: a contig of cluster interval loci
     :rtype: :class:`Contig`
     """
-    if hierarchical:
+    assert hierarchical_method in {None, 'none', 'aggressive', 'conservative'}
+
+    if hierarchical_method in {'aggressive', 'conservative'}:
         model = _UDBSCANxH(minimum_points,
                            max_eps=epsilon,
                            min_eps=minimum_epsilon,
-                           method=method)
+                           method=hierarchical_method)
     else:
         model = _UDBSCANx(minimum_points, epsilon)
     model.fit(contig.loci[field])
