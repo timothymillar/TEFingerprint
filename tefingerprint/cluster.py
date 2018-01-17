@@ -554,11 +554,10 @@ class UDBSCANxH(UDBSCANx):
                                                    self.max_eps)
             child_points = (points[left:right]
                             for left, right in initial_cluster_bounds)
+            
             # recursively run on all clusters
-            # initialise with max_eps + 1 to ensure points with
-            # core_distance == max_eps are counted
             clusters = [self._traverse_cluster_tree(points,
-                                                    self.max_eps + 1)
+                                                    self.max_eps)
                         for points in child_points]
             return np.fromiter(self._flatten_list(clusters),
                                dtype=UDBSCANx._DTYPE_SLICE)
