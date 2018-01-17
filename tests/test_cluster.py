@@ -236,6 +236,24 @@ class TestHUDC:
         """
         npt.assert_array_equal(UDBSCANxH.udbscanxh(array, min_points, max_eps), answer)
 
+    def test_udbscanxh_variations(self):
+        """
+        Test for 'aggressive' and 'conservative' variations
+
+        In this data set with epsilon = 6 the same clusters are detected but support of the first
+        child cluster [2, 5, 6, 7, 10, 11, 13] is 7 with the aggressive variation and 14
+        with the conservative variation. The support of it's children is 9 in both variations so
+        it is selected by the conservative variation but not by the aggressive variation.
+        """
+        array = np.array([2, 5, 6, 7, 10, 11, 13, 16, 20, 21, 22], dtype=int)
+        answer_aggressive = np.fromiter([(1, 4), (4, 7), (8, 11)],
+                                        dtype=UDBSCANxH._DTYPE_SLICE)
+        answer_conservative = np.fromiter([(0, 7), (8, 11)],
+                                          dtype=UDBSCANxH._DTYPE_SLICE)
+
+        npt.assert_array_equal(UDBSCANxH.udbscanxh(array, 3, 6, method='aggressive'), answer_aggressive)
+        npt.assert_array_equal(UDBSCANxH.udbscanxh(array, 3, 6, method='conservative'), answer_conservative)
+
     def test_udbscanxh_initial_parent_support_calculation(self):
         """
         Test for method udbscanxh.
