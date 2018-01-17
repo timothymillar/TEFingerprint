@@ -554,7 +554,7 @@ class UDBSCANxH(UDBSCANx):
                                                    self.max_eps)
             child_points = (points[left:right]
                             for left, right in initial_cluster_bounds)
-            
+
             # recursively run on all clusters
             clusters = [self._traverse_cluster_tree(points,
                                                     self.max_eps)

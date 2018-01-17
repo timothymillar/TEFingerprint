@@ -236,6 +236,35 @@ class TestHUDC:
         """
         npt.assert_array_equal(UDBSCANxH.udbscanxh(array, min_points, max_eps), answer)
 
+    def test_udbscanxh_initial_parent_support_calculation(self):
+        """
+        Test for method udbscanxh.
+        Tests that the support initial clusters is calculated correctly.
+
+        Cluster support is a measure of how far epsilon can be reduced while still forming a cluster.
+        More specifically the sum of points retained within the cluster at each value of epsilon
+        bellow the maximum value of epsilon of that cluster.
+        In the case of top level clusters (i.e. those found at the initial values of epsilon: max_eps)
+        that do not exist at max_eps - 1 their calculates support should be 0.
+        They are still a valid cluster (and would be found with non-hierarchical clustering) but if they
+        have child clusters then the child clusters are always selected.
+        In this test when (max) epsilon = 3 the parent cluster is detected by the non-hierarchical
+        version and is also detected by the hierarchical version but because it has 0 support it
+        is discarded in favour of the child clusters.
+        """
+
+        array = np.array([1, 3, 4, 5, 7, 8, 9, 11], dtype=int)
+        answer_1 = np.fromiter([(0, 8)], dtype=UDBSCANxH._DTYPE_SLICE)
+        answer_2 = np.fromiter([(1, 4), (4, 7)], dtype=UDBSCANxH._DTYPE_SLICE)
+
+        npt.assert_array_equal(UDBSCANx.udbscanx(array, 3, 4), answer_1)
+        npt.assert_array_equal(UDBSCANx.udbscanx(array, 3, 3), answer_1)
+        npt.assert_array_equal(UDBSCANx.udbscanx(array, 3, 2), answer_2)
+
+        npt.assert_array_equal(UDBSCANxH.udbscanxh(array, 3, 4), answer_1)
+        npt.assert_array_equal(UDBSCANxH.udbscanxh(array, 3, 3), answer_2)
+        npt.assert_array_equal(UDBSCANxH.udbscanxh(array, 3, 2), answer_2)
+
     def test_udbscanxh_child_support_calculation(self):
         """
         Test for method udbscanxh.
