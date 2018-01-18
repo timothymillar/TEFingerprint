@@ -126,12 +126,12 @@ def _fingerprint_dispatch(bams,
 
     # cluster reads
     clusters = reads.map(lambda x:
-                         loci.cluster(x,
+                         loci.clusters(x,
                                       'tip',
-                                      minimum_reads,
-                                      epsilon,
-                                      minimum_epsilon=minimum_epsilon,
-                                      hierarchical_method=splitting_method))
+                                       minimum_reads,
+                                       epsilon,
+                                       minimum_epsilon=minimum_epsilon,
+                                       hierarchical_method=splitting_method))
 
     # buffered union of clusters
     clusters = clusters.map(lambda x:

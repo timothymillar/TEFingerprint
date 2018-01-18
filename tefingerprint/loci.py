@@ -274,14 +274,14 @@ def add_field(contig, field_dtype):
     return Contig(contig.header, array=util.bind_arrays(contig.loci, array))
 
 
-def cluster(contig,
-            field,
-            minimum_points,
-            epsilon,
-            minimum_epsilon=0,
-            hierarchical_method='aggressive',
-            lower_bound='start',
-            upper_bound='stop'):
+def clusters(contig,
+             field,
+             minimum_points,
+             epsilon,
+             minimum_epsilon=0,
+             hierarchical_method='aggressive',
+             lower_bound='start',
+             upper_bound='stop'):
     """
     Return a contig of cluster intervals based on the loci of a contig.
 
