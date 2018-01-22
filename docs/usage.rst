@@ -14,14 +14,37 @@ TEFingerprint is a collection of related tools including:
 - ``tef-extract-informative``
 - ``tef-filter-gff``
 
-The
-help text can be displayed for any of these tools using the ``-h``
+The help text can be displayed for any of these tools using the ``-h``
 or ``--help`` flags e.g.:
 
 ::
 
     tefingerprint -h
 
+Running the full TEFingerprint pipeline requires the following input data:
+
+- paired-end reads in fastq format (2 files per sample).
+- a reference genome in fasta format.
+- a reference set of repeat elements in fasta format.
+- optionally, an annotation of repeat elements within the reference genome in gff3 format.
+
+The TEFingerprint pipeline requires some consistency with names of repeat
+elements. It is recommended that you use a naming convention similar to
+``<super-family>_<family>_<additional-info>`` e.g. ``Gypsy_26_chr15_18793972``
+or  ``Gypsy_Gypsy26_chr15_18793972``. The chosen naming convention should be
+used in both the reference set of repeat elements (a fasta file) and
+the reference annotation of repeat elements (a gff3 file in column 3, the
+"type" column).
+
+When identifying clusters of selected categories of repeat elements,
+the start of repeat names from input files is matched to the specified
+categories of interest. For example if two repeats (transposons) are named
+``Gypsy_2_more-info`` and ``Gypsy_7_more-info`` they will both be identified as
+being in the ``Gypsy`` category. However, they will be placed in separate
+categories if ``Gypsy_2`` and ``Gypsy_7`` are specified as categories.
+If a repeat name matches two or more categories it will be placed in the one
+with the longest name. For example a repeat named ``Gypsy_27_more-info`` will
+be categorised as ``Gypsy_27`` in preference of ``Gypsy_2``.
 
 Extracting informative reads
 ----------------------------
@@ -30,7 +53,8 @@ Identifying informative reads requires a paired-end reads in fastq format,
 a library of tranposable elements in fasta format and a reference genome
 in fasta format. Fasta files should be pre indexed using BWA. This
 pipeline also requires that BWA and Samtools are installed and on the
-users ``$PATH``.
+users ``$PATH``. The following describes the process to extract informative
+reads from a single sample and will need to be repeated per sample.
 
 Paired end reads are initially aligned to the library of transposable
 elements manually with bwa mem. The ``tef-extract-informative`` tool is
@@ -38,17 +62,16 @@ then used to identify and extract unmapped reads with mapped mates
 (informative reads) which are mapped against the reference genome and tagged
 with the ID of their mates transposable element.
 
-You should have the following four files:
+The following file names are used in this example:
 
--  ``reads1.fastq`` and ``reads2.fastq``: paired-end reads in fastq
-   format.
--  ``reference.fasta`` a reference genome in fasta format.
--  ``repeats.fasta`` a library of repeat elements in fasta format.
+-  ``reads1.fastq`` and ``reads2.fastq``: paired-end reads.
+-  ``reference.fasta``: reference genome.
+-  ``repeats.fasta``: reference set of repeat elements.
 
 Initial alignment
 ~~~~~~~~~~~~~~~~~
 
-Index fasta files with bwa:
+Create index fasta files with bwa:
 
 ::
 
@@ -105,11 +128,12 @@ Additional arguments:
    tails to be included (defaults to ``38``).
 -  ``--tempdir`` by default, the intermediate files are written to a
    temporary directory that is automatically removed when the pipeline
-   is completed. These files can be saved by manually specifying a
-   directory with theis option.
--  ``--mate-element-tag`` by default, the same tag used to store repeat
+   is completed. There may be limited temporary space on some systems in
+   this option should be used. If this option is used the intermediate files
+   will not be automatically removed.
+-  ``--mate-element-tag`` by default, the sam-tag used to store repeat
    element names associated with each read is ``ME`` (Mate Element).
-   This can be changed with the option.
+   An alternative tag can be specified with this option.
 
 The output file ``informative.bam`` contains informative reads mapped to the
 reference genome. Each of these reads is tagged with the repeat element that
@@ -122,16 +146,28 @@ The ``tefingerprint`` tool can be used to create a fingerprint of a single
 sample, or to create a comparative fingerprint of multiple samples (i.e.
 comparing the fingerprints of more than one sample)
 
-Example usage for comparing two bam files:
+Example usage for comparing two or more bam files:
+
+::
+
+    tefingerprint informative1.bam informative2.bam ... \
+        -f family1 family2 ... \
+        -m 10 \
+        -e 350 \
+        --gff fingerprint.gff.gz \
+        --csv fingerprint.csv.gz
+
+Or when specifying most common parameters:
 
 ::
 
     tefingerprint informative1.bam informative2.bam ... \
         -a annotation.gff \
+        -r chr chr2 chr3 ... \
         -f family1 family2 ... \
-        -m 20 \
-        -e 500 \
-        -b 50 \
+        -m 10 \
+        -e 350 \
+        -b 25 \
         -j 50 \
         -n 3 \
         -q 30 \
@@ -139,67 +175,71 @@ Example usage for comparing two bam files:
         --gff fingerprint.gff.gz \
         --csv fingerprint.csv.gz
 
-Where ``danglers.bam`` is the bam file being fingerprinted and
-``fingerprint.gff`` is the output gff file.
+Where ``informative1.bam ...`` are the bam file(s) being fingerprinted, and
+``fingerprint.gff.gz`` and ``fingerprint.csv.gz`` are respectively the output
+in (compressed) csv and gff3 formats (these can be uncompressed by removing
+the ``.gz`` extension).
 
 Arguments:
 
 -  A single bam file to be fingerprinted or multiple bam files for a
    comparative fingerprint.
--  ``-a/--annotation-of-known-elements`` an optional annotation of known
-   elements in gff (3) format for matching to identified insertions. Known
-   elements are also used for joining paris of clusters either side of an
-   insertion. This gff file may be compressed with gzip or bz2.
--  ``-r/--references`` may optionally be used to specify a subset of
-   chromosomes to fingerprint. By default all reference chromosomes are
-   fingerprinted (based on the bam header).
--  ``-f/--families`` specifies the (super) families or grouping of
-   repeated elements to fingerprint. These names are matched against the
-   start of the mate element name i.e. the name ``Gypsy`` would treat
-   reads with tagged with a mate element called ``Gypsy3``, ``Gypsy27``
-   or ``GypsyX`` as the same.
--  ``-m/--minimum-reads`` specifies the minimum number of read (tips)
-   required to form a cluster.
--  ``-e/--epsilon`` specifies the maximum allowable distance among a set
-   of read tips to be considered a cluster.
--  ``-b/--buffer-fingerprints`` specifies a distance (in base pairs) to
-   buffer fingerprints by before counting reads (defaults to ``0``).
-   This is used to ensure that small clusters, that
-   are slightly offset in different samples, are treated as a single
-   comparative bin. It also improves the robustness of comparisons by
-   allowing more reads to be included in each bin.
--  ``-j/--join-distance`` used to try and match clusters of informative
-   reads to a known transposon (if provided) as well as joining pairs
-   of clusters at either end of a transposon insertion.
-   This value represents the maximum distance to search for a known
-   transposon and half the maximum distance to search for a paired cluster
-   if no a known transposon is identified (defaults to ``0``).
--  ``-n/--number-of-common-elements`` The number of most common elements
-   contributing to each cluster that are counted. I.e. if this value is 3
-   then for each cluster of each sample the name and counts of the three most
-   common elements are recorded (defaults to ``3``).
--  ``-q/--mapping-quality`` specifies the minimum mapping quality
-   allowed for reads (defaults to ``30``).
--  ``-t/--threads`` specifies the number of CPU threads to use. The
-   maximum number of threads that may be used is the same as the number
-   of references specified.
--  ``--gff`` create a gff file of the resulting data. These data can be
-   sent to standard output for piping using ``--gff -``. If the data
-   are written to a file, this file will be compressed with gzip or bz2
-   based on the files extension e.g. ``.gff.gz`` or ``.gff.bz2``.
--  ``--csv`` create a csv file of the resulting data. These data can be
-   sent to standard output for piping using ``--csv -``. If the data
-   are written to a file, this file will be compressed with gzip or bz2
-   based on the files extension e.g. ``.csv.gz`` or ``.csv.bz2``.
+-  ``-a/--annotation-of-known-elements`` An optional annotation of known
+   repeat elements in gff (3) format for matching to identified insertions.
+   Known elements are also used for joining pairs of clusters either side of an
+   insertion. Known elements are also used for joining pairs of clusters either
+   side of an insertion. This gff file may be compressed with gzip or bz2.
+-  ``-r/--references`` The reference sequence(s) (e.g. chromosomes) to be
+   fingerprinted. If left blank (None) all references sequences in the
+   input file will be used. *Default = None*.
+-  ``-f/--families`` Repeat element/transposon categories to be used.
+   These must be exact string match's to start of read name and are used to
+   split reads into categories for analysis. Not specifying at least one valid
+   category will result in empty output files. *Default = None*.
+-  ``-m/--minimum-reads`` Minimum number of read tips required to form a
+   cluster. *Default = 10*.
+-  ``-e/--epsilon`` The maximum allowable distance among a set of read tips
+   required to form a cluster. This should be approximately equal to the insert
+   size of paired reads. *Default = 250*.
+-  ``-s/--splitting-method`` Method used for splitting proximate clusters.
+   One of "none", "aggressive" or "conservative". See the full documentation
+    for details. *Default = "conservative"*.
+-  ``-b/--buffer-fingerprints`` Additional buffer to be added to margins of
+   fingerprints. This is used avoid identifying small clusters as unique, when
+   there is only slight miss-match in read positions across samples
+   (i.e. false positives). It also improves the robustness of comparisons by
+   allowing more reads to be included in each bin. The buffer is trimmed back
+   to the extent of the furthermost read tips it contains. *Default = 25*.
+-  ``-j/--join-distance`` Used to try and match clusters of informative
+   reads to a known repeat-element (if provided) as well as joining pairs of
+   clusters at either end of a repeat insertion.
+   This represents the maximum distance to search for a known repeat from
+   the end of each cluster. If no know repeat is present (or none are provided)
+   then clusters will be paired if they are within twice this distance of one
+   another. *Default = 25*.
+-  ``-n/--number-of-common-elements`` The number of most common repeat elements
+   contributing to each cluster that are counted. *Default = 3*.
+-  ``-q/--mapping-quality`` Minimum allowed mapping quality for informative
+   reads mapped to the reference genome. *Default = 30*.
+-  ``-t/--threads`` Maximum number of cpu threads to be used. The maximum
+   number of threads that can be utilised is the number of reference molecules
+   to be fingerprinted. *Default = 1*.
+-  ``--gff`` File name for GFF output. Compression will be applied by extension
+   e.g. ".gz" or ".bz2". Output may be written to standard output using "-".
+   *Default = None*.
+-  ``--csv`` File name for CSV output. Compression will be applied by extension
+   e.g. ".gz" or ".bz2". Output may be written to standard output using "-".
+   *Default = None*.
 
 Additional arguments:
 
--  ``--minimum-epsilon`` the minimum value of epsilon to be used in
-   hierarchical clustering (defaults to ``0``).
--  ``--non-hierarchical`` by default a hierarchical clustering algorithm
-   is used. This flag will switch to the non-hierarchical version.
--  ``--mate-element-tag`` the sam tag used to specify the name of each
-   reads mate element (defaults to ``ME``).
+-  ``--minimum-epsilon`` Minimum epsilon values used when calculating support
+   for clusters. This is only used in hierarchical clustering 'and should
+   usually be left as 0. *Default = 0*.
+-  ``--mate-element-tag`` Sam-tag used in bam file to indicate the repeat
+   element matched to each the mate read. *Default = "ME"*.
+-  ``--no-colour`` Switch to disable colour coding of gff output. This may
+   improve performance
 
 Filtering GFF Output
 --------------------

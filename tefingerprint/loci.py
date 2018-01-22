@@ -279,7 +279,7 @@ def clusters(contig,
              minimum_points,
              epsilon,
              minimum_epsilon=0,
-             hierarchical_method='aggressive',
+             hierarchical_method='conservative',
              lower_bound='start',
              upper_bound='stop'):
     """

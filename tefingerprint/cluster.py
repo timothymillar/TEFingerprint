@@ -291,6 +291,10 @@ class UDBSCANxH(UDBSCANx):
     Clusters selection is performed in a top down manner from the
     root of the tree. A given cluster is selected if its support is
     greater than the sum of support for all of its decedent clusters.
+    Cluster support for parent clusters can be calculated by one of
+    two methods 'conservative' (default) or 'aggressive'.
+
+
     A cluster cannot be selected if one of its ancestor clusters
     has been selected.
     This process results in a set of flat (non-overlapping) clusters.
@@ -311,13 +315,16 @@ class UDBSCANxH(UDBSCANx):
     :param min_eps: An optional value for the minimum value of eps to
         be used when calculating cluster depth
     :type min_eps: int
+    :param method: method for calculating support of parent clusters,
+        one of 'conservative' (default) or 'aggressive'
+    :type method: str
     """
 
     def __init__(self,
                  min_points,
                  max_eps=None,
                  min_eps=None,
-                 method='aggressive'):
+                 method='conservative'):
         assert method in {'aggressive', 'conservative'}
         self.min_points = min_points
         self.max_eps = max_eps
@@ -578,7 +585,7 @@ class UDBSCANxH(UDBSCANx):
                   min_points,
                   max_eps=None,
                   min_eps=None,
-                  method='aggressive'):
+                  method='conservative'):
         """
         Provides functional use of :class:`UDBSCANxH`.
 

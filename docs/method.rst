@@ -44,7 +44,7 @@ neither read is mapped are uninformative and ignored.
 The (unmapped) informative reads are tagged with the transposon that
 their pair has mapped to, and then mapped to a reference genome. These reads
 will tend to map in stranded clusters either end of a location at which
-a transposon is resent in the sample.
+a transposon is present in the sample.
 
 Fingerprinting
 --------------
@@ -91,10 +91,10 @@ that are uninformative for our purpose. For example Gypsy elements tend
 to concentrate around centromeres leading to a large clusters (composed
 of the reads for many insertions) within the scale of the entire genome.
 
-Two clustering algorithms available in TEFingerprint. A univariate
+Three clustering algorithms available in TEFingerprint. A univariate
 implementation of DBSCAN\* (non-hierarchical) is made available but not
-used by default. The second (default) hierarchical univariate method
-which is derived from HDBSCAN\* but differing in the following ways:
+used by default. The second and third hierarchical univariate methods
+are derived from HDBSCAN\* but differing in the following ways:
 
 1. Based on the notation established by Campello et al. 2015, **Cluster
    support** is calculated as:
