@@ -91,10 +91,24 @@ that are uninformative for our purpose. For example Gypsy elements tend
 to concentrate around centromeres leading to a large clusters (composed
 of the reads for many insertions) within the scale of the entire genome.
 
+Three clustering algorithms available in TEFingerprint, a univariate
+implementation of the non-hierarchical DBSCAN\* and two variations of a
+hierarchical-clustering method which a respectively referred to as
+"aggressive" and "conservative" splitting methods.
+
+1. Non-hierarchical
+___________________
+
+
 Three clustering algorithms available in TEFingerprint. A univariate
 implementation of DBSCAN\* (non-hierarchical) is made available but not
-used by default. The second and third hierarchical univariate methods
-are derived from HDBSCAN\* but differing in the following ways:
+used by default.
+
+2. Aggressive hierarchical splitting
+____________________________________
+
+The second method referred to as the "aggressive" splitting method
+is derived from HDBSCAN\* but differing in the following ways:
 
 1. Based on the notation established by Campello et al. 2015, **Cluster
    support** is calculated as:
@@ -108,12 +122,25 @@ are derived from HDBSCAN\* but differing in the following ways:
    cluster is selected if its support is greater than the combined
    support of its child clusters.
 3. The search space of the cluster tree may be constrained by optional
-   global maximum and minimum values of :math:`\varepsilon`. If included
-   then cluster support will calculated values of epsilon between the
-   global minimum and maximum values. By default cluster support is
-   calculated for all values of :math:`\varepsilon`
-   from below the root node of the cluster hierarchy to 0 (as in
-   HDBSCAN\*).
+   global maximum and minimum values of :math:`\varepsilon` i.e.
+   :math:`\varepsilon_\textbf{max}` and :math:`\varepsilon_\textbf{min}`.
+   If included, cluster support will calculated only for values of epsilon
+   in the range :math:`[\varepsilon_\textbf{min}, \varepsilon_\textbf{max}]`
+   i.e. clustering is initiated with :math:`\varepsilon_\textbf{max}` and
+   values bellow :math:`\varepsilon_\textbf{min}` are treated as
+   :math:`\varepsilon_\textbf{min}` when determining support.
+   If not included then support is calculated for all values of
+   :math:`\varepsilon` from below the root node of the cluster hierarchy to 0
+   (as in HDBSCAN\*).
+
+2. Conservative hierarchical splitting
+______________________________________
+
+The third method referred to as the "conservative" splitting method is identical
+to the aggressive method but the additional alteration that cluster support
+of the **parent cluster** is calculated:
+
+.. math:: S(\textbf{C}_\text{parent}) = \sum_{\textbf{x}_j \in \textbf{C}_i} \varepsilon_\textbf{max} - \varepsilon_{\text{min}}(\textbf{x}_j, \textbf{C}_i)
 
 In practice the global minimum value of\ :math:`\varepsilon` is left at
 0 and the global maximum value of :math:`\varepsilon` is set to the
