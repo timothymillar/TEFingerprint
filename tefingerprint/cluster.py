@@ -495,7 +495,7 @@ class UDBSCANxH(UDBSCANx):
                                              local_min_eps -
                                              local_points['core_dist']))
 
-        if support > support_children:
+        if support >= support_children:
             # Parent is supported so return slice indices
             return local_points['index'][0], local_points['index'][-1] + 1
 
