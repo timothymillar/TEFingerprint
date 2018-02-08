@@ -17,7 +17,7 @@ The TEFingerprint pipeline is composed of the following steps:
 1. Mapping paired end reads to a database of known transposons
 2. Identification of *informative* reads
 3. Mapping informative reads to a reference genome
-4. Fingerprinting (density based clustering) of mapped read positions
+4. Fingerprinting (density based clustering) of mapped read tip positions
 5. Computing the union of the fingerprints from multiple samples
 6. Comparing read counts among samples within the combined fingerprint
 7. Downstream filtering and analysis of results
@@ -26,7 +26,7 @@ Selecting Informative Reads
 ---------------------------
 
 The initial stage of the TEFingerprint process is to identify
-*inforamtive* reads. Reads are informative if they relate some
+*informative* reads. Reads are informative if they relate some
 information about the location of transposon insertions when compared to
 a reference genome.
 
@@ -49,134 +49,134 @@ a transposon is present in the sample.
 Fingerprinting
 --------------
 
-Once a set of informative reads has been identified, labeled and aligned
-to a reference genome, they may be used to generate a *fingerprint*. To
-this end reads are grouped by transposon category, typically at
-super-family or family level, and the position of their 3-prime end is
-extracted. A density-based clustering algorithm is then used to identify
-regions of the reference genome which are dense with informative read
-'tips'.
+Once the informative reads have been extracted and aligned to the reference
+genome we aim to identify clusters of these reads that indicate
+flanking-regions of transposon instertions in the sample genome.
+The pattern of these clusters across the reference genome is referred to as
+a *fingerprint*.
+
+Categorising informative read tips
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Informative-reads are grouped based on strandedness and user defined
+categories i.e. super-families. The positions of the :math:`3^\prime` read-tips
+(i.e. the read ends closest to the potential transposon insertions) are then
+extracted into a array of integer values per reference molecule for each
+categories-strand group. Clusters of informative-reads are then identified
+using a novel density-based clustering method described bellow.
+
 
 Density based clustering
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-When identifying clusters of read tips to identify potential transposon
-insertions, the ideal clustering algorithm would meet the following
-conditions:
+When an non-soft-clipped informative read is identified, the informative-read
+does not map to a transposon while its mate does so the informative-read will
+usually be within insert-length distance of a transposon insertion in the
+sample genome.
+Thus the expected size of transposon-flanking clusters can be reasonably
+estimated based on the approximate insertion size of the initial paired
+end data.
 
-1. The number of clusters does not need to be specified a priori
-2. Points (read tips) may be classified as 'noise' points if they do not
-   form a suitably dense cluster
-3. Parameters can be tuned to detect informative signal at/around a
-   specific density level
-4. The algorithm has some flexibility to distinguish between (split up)
-   proximate clusters
+The DBSCAN family of clustering algorithms identify clusters based on point
+*density*. Points that form dense regions are grouped into cluster while
+points in sparse regions are classified as noise points. DBSCAN does not
+require the number of clusters to be specified as an input because clusters
+are defined entirely in terms of point density.
+A DBSCAN based approach is suitable for identifying transposon-flanking
+regions for the following reasons:
 
-The first three conditions point to DBSCAN(\*) (Ester et al. 1996,
-Campello et al. 2015) is a suitable method for cluster identification.
-However DBSCAN\* is limited to identifying clusters at a single density.
-This can be problematic if two or more insertions (of the same variety)
-occur close to one another as DBSCAN\* is likely to treat them as a
-single larger cluster (i.e. does not meet condition four).
+1. We expect to find a variable and often large number of clusters for each array of read-tip positions and this number is not known *a priori*
+2. It is reasonable to expect some level of background noise in the data due to issues with sequence alignment
+3. An expected level of cluster density can be inferred from the paired-read insertion size and an estimation of the background noise (i.e. via visualisation)
+4. The method can be adapted to a highly efficient algorithm for sorted univariate data
 
-HDBSCAN\* (Hierarchical DBSCAN\*) described by (Campello et al. 2015)
-can identify clusters at any density (based on a mesure of cluster
-stability) but is too flexible for our purpose and unable (in its basic
-form) to target a specific density level (i.e. does not meet condition
-three). Condition three is particularly important for the purpose of
-TEFingerprint as the targeted clusters (ends of insertions sites) will
-generally have a consistent density/size which can be estimated from the
-insert size. Furthermore their may be *real* clusters within the data
-that are uninformative for our purpose. For example Gypsy elements tend
-to concentrate around centromeres leading to a large clusters (composed
-of the reads for many insertions) within the scale of the entire genome.
+One issue with a standard implementation of DBSCAN is it's inflexibility when
+identifying clusters at differing levels of density.
+In principle this should not be an issue because we expect a reasonably
+consistent density among clusters, however in practice neighbouring clusters
+will often be identified as a single larger cluster thereby 'missing' an
+insertion site.
 
-Three clustering algorithms available in TEFingerprint, a univariate
-implementation of the non-hierarchical DBSCAN\* and two variations of a
-hierarchical-clustering method which a respectively referred to as
-"aggressive" and "conservative" splitting methods.
+Campello *et al.* (2015) described HDBSCAN, a hierarchical version of
+DBSCAN that can detect clusters at multiple density levels. HDBSCAN
+is much too flexible to be suitable for identifying transposon-flanking
+regions and will often identify regions with high transposon density as
+a single cluster or identify multiple sub-clusters in a single flanking
+region based alignment artefacts including the differing signal between
+soft-clipped and non-soft-clipped informative-reads.
 
-1. Non-hierarchical
-___________________
+Description of algorithm
+~~~~~~~~~~~~~~~~~~~~~~~~
 
+We present a novel algorithm for density based clustering of univariate points
+with noise.
+Our algorithm is derived from HDBSCAN but produces clusters that are
+comparable with those found by DBSCAN\*. As in DBSCAN\*, our method has an
+explicit density threshold below which clusters are not identified.
+Unlike DBSCAN\*, our method provides some flexibility for splitting poorly
+supported clusters into strongly supported sub-clusters.
 
-Three clustering algorithms available in TEFingerprint. A univariate
-implementation of DBSCAN\* (non-hierarchical) is made available but not
-used by default.
+In our algorithm, a specific density of objects is targeted by the minimum
+number of points required to form a cluster :math:`m_\text{pts}` and a global
+maximum value of epsilon $\varepsilon$ which is referred to as the constant
+$\mathcal{E}$.
+Here we use the following definitions from Campello *et al.* 2015:
 
-2. Aggressive hierarchical splitting
-____________________________________
+- An object (i.e. read tip) :math:`\textbf{x}_p` is called a *core object* w.r.t. :math:`\varepsilon` and :math:`m_\text{pts}` if there are at least :math:`m_\text{pts} - 1` additional objects within :math:`\varepsilon` range of :math:`\textbf{x}_p`.
+- The *core distance* of an object :math:`d_\text{core}(\textbf{x}_p)` w.r.t. :math:`m_\text{pts}` is the distance from :math:`\textbf{x}_p` to it's :math:`m_\text{pts} - 1` nearest neighbour.
+- A *cluster* :math:`\textbf{C}` w.r.t. :math:`\varepsilon$ and $m_\text{pts}` is a non-empty maximal subset of the set of points :math:`\textbf{X}` such that every pair of objects in :math:`\textbf{C}` are density connected.
+- The *minimum epsilon* of a cluster :math:`\varepsilon_\text{min}(\textbf{C})` is the value of :math:`\varepsilon` bellow which the cluster :math:`\textbf{C}` either contains less than :math:`m_\text{pts}` core objects (ceases to be a cluster) or contains more than 1 subset of density connected objects (is divided into child clusters).
+- The *maximum epsilon* of a cluster :math:`\varepsilon_\text{max}(\textbf{C})` is the value above which a which that cluster is incorporated into another cluster.
 
-The second method referred to as the "aggressive" splitting method
-is derived from HDBSCAN\* but differing in the following ways:
+Initial clusters are identified at a density defined :math:`m_\text{pts}`  and
+:math:`\varepsilon = \mathcal{E}`.
+Therefore the initial clusters are identical to those found by DBSCAN\*.
 
-1. Based on the notation established by Campello et al. 2015, **Cluster
-   support** is calculated as:
+The difference between :math:`\mathcal{E}` and :math:`d_\text{core}(\textbf{x}_p)` can be thought of as the *lifetime* of object :math:`\textbf{x}_p`.
+The cluster :math:`\textbf{C}_i` is selected if
 
-   .. math:: S(\textbf{C}_i) = \sum_{\textbf{x}_j \in \textbf{C}_i} \varepsilon_{\text{max}}(\textbf{C}_i) - \varepsilon_{\text{min}}(\textbf{x}_j, \textbf{C}_i)
+.. math:: \sum_{\textbf{x}_j \in \textbf{C}_i} \frac{ \mathcal{E} - \text{max}\{d_{\text{core}}(\textbf{x}_j), \varepsilon_{\text{min}}(\textbf{C}_i)\} }{ \text{max}\{d_{\text{core}}(\textbf{x}_j), \varepsilon_{\text{min}}(\textbf{C}_i)\} - d_{\text{core}}(\textbf{x}_j)} \geq 1
 
-   where :math:`\varepsilon_{\text{min}}(\textbf{x}_j, \textbf{C}_i)`
-   is calculated as :math:`\text{max}\{d_\text{core}(\textbf{x}_j) , \varepsilon_{\text{min}}(\textbf{C}_i) \}`
+i.e if the proportion of combined object lifetimes above
+:math:`\varepsilon_{\text{min}}(\textbf{C}_i)\}` is greater or equal to that
+bellow :math:`\varepsilon_{\text{min}}(\textbf{C}_i)\}` then the cluster is
+selected.
+If a cluster is not selected then this calculation is performed again for
+each child cluster.
+The use of a constant :math:`\mathcal{E}` as opposed to
+:math:`\varepsilon_\text{max}(\textbf{C})` ensures that the parent cluster is
+increasingly favoured as the algorithm recurses down the cluster hierarchy.
+A direct effect of this selection criteria is that a cluster cannot be
+selected unless :math:`\varepsilon_\text{max}(\textbf{C}) \geq \mathcal{E}/2`.
 
-2. **Cluster selection** is then performed in a top down manner where a
-   cluster is selected if its support is greater than the combined
-   support of its child clusters.
-3. The search space of the cluster tree may be constrained by optional
-   global maximum and minimum values of :math:`\varepsilon` i.e.
-   :math:`\varepsilon_\textbf{max}` and :math:`\varepsilon_\textbf{min}`.
-   If included, cluster support will calculated only for values of epsilon
-   in the range :math:`[\varepsilon_\textbf{min}, \varepsilon_\textbf{max}]`
-   i.e. clustering is initiated with :math:`\varepsilon_\textbf{max}` and
-   values bellow :math:`\varepsilon_\textbf{min}` are treated as
-   :math:`\varepsilon_\textbf{min}` when determining support.
-   If not included then support is calculated for all values of
-   :math:`\varepsilon` from below the root node of the cluster hierarchy to 0
-   (as in HDBSCAN\*).
-
-2. Conservative hierarchical splitting
-______________________________________
-
-The third method referred to as the "conservative" splitting method is identical
-to the aggressive method but the additional alteration that cluster support
-of the **parent cluster** is calculated:
-
-.. math:: S(\textbf{C}_\text{parent}) = \sum_{\textbf{x}_j \in \textbf{C}_i} \varepsilon_\textbf{max} - \varepsilon_{\text{min}}(\textbf{x}_j, \textbf{C}_i)
-
-In practice the global minimum value of\ :math:`\varepsilon` is left at
-0 and the global maximum value of :math:`\varepsilon` is set to the
-approximate insert size of paired end reads. This produces clusters with
-relatively constant density, similar to that of DBSCAN\*, but with
-improved identification and separation of proximate clusters.
-
-Comparing Multiple Samples
---------------------------
-
+Comparing Multiple Fingerprints
+-------------------------------
+    
 Fingerprinting produces a binary (i.e. presence absence) pattern of loci
-across a reference genome indicating the boundaries of transposon
-insertions within a samples genome. However the binary pattern is
-extracted from non-binary data (read positions/counts) and the absence
-of a cluster in one sample does not guarantee an absence of signal
-(reads) within that location. Therefore a direct comparison of
-fingerprints from multiple samples may be misleading.
+across a reference genome indicating the boundaries of transposon insertions
+within a samples genome. However the binary pattern is extracted from
+non-binary data (read positions/counts) and the absence of a cluster in one
+sample does not guarantee an absence of signal (reads) within that location.
+Therefore a direct comparison of fingerprints from multiple samples may be
+misleading. A better approach is to compare read counts within the combined
+(union of) fingerprints.
 
-A better approach is to compare read counts within the combined (union
-of) fingerprints. Mathematically each cluster in a fingerprint can be
-expresed as a closed interval. For example a cluster spanning the region
-between points :math:`a` and :math:`b` (inclusive) can be expressed as
-the closed interval :math:`[a, b]`. The fingerprint of sample :math:`i`
-can then be expresed as the union of every interval (cluster) found
-within that sample :math:`U_i`. Thus the union of fingerprints for a set
-of :math:`n` samples is calculated:
+Mathematically, each cluster within the fingerprint of a single sample can be
+expressed as a closed integer interval. For example a cluster spanning the
+region between points 1 and 7 (inclusive) can be expressed as the closed
+interval :math:`[1, 7]`. The fingerprint of sample :math:`i` can then be expressed as a
+union of non-overlapping intervals found within that sample;
+:math:`\mathcal{U}_i`. Thus the union of fingerprints for a set of n samples
+is calculated
 
-.. math:: \bigcup\limits_{i=1}^{n} U_{i}
+.. math:: \bigcup_{i=1}^n \mathcal{U}_i
 
 The new union of fingerprints represents the boundaries of potential
-transposon insertions across all samples. We then use each interval
-within the union of fingerprints as a potential insertion site for *all*
-of the samples. A samples read count within a given interval is recorded
-as evidence for the presence or absence of an insertion at the genomic
-location represented by that interval.
-
-In this manner, TEFingerprint identifies comparative characters
-(potential insertion sites) for a group of samples and summarises each
-samples support (read counts) for the presence/absence of a character.
+transposon insertions across all samples. We then use each interval within
+the union of fingerprints as a potential insertion site for all of the
+samples. A samples read
+count within a given interval is recorded as evidence for the presence or
+absence of an insertion at the genomic location represented by that interval.
+In this manner, TEFingerprint identifies comparative characters (potential
+insertion sites) for a group of samples and summarises each samples support
+(read counts) for the presence/absence of a character.
