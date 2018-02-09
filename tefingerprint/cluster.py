@@ -254,7 +254,8 @@ class UDBSCANxH(UDBSCANx):
     Univariate DBSCAN* with Hierarchical component.
 
     This is a variation of the DBSCAN*/HDBSCAN* (Campello et al 2015)
-    clustering methods which allows some flexibility when calculating
+    clustering methods which produces results similar to DBSCAN* while
+    allowing some flexibility when calculating
     density based clusters. While it has a hierarchical component it
     differs significantly from HDBSCAN* in how cluster support is
     calculated and clusters are selected.
@@ -270,37 +271,37 @@ class UDBSCANxH(UDBSCANx):
     However its flexibility is much more limited than HDBSCAN* to
     ensure that clusters are of similar density to one another.
 
-    Using the definitions of Campello et al 2015, this method differs
-    from HDBSCAN* when calculating support for clusters in that support
-    of a cluster is calculated as:
+    Two variations 'conservative' (default) and 'aggressive' are available.
+    These are defined using the definitions of Campello et al 2015 with
+    an additional constant value of maximum allowable epsilon
+    :math:`\mathcal{E}`.
+
+    Using  'conservative' method a cluster is selected if
 
     .. math::
-        (\textbf{C}_i) = \sum_{\textbf{x}_j \in \textbf{C}_i} \varepsilon_{\text{max}}(\textbf{C}_i) - \varepsilon_{\text{min}}(\textbf{x}_j, \textbf{C}_i)
+        \sum_{\textbf{x}_j \in \textbf{C}_i} \frac{ \mathcal{E} - \text{max}\{d_{\text{core}}(\textbf{x}_j), \varepsilon_{\text{min}}(\textbf{C}_i)\} }{ \text{max}\{d_{\text{core}}(\textbf{x}_j), \varepsilon_{\text{min}}(\textbf{C}_i)\} - d_{\text{core}}(\textbf{x}_j)} \geq 1
 
-    where:
-
-    .. math::
-        \varepsilon_{\text{min}}(\textbf{x}_j, \textbf{C}_i)
-
-    is calculated as:
+    Using  'aggressive' method a cluster is selected if
 
     .. math::
-        \text{max}\{d_\text{core}(\textbf{x}_j) , \varepsilon_{\text{min}}(\textbf{C}_i) \}
-
+        \sum_{\textbf{x}_j \in \textbf{C}_i} \frac{ \text{min}\{\mathcal{E}, \varepsilon_{\text{max}}(\textbf{C}_i)\} - \text{max}\{d_{\text{core}}(\textbf{x}_j), \varepsilon_{\text{min}}(\textbf{C}_i)\} }{ \text{max}\{d_{\text{core}}(\textbf{x}_j), \varepsilon_{\text{min}}(\textbf{C}_i)\} - d_{\text{core}}(\textbf{x}_j)} \geq 1
 
     Clusters selection is performed in a top down manner from the
-    root of the tree. A given cluster is selected if its support is
-    greater than the sum of support for all of its decedent clusters.
+    root of the tree. If a given cluster is not selected, cluster
+    support is calculated for each of its child clusters.
+    This occurs recursively until a cluster is selected.
     A cluster cannot be selected if one of its ancestor clusters
     has been selected.
     This process results in a set of flat (non-overlapping) clusters.
 
-    The search space may be constrained by setting global maximum and
+    The search space may be constrained by setting global maximum
+    (:math:`\mathcal{E}`) and
     minimum allowable values of epsilon.
     If a maximum value for epsilon is selected, the search algorithm
     will start at the specified value.
     If a minimum value for epsilon is selected, core distances bellow
-    the specified level are increased to that level.
+    the specified level are increased to that level (this is not normally
+    used).
 
     :param min_points: The minimum number of points allowed in each
         cluster
@@ -311,13 +312,16 @@ class UDBSCANxH(UDBSCANx):
     :param min_eps: An optional value for the minimum value of eps to
         be used when calculating cluster depth
     :type min_eps: int
+    :param method: method for calculating support of parent clusters,
+        one of 'conservative' (default) or 'aggressive'
+    :type method: str
     """
 
     def __init__(self,
                  min_points,
                  max_eps=None,
                  min_eps=None,
-                 method='aggressive'):
+                 method='conservative'):
         assert method in {'aggressive', 'conservative'}
         self.min_points = min_points
         self.max_eps = max_eps
@@ -488,7 +492,7 @@ class UDBSCANxH(UDBSCANx):
                                              local_min_eps -
                                              local_points['core_dist']))
 
-        if support > support_children:
+        if support >= support_children:
             # Parent is supported so return slice indices
             return local_points['index'][0], local_points['index'][-1] + 1
 
@@ -578,7 +582,7 @@ class UDBSCANxH(UDBSCANx):
                   min_points,
                   max_eps=None,
                   min_eps=None,
-                  method='aggressive'):
+                  method='conservative'):
         """
         Provides functional use of :class:`UDBSCANxH`.
 
