@@ -1,6 +1,26 @@
 # TEFingerprint
 # A Python 3 library and command line tool for transposon fingerprinting
 
+v0.2.0
+- alpha
+- new features
+    - new 'conservative' clustering method #91
+- changes
+    - new 'conservative' clustering method used by default #91
+    - simplified clustering/splitting method selection with flag '--splitting-method'
+    - changed library imports to include loci, fingerprint, fingerprintio and cluster
+    - tidied cluster.py submodule code
+- bug fixes
+    - fixed miscalculation of initial cluster support #90
+    - fixed miscalculation of parent vs child support #95
+    - fixed name collision between sub module cluster and function loci.cluster
+- documentation
+    - updated method.rst with new clustering method
+    - updated usage.rst with new clustering method
+    - updated CLI help text
+    - updated cluster.py docstrings with new method
+    - added metadata for PyPI
+
 v0.1.4
 - alpha
 - Command-line-tool names and arguments have changed
