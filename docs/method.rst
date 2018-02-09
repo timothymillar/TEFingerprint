@@ -185,3 +185,12 @@ absence of an insertion at the genomic location represented by that interval.
 In this manner, TEFingerprint identifies comparative characters (potential
 insertion sites) for a group of samples and summarises each samples support
 (read counts) for the presence/absence of a character.
+
+Downstream Filtering and Analysis
+---------------------------------
+
+TEFingerprint does not assume a specific for investigating transposon insertion
+locations. Instead it summarises the input data into a flexible format that can
+be used for multiple downstream tasks.
+The output formats available are GFF3 and CSV (or other delimited text
+formats).
