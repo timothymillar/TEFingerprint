@@ -90,18 +90,20 @@ regions for the following reasons:
 3. An expected level of cluster density can be inferred from the paired-read insertion size and an estimation of the background noise (i.e. via visualisation)
 4. The method can be adapted to a highly efficient algorithm for sorted univariate data
 
-One issue with a standard implementation of DBSCAN is it's inflexibility when
+An issue with a standard implementation of DBSCAN is it's inflexibility when
 identifying clusters at differing levels of density.
 In principle this should not be an issue because we expect a reasonably
-consistent density among clusters, however in practice neighbouring clusters
+consistent density among clusters.
+However, in practice neighbouring clusters
 will often be identified as a single larger cluster thereby 'missing' an
 insertion site.
 
 Campello *et al.* (2015) described HDBSCAN, a hierarchical version of
-DBSCAN that can detect clusters at multiple density levels. HDBSCAN
+DBSCAN, that can detect clusters at multiple density levels. HDBSCAN
 is much too flexible to be suitable for identifying transposon-flanking
-regions and will often identify regions with high transposon density as
-a single cluster or identify multiple sub-clusters in a single flanking
+regions.
+For example, HDBSCAN will often identify regions with high transposon density
+as a single cluster or identify multiple sub-clusters in a single flanking
 region based alignment artefacts including the differing signal between
 soft-clipped and non-soft-clipped informative-reads.
 
@@ -118,8 +120,8 @@ supported clusters into strongly supported sub-clusters.
 
 In our algorithm, a specific density of objects is targeted by the minimum
 number of points required to form a cluster :math:`m_\text{pts}` and a global
-maximum value of epsilon $\varepsilon$ which is referred to as the constant
-$\mathcal{E}$.
+maximum value of epsilon :math:`\varepsilon` which is referred to as the constant
+:math:`\mathcal{E}`.
 Here we use the following definitions from Campello *et al.* 2015:
 
 - An object (i.e. read tip) :math:`\textbf{x}_p` is called a *core object* w.r.t. :math:`\varepsilon` and :math:`m_\text{pts}` if there are at least :math:`m_\text{pts} - 1` additional objects within :math:`\varepsilon` range of :math:`\textbf{x}_p`.
@@ -137,7 +139,7 @@ The cluster :math:`\textbf{C}_i` is selected if
 
 .. math:: \sum_{\textbf{x}_j \in \textbf{C}_i} \frac{ \mathcal{E} - \text{max}\{d_{\text{core}}(\textbf{x}_j), \varepsilon_{\text{min}}(\textbf{C}_i)\} }{ \text{max}\{d_{\text{core}}(\textbf{x}_j), \varepsilon_{\text{min}}(\textbf{C}_i)\} - d_{\text{core}}(\textbf{x}_j)} \geq 1
 
-i.e if the proportion of combined object lifetimes above
+i.e. if the proportion of combined object lifetimes above
 :math:`\varepsilon_{\text{min}}(\textbf{C}_i)\}` is greater or equal to that
 bellow :math:`\varepsilon_{\text{min}}(\textbf{C}_i)\}` then the cluster is
 selected.
@@ -151,21 +153,24 @@ selected unless :math:`\varepsilon_\text{max}(\textbf{C}) \geq \mathcal{E}/2`.
 
 Comparing Multiple Fingerprints
 -------------------------------
-    
+
 Fingerprinting produces a binary (i.e. presence absence) pattern of loci
 across a reference genome indicating the boundaries of transposon insertions
 within a samples genome. However the binary pattern is extracted from
 non-binary data (read positions/counts) and the absence of a cluster in one
 sample does not guarantee an absence of signal (reads) within that location.
 Therefore a direct comparison of fingerprints from multiple samples may be
-misleading. A better approach is to compare read counts within the combined
-(union of) fingerprints.
+misleading. A better approach is to compare read counts within the fingerprints
+among the compared samples. To this end we calculate the interval union of
+fingerprints among samples and count the informative read tips within the
+combined fingerprint.
 
 Mathematically, each cluster within the fingerprint of a single sample can be
-expressed as a closed integer interval. For example a cluster spanning the
-region between points 1 and 7 (inclusive) can be expressed as the closed
-interval :math:`[1, 7]`. The fingerprint of sample :math:`i` can then be expressed as a
-union of non-overlapping intervals found within that sample;
+expressed as a closed integer interval. For example a cluster of read tips
+spanning the (inclusive) base positions 11 and 27 (inclusive) can be expressed
+as the closed interval :math:`[11, 27]`. The fingerprint of sample
+:math:`i` can then be expressed as a union of non-overlapping intervals
+found within that sample;
 :math:`\mathcal{U}_i`. Thus the union of fingerprints for a set of n samples
 is calculated
 
