@@ -64,7 +64,7 @@ class TestUDC:
                          dtype=int)
         slices = np.array([(2, 6), (3, 7), (8, 12), (12, 16), (13, 17)],
                           dtype=UDBSCANx._DTYPE_SLICE)
-        npt.assert_array_equal(UDBSCANx._subcluster(array, 5, 4), slices)
+        npt.assert_array_equal(UDBSCANx._subcluster(array, 4, 5), slices)
 
     def test_flat_cluster(self):
         """
@@ -75,7 +75,7 @@ class TestUDC:
                               dtype=int)
         slices = np.array([(2, 7), (8, 12), (12, 17)],
                           dtype=UDBSCANx._DTYPE_SLICE)
-        npt.assert_array_equal(UDBSCANx._cluster(sub_slices, 5, 4), slices)
+        npt.assert_array_equal(UDBSCANx._cluster(sub_slices, 4, 5), slices)
 
     @pytest.mark.parametrize("array,slices",
                              [(np.array([], dtype=int),
@@ -235,6 +235,53 @@ class TestHUDC:
         If the length of the array is less than 'n' then an empty array will always be returned.
         """
         npt.assert_array_equal(UDBSCANxH.udbscanxh(array, min_points, max_eps), answer)
+
+    def test_udbscanxh_variations(self):
+        """
+        Test for 'aggressive' and 'conservative' variations
+
+        In this data set with epsilon = 6 the same clusters are detected but support of the first
+        child cluster [2, 5, 6, 7, 10, 11, 13] is 7 with the aggressive variation and 14
+        with the conservative variation. The support of it's children is 9 in both variations so
+        it is selected by the conservative variation but not by the aggressive variation.
+        """
+        array = np.array([2, 5, 6, 7, 10, 11, 13, 16, 20, 21, 22], dtype=int)
+        answer_aggressive = np.fromiter([(1, 4), (4, 7), (8, 11)],
+                                        dtype=UDBSCANxH._DTYPE_SLICE)
+        answer_conservative = np.fromiter([(0, 7), (8, 11)],
+                                          dtype=UDBSCANxH._DTYPE_SLICE)
+
+        npt.assert_array_equal(UDBSCANxH.udbscanxh(array, 3, 6, method='aggressive'), answer_aggressive)
+        npt.assert_array_equal(UDBSCANxH.udbscanxh(array, 3, 6, method='conservative'), answer_conservative)
+
+    def test_udbscanxh_initial_parent_support_calculation(self):
+        """
+        Test for method udbscanxh.
+        Tests that the support initial clusters is calculated correctly.
+
+        Cluster support is a measure of how far epsilon can be reduced while still forming a cluster.
+        More specifically the sum of points retained within the cluster at each value of epsilon
+        bellow the maximum value of epsilon of that cluster.
+        In the case of top level clusters (i.e. those found at the initial values of epsilon: max_eps)
+        that do not exist at max_eps - 1 their calculates support should be 0.
+        They are still a valid cluster (and would be found with non-hierarchical clustering) but if they
+        have child clusters then the child clusters are always selected.
+        In this test when (max) epsilon = 3 the parent cluster is detected by the non-hierarchical
+        version and is also detected by the hierarchical version but because it has 0 support it
+        is discarded in favour of the child clusters.
+        """
+
+        array = np.array([1, 3, 4, 5, 7, 8, 9, 11], dtype=int)
+        answer_1 = np.fromiter([(0, 8)], dtype=UDBSCANxH._DTYPE_SLICE)
+        answer_2 = np.fromiter([(1, 4), (4, 7)], dtype=UDBSCANxH._DTYPE_SLICE)
+
+        npt.assert_array_equal(UDBSCANx.udbscanx(array, 3, 4), answer_1)
+        npt.assert_array_equal(UDBSCANx.udbscanx(array, 3, 3), answer_1)
+        npt.assert_array_equal(UDBSCANx.udbscanx(array, 3, 2), answer_2)
+
+        npt.assert_array_equal(UDBSCANxH.udbscanxh(array, 3, 4), answer_1)
+        npt.assert_array_equal(UDBSCANxH.udbscanxh(array, 3, 3), answer_2)
+        npt.assert_array_equal(UDBSCANxH.udbscanxh(array, 3, 2), answer_2)
 
     def test_udbscanxh_child_support_calculation(self):
         """

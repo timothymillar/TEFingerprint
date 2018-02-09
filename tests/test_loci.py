@@ -409,12 +409,12 @@ def test_cluster():
                                            ('stop', np.int64)]))
     answer = loci.Contig(header, answer_loci)
 
-    assert loci.cluster(query,
+    assert loci.clusters(query,
                         'tip',
-                        10,
-                        epsilon=200,
-                        minimum_epsilon=10,
-                        hierarchical=True) == answer
+                         10,
+                         epsilon=200,
+                         minimum_epsilon=10,
+                         hierarchical_method='aggressive') == answer
 
 
 def test_cluster_empty():
@@ -432,12 +432,12 @@ def test_cluster_empty():
                                            ('stop', np.int64)]))
     answer = loci.Contig(header, answer_loci)
 
-    assert loci.cluster(query,
+    assert loci.clusters(query,
                         'tip',
-                        10,
-                        epsilon=200,
-                        minimum_epsilon=10,
-                        hierarchical=True) == answer
+                         10,
+                         epsilon=200,
+                         minimum_epsilon=10,
+                         hierarchical_method='aggressive') == answer
 
 
 @pytest.mark.parametrize("query, answer",
