@@ -1,0 +1,103 @@
+# TEFingerprint
+# A Python 3 library and command line tool for transposon fingerprinting
+
+v0.1.4
+- alpha
+- Command-line-tool names and arguments have changed
+- Renamed tools
+    - remove tef wrapper as it is likely to have a name collision with something
+        - tef fingerprint/compare are combined into single tool tefingerprint #63
+        - tef preprocess is now tef-extract-informative
+        - tef filter-gff is now tef-filter-gff (note: this tools behavior has changes substantially to handle the new gff output)
+- Refactored modules
+    - core sub-module loci.py re-written to be more flexible #82
+        - single data structure for for representing collections of loci
+        - arbitrary string length limit removed (use of python string in place numpy strings)
+        - split tool logic into separate sub-module fingerprint.py
+- New Features
+    - tefingerprint
+        - trim buffered clusters to extent of read tips
+        - count n most common elements per sample in each bin #63 #81
+        - use gff annotation for tagging known elements #80
+        - join paired clusters using gff annotation #78
+        - output files (gff, csv) are optionally pipe-able
+        - output files (gff, csv) contain more detailed data
+        - can read(anotation gff)/write files compressed with gzip or bz2 #86
+        - escape special characters in gff files with percent encodings
+    - tef-filter-gff
+        - changed to handle new gff output #84
+        - use of --any and --all contexts for combining filters
+        - unix style wild cards for matching multiple fields
+        - read and write gz abd bz2 compressed files #86
+        - escape special characters with percent encodings
+        - read gff from standard in
+
+v0.1.3
+- alpha
+- Performance improvements:
+    - Significantly reduced memory usage and improved speed for preprocess #66 #70
+    - Reduced memory usage for fingerprint/compare io operations #68
+    - Reduced memory usage for filter-gff #67
+- Fixes
+    - Corrected feature-csv output on large arrays #58 #72
+- Documentation
+    - Split readme into multiple documents
+    - Switched to .rst for documentation
+    - Added description of methods
+
+
+v0.1.2
+- alpha
+- Faster output of CSV files #58
+- Tidied up CLI arguments #55 #62
+    - Replace underscores with dash
+    - Use of flags for Boolean arguments
+    - Updated Readme with changes
+- Tests
+    - Integration tests for fingerprint, compare and filter-gff
+    - Further tests for preprocess
+
+v0.1.1
+- alpha
+- Minor fixes for for cluster support calculation #53
+- Default selection of starting epsilon value now matches Campello et al 2015
+- Update terminology to reflect that used in Campello et al 2015
+- Tests
+
+v0.1.0
+- alpha
+- Pre-Processing
+    - Corrections for reverse-complemented reads when extracting dangler reads
+    - Inclusion of soft-clipped sections from the outer end of proper-mapped pairs
+    - Separated mapping reads to repeats from pre-processing script
+- Fingerprinting/Compare
+    - Quality score filtering options
+    - New output format options
+- Other
+    - Bump version to 0.1.0
+    - Change status to alpha
+    - Updated documentation
+    - Additional tests
+
+v0.0.3
+- pre-alpha
+- Nicer data structures for use as a library #42
+- Easy inter-op with Numpy, Pandas and Plotting libraries in python #42
+- Improved buffering of comparative bins
+- Multi-process pipelines return results to parent process rather than printing directly to file
+- GFF output is sorted by chromosome, start position, stop position #32
+- Added better examples to readme #40
+- improved testing of fingerprint and compare data methods #6
+- Compare output is no longer nested and contains normalised read counts #4 and is coloured by read count proportions #43
+- filter_gff program is simplified (no longer deals with nested gff)
+- renamed module to `tefingerprint` and CLI to `tef` #3
+
+v0.0.2
+- pre-alpha
+- implemented a faster hierarchical clustering method
+
+v0.0.1-pre-alpha
+- pre-alpha
+- initial release
+- legacy hierarchical clustering method
+- tagged for reference reasons
