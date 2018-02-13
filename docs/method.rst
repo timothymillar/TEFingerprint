@@ -134,17 +134,49 @@ Initial clusters are identified at a density defined :math:`m_\text{pts}`  and
 :math:`\varepsilon = \mathcal{E}`.
 Therefore the initial clusters are identical to those found by DBSCAN\*.
 
-The difference between :math:`\mathcal{E}` and :math:`d_\text{core}(\textbf{x}_p)` can be thought of as the *lifetime* of object :math:`\textbf{x}_p`.
+The difference between :math:`\mathcal{E}` and
+:math:`d_\text{core}(\textbf{x}_p)` can be thought of as the
+*lifetime* of object :math:`\textbf{x}_p`.
+The *total lifetime* of all objects within cluster :math:`\textbf{C}_i` is
+calculated
+
+.. math:: L_\text{total}(\textbf{C}_i) = \sum_{\textbf{x}_j \in \textbf{C}_i} \mathcal{E} - d_{\text{core}}(\textbf{x}_j)
+
+The *support* for a cluster is defined as the portion of those lifetimes that
+occurs within that cluster i.e. while :math:`\varepsilon \geq \varepsilon_{\text{min}}(\textbf{C}_i)`
+
+.. math:: S(\textbf{C}_i) = \sum_{\textbf{x}_j \in \textbf{C}_i}  \mathcal{E} - \text{max}\{d_{\text{core}}(\textbf{x}_j), \varepsilon_{\text{min}}(\textbf{C}_i)\}
+
+The *child support* of a cluster is the portion of lifetimes that occurs after
+the cluster splits into child clusters or ceases to exist
+
+.. math:: \begin{aligned}
+    S_\text{children}(\textbf{C}_i)
+    &= L_\text{total}(\textbf{C}_i) - S(\textbf{C}_i) \\
+    &= \sum_{\textbf{x}_j \in \textbf{C}_i} \text{max}\{d_{\text{core}}(\textbf{x}_j), \varepsilon_{\text{min}}(\textbf{C}_i)\} - d_{\text{core}}(\textbf{x}_j)
+    \end{aligned}
+
 The cluster :math:`\textbf{C}_i` is selected if
-
-.. math:: \sum_{\textbf{x}_j \in \textbf{C}_i} \frac{ \mathcal{E} - \text{max}\{d_{\text{core}}(\textbf{x}_j), \varepsilon_{\text{min}}(\textbf{C}_i)\} }{ \text{max}\{d_{\text{core}}(\textbf{x}_j), \varepsilon_{\text{min}}(\textbf{C}_i)\} - d_{\text{core}}(\textbf{x}_j)} \geq 1
-
+:math:`S(\textbf{C}_i) \geq S_\text{children}(\textbf{C}_i)`,
 i.e. if the proportion of combined object lifetimes above
-:math:`\varepsilon_{\text{min}}(\textbf{C}_i)\}` is greater or equal to that
-bellow :math:`\varepsilon_{\text{min}}(\textbf{C}_i)\}` then the cluster is
+:math:`\varepsilon_{\text{min}}(\textbf{C}_i)` is greater or equal to that
+bellow :math:`\varepsilon_{\text{min}}(\textbf{C}_i)` then the cluster is
 selected.
 If a cluster is not selected then this calculation is performed again for
 each child cluster.
+This can be written
+
+.. math:: \text{selection}(\textbf{C}_i) =
+    \begin{cases}
+    S(\textbf{C}_i) \geq S_\text{children}(\textbf{C}_i) \quad \text{then}\ \textbf{C}_i\\
+    S(\textbf{C}_i) < S_\text{children}(\textbf{C}_i) \quad \text{then}\ \{ \text{selection}(\textbf{C})\ |\ \textbf{C} \in \text{children}(\textbf{C}_i) \}
+    \end{cases}
+
+where :math:`\text{children}(\textbf{C}_i)` is the set of valid clusters
+which are formed from the set of objects
+:math:`\{\textbf{x} | \textbf{x} \in \textbf{C}_i \}`
+when :math:`\varepsilon < \varepsilon_{\text{min}}(\textbf{C}_i)`.
+
 The use of a constant :math:`\mathcal{E}` as opposed to
 :math:`\varepsilon_\text{max}(\textbf{C})` ensures that the parent cluster is
 increasingly favoured as the algorithm recurses down the cluster hierarchy.
