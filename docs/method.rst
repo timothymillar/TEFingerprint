@@ -58,24 +58,24 @@ a *fingerprint*.
 Categorising informative read tips
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Informative-reads are grouped based on strandedness and user defined
-categories i.e. super-families. The positions of the :math:`3^\prime` read-tips
-(i.e. the read ends closest to the potential transposon insertions) are then
-extracted into a array of integer values per reference molecule for each
-categories-strand group. Clusters of informative-reads are then identified
-using a novel density-based clustering method described bellow.
+Informative-reads are grouped based on strand and user defined
+taxonomic categories e.g. super-families. The positions of the :math:`3^\prime`
+read-tips (i.e. the read ends closest to the potential transposon insertions)
+are then extracted into a array of integer values, per reference molecule for
+each categories-strand group.
 
+A non-soft-clipped informative read is identified when its mate read
+has mapped to a know transposon.
+The informative read has then been mapped to a reference genome where it will
+(usually) be within insert-length distance of a transposon insertion in the
+sample genome.
+Thus the insertion size of the initial paired end data is a reasonable estimate
+of the expected size of transposon-flanking clusters of informative reads.
+Using this information, clusters of informative read-tips are identified
+using a novel density-based clustering algorithm described bellow.
 
 Density based clustering
 ~~~~~~~~~~~~~~~~~~~~~~~~
-
-When an non-soft-clipped informative read is identified, the informative-read
-does not map to a transposon while its mate does so the informative-read will
-usually be within insert-length distance of a transposon insertion in the
-sample genome.
-Thus the expected size of transposon-flanking clusters can be reasonably
-estimated based on the approximate insertion size of the initial paired
-end data.
 
 The DBSCAN family of clustering algorithms identify clusters based on point
 *density*. Points that form dense regions are grouped into cluster while
@@ -88,7 +88,7 @@ regions for the following reasons:
 1. We expect to find a variable and often large number of clusters for each array of read-tip positions and this number is not known *a priori*
 2. It is reasonable to expect some level of background noise in the data due to issues with sequence alignment
 3. An expected level of cluster density can be inferred from the paired-read insertion size and an estimation of the background noise (i.e. via visualisation)
-4. The method can be adapted to a highly efficient algorithm for sorted univariate data
+4. The method can be adapted to a highly efficient algorithm for sorted univariate data (i.e. an array of read-tip positions)
 
 An issue with a standard implementation of DBSCAN is it's inflexibility when
 identifying clusters at differing levels of density.
@@ -107,16 +107,16 @@ as a single cluster or identify multiple sub-clusters in a single flanking
 region based alignment artefacts including the differing signal between
 soft-clipped and non-soft-clipped informative-reads.
 
-Description of algorithm
-~~~~~~~~~~~~~~~~~~~~~~~~
+Description of clustering algorithm
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 We present a novel algorithm for density based clustering of univariate points
 with noise.
 Our algorithm is derived from HDBSCAN but produces clusters that are
-comparable with those found by DBSCAN\*. As in DBSCAN\*, our method has an
+comparable with those found by DBSCAN*. As in DBSCAN*, our method has an
 explicit density threshold below which clusters are not identified.
 Unlike DBSCAN\*, our method provides some flexibility for splitting poorly
-supported clusters into strongly supported sub-clusters.
+supported clusters into strongly supported sub-clusters when present.
 
 In our algorithm, a specific density of objects is targeted by the minimum
 number of points required to form a cluster :math:`m_\text{pts}` and a global
@@ -132,56 +132,64 @@ Here we use the following definitions from Campello *et al.* 2015:
 
 Initial clusters are identified at a density defined :math:`m_\text{pts}`  and
 :math:`\varepsilon = \mathcal{E}`.
-Therefore the initial clusters are identical to those found by DBSCAN\*.
+Therefore the initial clusters are identical to those found by DBSCAN*.
+Support of the initial clusters is then assessed in comparison to its child
+clusters (2 or more subsets of density connected objects that exist bellow the
+minimum epsilon of the initial/parent cluster) if present.
 
-The difference between :math:`\mathcal{E}` and
-:math:`d_\text{core}(\textbf{x}_p)` can be thought of as the
+Whe refer to difference between :math:`\mathcal{E}` and
+:math:`d_\text{core}(\textbf{x}_p)` as the
 *lifetime* of object :math:`\textbf{x}_p`.
-The *total lifetime* of all objects within cluster :math:`\textbf{C}_i` is
+The *total lifetimes* of all objects within cluster :math:`\textbf{C}_i` is
 calculated
 
 .. math:: L_\text{total}(\textbf{C}_i) = \sum_{\textbf{x}_j \in \textbf{C}_i} \mathcal{E} - d_{\text{core}}(\textbf{x}_j)
 
 The *support* for a cluster is defined as the portion of those lifetimes that
-occurs within that cluster i.e. while :math:`\varepsilon \geq \varepsilon_{\text{min}}(\textbf{C}_i)`
+occurs when :math:`\varepsilon \geq \varepsilon_{\text{min}}(\textbf{C}_i)`
 
 .. math:: S(\textbf{C}_i) = \sum_{\textbf{x}_j \in \textbf{C}_i}  \mathcal{E} - \text{max}\{d_{\text{core}}(\textbf{x}_j), \varepsilon_{\text{min}}(\textbf{C}_i)\}
 
-The *child support* of a cluster is the portion of lifetimes that occurs after
-the cluster splits into child clusters or ceases to exist
+The *excess lifetimes* of objects within cluster :math:`\textbf{C}_i` is
+the portion of object lifetimes that
+occurs when :math:`\varepsilon < \varepsilon_{\text{min}}(\textbf{C}_i)`,
+i.e. when the cluster splits into child clusters or ceases to exist
 
 .. math:: \begin{aligned}
-    S_\text{children}(\textbf{C}_i)
+    L_\text{excess}(\textbf{C}_i)
     &= L_\text{total}(\textbf{C}_i) - S(\textbf{C}_i) \\
     &= \sum_{\textbf{x}_j \in \textbf{C}_i} \text{max}\{d_{\text{core}}(\textbf{x}_j), \varepsilon_{\text{min}}(\textbf{C}_i)\} - d_{\text{core}}(\textbf{x}_j)
     \end{aligned}
 
 The cluster :math:`\textbf{C}_i` is selected if
-:math:`S(\textbf{C}_i) \geq S_\text{children}(\textbf{C}_i)`,
-i.e. if the proportion of combined object lifetimes above
-:math:`\varepsilon_{\text{min}}(\textbf{C}_i)` is greater or equal to that
-bellow :math:`\varepsilon_{\text{min}}(\textbf{C}_i)` then the cluster is
-selected.
-If a cluster is not selected then this calculation is performed again for
-each child cluster.
+:math:`S(\textbf{C}_i) \geq L_\text{excess}(\textbf{C}_i)`,
+i.e. if the proportion of combined object lifetimes when
+:math:`\varepsilon \geq \varepsilon_{\text{min}}(\textbf{C}_i)`
+is greater or equal to the proportion of lifetimes when
+:math:`\varepsilon < \varepsilon_{\text{min}}(\textbf{C}_i)`.
+If a cluster is not selected then support is assessed for
+each child cluster within :math:`\textbf{C}_i`.
 This can be written
 
 .. math:: \text{selection}(\textbf{C}_i) =
     \begin{cases}
-    S(\textbf{C}_i) \geq S_\text{children}(\textbf{C}_i) \quad \text{then}\ \textbf{C}_i\\
-    S(\textbf{C}_i) < S_\text{children}(\textbf{C}_i) \quad \text{then}\ \{ \text{selection}(\textbf{C})\ |\ \textbf{C} \in \text{children}(\textbf{C}_i) \}
+    S(\textbf{C}_i) \geq L_\text{excess}(\textbf{C}_i) \quad \text{then}\ \textbf{C}_i\\
+    S(\textbf{C}_i) < L_\text{excess}(\textbf{C}_i) \quad \text{then}\ \{ \text{selection}(\textbf{C})\ |\ \textbf{C} \in \text{children}(\textbf{C}_i) \}
     \end{cases}
 
 where :math:`\text{children}(\textbf{C}_i)` is the set of valid clusters
 which are formed from the set of objects
 :math:`\{\textbf{x} | \textbf{x} \in \textbf{C}_i \}`
 when :math:`\varepsilon < \varepsilon_{\text{min}}(\textbf{C}_i)`.
+If :math:`\textbf{C}_i` has no children it will always be selected because
+:math:`L_\text{excess}(\textbf{C}_i) = 0`.
 
 The use of a constant :math:`\mathcal{E}` as opposed to
 :math:`\varepsilon_\text{max}(\textbf{C})` ensures that the parent cluster is
 increasingly favoured as the algorithm recurses down the cluster hierarchy.
-A direct effect of this selection criteria is that a cluster cannot be
-selected unless :math:`\varepsilon_\text{max}(\textbf{C}) \geq \mathcal{E}/2`.
+A direct effect of this selection criteria is that a set of child clusters
+will never be selected in preference of their parent :math:`\textbf{C}_i` if
+:math:`\varepsilon_\text{min}(\textbf{C}_i) < \mathcal{E}/2`.
 
 Comparing Multiple Fingerprints
 -------------------------------
@@ -221,8 +229,9 @@ insertion sites) for a group of samples and summarises each samples support
 Downstream Filtering and Analysis
 ---------------------------------
 
-TEFingerprint does not assume a specific for investigating transposon insertion
-locations. Instead it summarises the input data into a flexible format that can
+TEFingerprint does not assume a specific reason for investigating transposon
+insertion locations.
+Instead it summarises the input data into a flexible format that can
 be used for multiple downstream tasks.
 The output formats available are GFF3 and CSV (or other delimited text
 formats).
