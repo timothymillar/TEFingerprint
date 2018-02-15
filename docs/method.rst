@@ -173,8 +173,10 @@ This can be written
 
 .. math:: \text{selection}(\textbf{C}_i) =
     \begin{cases}
-    S(\textbf{C}_i) \geq L_\text{excess}(\textbf{C}_i) \quad \text{then}\ \textbf{C}_i\\
-    S(\textbf{C}_i) < L_\text{excess}(\textbf{C}_i) \quad \text{then}\ \{ \text{selection}(\textbf{C})\ |\ \textbf{C} \in \text{children}(\textbf{C}_i) \}
+    \begin{aligned}
+    \textbf{C}_i  \quad &\text{if}\ S(\textbf{C}_i) \geq L_\text{excess}(\textbf{C}_i)\\
+    \{ \text{selection}(\textbf{C})\ |\ \textbf{C} \in \text{children}(\textbf{C}_i) \} \quad &\text{if}\ S(\textbf{C}_i) < L_\text{excess}(\textbf{C}_i)
+    \end{aligned}
     \end{cases}
 
 where :math:`\text{children}(\textbf{C}_i)` is the set of valid clusters
