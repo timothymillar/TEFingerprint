@@ -107,37 +107,70 @@ as a single cluster or identify multiple sub-clusters in a single flanking
 region based alignment artefacts including the differing signal between
 soft-clipped and non-soft-clipped informative-reads.
 
-Description of clustering algorithm
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Description of non-hierarchical clustering algorithm
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 We present a novel algorithm for density based clustering of univariate points
 with noise.
-Our algorithm is derived from HDBSCAN but produces clusters that are
-comparable with those found by DBSCAN*. As in DBSCAN*, our method has an
-explicit density threshold below which clusters are not identified.
-Unlike DBSCAN\*, our method provides some flexibility for splitting poorly
-supported clusters into strongly supported sub-clusters when present.
+The basic version of our algorithm is derived from DBSCAN. 
+As in DBSCAN, a specific density of objects is 
+targeted by the minimum number of points (objects) required to form a cluster 
+:math:`m_\text{pts}` and a value epsilon :math:`\varepsilon` which 
+limits the dispersion of those objects.
+Unlike DBSCAN our method has a stricter criteria of the object density 
+required to form a cluster resulting in 'tighter' clusters.
+Here we use the following definitions:
 
-In our algorithm, a specific density of objects is targeted by the minimum
-number of points required to form a cluster :math:`m_\text{pts}` and a global
-maximum value of epsilon :math:`\varepsilon` which is referred to as the constant
-:math:`\mathcal{E}`.
-Here we use the following definitions from Campello *et al.* 2015:
+1. An set of (at least) :math:`m_\text{pts}` objects (i.e. read tips), :math:`\{\textbf{x}_p, ..., \textbf{x}_{p + m_\text{pts}}\}` are labeled as *core objects* w.r.t. :math:`\varepsilon` and :math:`m_\text{pts}` if they are all mutually within :math:`\varepsilon` range of one another. An object that is not a *core object* is a *noise object*.
+2. Two *core* objects :math:`\textbf{x}_p` and :math:`\textbf{x}_q` are :math:`\varepsilon`*-reachable* w.r.t. :math:`\varepsilon` if they are within :math:`\varepsilon` range of one another.
+3. Two *core* objects :math:`\textbf{x}_p` and :math:`\textbf{x}_q` are *density-connected* w.r.t. :math:`\varepsilon` if they are directly or transitively :math:`\varepsilon`-reachable.
+4. A *cluster* :math:`\textbf{C}` w.r.t. :math:`\varepsilon$ and $m_\text{pts}` is a non-empty maximal subset of the set of objects :math:`\textbf{X}` such that every pair of objects in :math:`\textbf{C}` is density connected.
+5. The *minimum epsilon* of a cluster :math:`\varepsilon_\text{min}(\textbf{C})` is the value of :math:`\varepsilon` bellow which the cluster :math:`\textbf{C}` either contains less than :math:`m_\text{pts}` core objects (ceases to be a cluster) or contains more than 1 set of density connected objects (is divided into child clusters).
+6. The *maximum epsilon* of a cluster :math:`\varepsilon_\text{max}(\textbf{C})` is the value above which the set of core objects within that cluster become density-connected with the set(s) of core objects in one or more previouly seperate clusters (is incorporated into a larger cluster).
+7. The *core distance* of an object :math:`d_\text{core}(\textbf{x}_p)` w.r.t. :math:`m_\text{pts}` is the maximum distance between *any* two objects in the set of objects comprising :math:`\textbf{x}_p` and it's :math:`m_\text{pts} - 1` nearest neighbours.
 
-- An object (i.e. read tip) :math:`\textbf{x}_p` is called a *core object* w.r.t. :math:`\varepsilon` and :math:`m_\text{pts}` if there are at least :math:`m_\text{pts} - 1` additional objects within :math:`\varepsilon` range of :math:`\textbf{x}_p`.
-- The *core distance* of an object :math:`d_\text{core}(\textbf{x}_p)` w.r.t. :math:`m_\text{pts}` is the distance from :math:`\textbf{x}_p` to it's :math:`m_\text{pts} - 1` nearest neighbour.
-- A *cluster* :math:`\textbf{C}` w.r.t. :math:`\varepsilon$ and $m_\text{pts}` is a non-empty maximal subset of the set of points :math:`\textbf{X}` such that every pair of objects in :math:`\textbf{C}` are density connected.
-- The *minimum epsilon* of a cluster :math:`\varepsilon_\text{min}(\textbf{C})` is the value of :math:`\varepsilon` bellow which the cluster :math:`\textbf{C}` either contains less than :math:`m_\text{pts}` core objects (ceases to be a cluster) or contains more than 1 subset of density connected objects (is divided into child clusters).
-- The *maximum epsilon* of a cluster :math:`\varepsilon_\text{max}(\textbf{C})` is the value above which a which that cluster is incorporated into another cluster.
+Definitions 2-6 are identical to those given for DBSCAN* by Campello *et al.* (2015).
+Definitions 1 and 7 differ to those given by Campello *et al.* (2015) in that they require that
+*every pair of objects* in a set of :math:`m_\text{pts}` objects to be mutually within :math:`\varepsilon` range of one another
+in order to be clasified as core points and thus form a cluster.
+This differs from DBSCAN in which a single single core object with :math:`m_\text{pts} - 1` border objects
+can form a cluster in which not all objects are mutually :math:`\varepsilon`-reachable.
+Thus our method has a stricter criteria of the object density 
+required to form a cluster.
+Unlike DBSCAN* our method still guarantees that all clusters contain at least :math:`m_\text{pts}` objects.
 
-Initial clusters are identified at a density defined :math:`m_\text{pts}`  and
+The parameters required by our method can be intuatively infered for 
+identifying clusters of informative reads in TEFingerprint.
+The value :math:`\varepsilon` is the expected interval width of a 
+region of informative reads flanking a transposon insertion and can
+be resonably estimated as the approximate insertion size of paired-reads.
+The value :math:`m_\text{pts}` is the minimum number of read (tips)
+required within an :math:`\varepsilon`-wide region for that region to
+be identified as flanking a transposon insertion.
+
+Description of hierarchical clustering algorithm
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+We present a hierarchical version of our algorithm is loosely derived 
+from HDBSCAN but produces clusters that are mostly consistent with the 
+non-hierarchical version of our algorithm with the addition of some 
+flexibility to split poorly supported clusters into more strongly 
+supported sub-clusters.
+
+The hierarchical version of our algorithm requires two parameters; 
+:math:`m_\text{pts}` as described in the non-hierarchical version
+and a global maximum epsilon :math:`\mathcal{E}`.
+
+Initial clusters are identified as in the non-hierarchical version 
+using a density defined :math:`m_\text{pts}` and
 :math:`\varepsilon = \mathcal{E}`.
-Therefore the initial clusters are identical to those found by DBSCAN*.
+Thus the initial clusters are identical to those found by the 
+non-hierarchical version version of our algorithm.
 Support of the initial clusters is then assessed in comparison to its child
 clusters (2 or more subsets of density connected objects that exist bellow the
 minimum epsilon of the initial/parent cluster) if present.
 
-Whe refer to difference between :math:`\mathcal{E}` and
+We refer to difference between :math:`\mathcal{E}` and
 :math:`d_\text{core}(\textbf{x}_p)` as the
 *lifetime* of object :math:`\textbf{x}_p`.
 The *total lifetimes* of all objects within cluster :math:`\textbf{C}_i` is
