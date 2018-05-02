@@ -1,5 +1,5 @@
-A non-programmatic description of methods
-=========================================
+TEFingerprint Methods
+=====================
 
 :Date: 2017-07-31
 :Authors: Tim Millar
@@ -31,15 +31,15 @@ information about the location of transposon insertions when compared to
 a reference genome.
 
 Paired end reads are mapped to a library of known transposon sequences.
-Pairs are then identified in which one read has mapped to a transposon
-and the other is unmapped. Assuming that our library of known transposon
+Pairs in which one read has mapped to a transposon
+and the other is unmapped are identified. Assuming that our library of known transposon
 sequences is largely complete, unmapped reads are likely to (primarily)
 contain non-transposon-genomic DNA. Read pairs in which both reads have
 mapped to a transposon sequence can be used as an additional source of
 information if one read has a significant soft-clipped region at its
 5-prime (outer) end. In these cases, the soft-clipped section can be
 extracted and included as (short) informative read. Any pairs in which
-neither read is mapped are uninformative and ignored.
+neither read is mapped are uninformative and are ignored.
 
 The (unmapped) informative reads are tagged with the transposon that
 their pair has mapped to, and then mapped to a reference genome. These reads
@@ -59,7 +59,7 @@ Categorising informative read tips
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Informative-reads are grouped based on strand and user defined
-taxonomic categories e.g. super-families. The positions of the :math:`3^\prime`
+categories e.g. a taxonomic level such as super-family. The positions of the :math:`3^\prime`
 read-tips (i.e. the read ends closest to the potential transposon insertions)
 are then extracted into a array of integer values, per reference molecule for
 each categories-strand group.
