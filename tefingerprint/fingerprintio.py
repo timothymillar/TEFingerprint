@@ -7,8 +7,8 @@ from itertools import product
 from collections import deque
 from tefingerprint import loci
 from tefingerprint.util.numpy import interval
-from tefingerprint.gff import decode_column
-from tefingerprint.compression import zopen
+from tefingerprint.util.gff3 import decode_column
+from tefingerprint.util.io import zopen
 
 
 def extract_references_from_bam(bam):

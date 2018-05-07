@@ -3,7 +3,7 @@
 
 import re
 import fnmatch
-from tefingerprint.gff import *
+from tefingerprint.util.gff3 import *
 
 
 COLUMN_NAMES = ["seqid",

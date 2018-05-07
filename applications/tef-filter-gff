@@ -3,7 +3,7 @@
 import sys
 import argparse
 from tefingerprint import _filter_gff
-from tefingerprint.compression import zopen
+from tefingerprint.util.io import zopen
 
 
 def main():

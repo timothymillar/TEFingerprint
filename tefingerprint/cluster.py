@@ -11,7 +11,7 @@ def core_distances(array, min_points):
     :param array: An array of integers sorted in ascending order
     :type array: :class:`numpy.ndarray`[int]
     :param min_points: number of points used to form a subcluster
-    :type n: int
+    :type min_points: int
 
     :return: An array of minimum eps values
     :rtype: :class:`numpy.ndarray`[int]
@@ -198,7 +198,7 @@ class UDBSCANx(object):
         :type array: :class:`numpy.ndarray`[int]
         :param min_points: The minimum number of points in each
             (sub)cluster
-        :type n: int
+        :type min_points: int
         :param epsilon: The maximum distance allowed in among each
             set of n points
         :type epsilon: int
@@ -342,7 +342,7 @@ class UDBSCANxH(UDBSCANx):
         :param array: An array of integers sorted in ascending order
         :type array: :class:`numpy.ndarray`[int]
         :param min_points: number of points used to form a subcluster
-        :type n: int
+        :type min_points: int
 
         :return: An array of minimum eps values
         :rtype: :class:`numpy.ndarray`[int]
@@ -382,7 +382,7 @@ class UDBSCANxH(UDBSCANx):
         :param array: An array of integers sorted in ascending order
         :type array: :class:`numpy.ndarray`[int]
         :param min_points: number of points used to form a subcluster
-        :type n: int
+        :type min_points: int
 
         :return: An epsilon value or None
         :rtype: int
