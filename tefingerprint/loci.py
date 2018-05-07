@@ -2,7 +2,6 @@
 
 import numpy as np
 from tefingerprint import util
-from tefingerprint.util import gff3
 from tefingerprint.cluster import UDBSCANx as _UDBSCANx
 from tefingerprint.cluster import UDBSCANxH as _UDBSCANxH
 
@@ -713,12 +712,12 @@ class ContigSet(object):
                 type_value = '.'
 
             attributes = ';'.join(('{0}={1}'.format(
-                gff3.encode_attribute(field),
-                gff3.encode_attribute(str(record[field])))
+                util.gff3.encode_attribute(field),
+                util.gff3.encode_attribute(str(record[field])))
                                    for field in attribute_fields))
-            yield template.format(gff3.encode_column(record[reference_field]),
-                                  gff3.encode_column(program_name),
-                                  gff3.encode_column(type_value),
+            yield template.format(util.gff3.encode_column(record[reference_field]),
+                                  util.gff3.encode_column(program_name),
+                                  util.gff3.encode_column(type_value),
                                   record[start_field],
                                   record[stop_field],
                                   '.',
