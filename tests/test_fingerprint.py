@@ -2,7 +2,7 @@
 
 import numpy as np
 from tefingerprint import loci
-from tefingerprint import fingerprint
+from tefingerprint._applications import fingerprint
 
 
 def test_create_contig_ids():

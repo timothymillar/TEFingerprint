@@ -7,7 +7,7 @@ from collections import Counter
 from multiprocessing import Pool
 from tefingerprint import util
 from tefingerprint.util.numpy import interval
-from tefingerprint import fingerprintio
+from tefingerprint._applications import fingerprintio
 from tefingerprint import loci
 
 
