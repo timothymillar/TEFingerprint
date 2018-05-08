@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 
 import numpy as np
-from tefingerprint import util
+import tefingerprint.util as util
 from tefingerprint.cluster import UDBSCANx as _UDBSCANx
 from tefingerprint.cluster import UDBSCANxH as _UDBSCANxH
 
