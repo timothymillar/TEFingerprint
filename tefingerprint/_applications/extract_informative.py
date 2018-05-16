@@ -7,6 +7,7 @@ import os
 import shutil
 import sys
 from tempfile import mkdtemp
+from tefingerprint.util.io import zopen
 
 
 class Program(object):
@@ -248,7 +249,7 @@ def capture_elements_and_write_fastq(reads, fastq):
     """
     element_tags = {}
 
-    with open(fastq, 'w') as fq:
+    with zopen(fastq, 'w') as fq:
         for read in reads:
 
             # add read name and element name to dict
