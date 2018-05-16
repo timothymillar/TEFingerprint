@@ -7,17 +7,18 @@ from tefingerprint.cluster import UDBSCANxH as _UDBSCANxH
 
 
 class Header(object):
-    """
-    Meta data for a collection (contig) of genomic loci.
+    """Meta data for a collection (contig) of genomic loci.
 
-    :param reference: name of a reference chromosome
-    :type reference: str | None
-    :param strand: strand of the reference chromosome '+' or '-'
-    :type strand: str | None
-    :param category: name of transposon category/family
-    :type category: str | None
-    :param source: optional name of source bam file
-    :type source: str | None
+    Parameters
+    ----------
+    reference : str | None
+        Name of a reference chromosome.
+    strand : str | None
+        Strand of the reference chromosome '+' or '-'.
+    category : str | None
+        Name of transposon category/family.
+    source : str | None
+        Optional name of source bam file.
     """
     __slots__ = ['_reference', '_strand', '_category', '_source']
 
@@ -81,11 +82,13 @@ class Header(object):
 
     @property
     def dtype(self):
-        """
-        A numpy dtype suitable for containing the header data
+        """A numpy dtype suitable for containing the header data
 
-        :return: a numpy dtype
-        :rtype: :class:`numpy.dtype`
+        Returns
+        -------
+        :class:`numpy.dtype`
+            A numpy dtype.
+
         """
         descr = []
         if self._reference:
@@ -99,14 +102,20 @@ class Header(object):
         return np.dtype(descr)
 
     def mutate(self, **kwargs):
-        """
-        Create a copy of the header with altered values.
+        """Create a copy of the header with altered values.
 
         Valid argument names are 'reference', 'strand',
-        'category' and 'source'
+        'category' and 'source'.
 
-        :param kwargs: values to alter in the new copy of the header
-        :return: :class:`Header`
+        Parameters
+        ----------
+        kwargs :
+            Values to alter in the new copy of the header.
+
+        Returns
+        -------
+        :class:`Header`
+
         """
         data = {'reference': self._reference,
                 'strand': self._strand,
@@ -117,8 +126,7 @@ class Header(object):
 
 
 class Contig(object):
-    """
-    A contig is a collection of loci on a contiguous section of genome.
+    """A contig is a collection of loci on a contiguous section of genome.
 
     The contig header defines the combination of 'reference', 'strand'
     and 'category', 'source' that distinguish this group of loci from
@@ -127,10 +135,13 @@ class Contig(object):
     locus along the contig with additional metadata.
     Contigs will generally contain points or intervals.
 
-    :param header: a header that defines this contig
-    :type header: :class:`Header`
-    :param loci: loci contained in this contig
-    :type loci: :class:`numpy.array`
+    Parameters
+    ----------
+    header : :class:`Header`
+        A header that defines this contig.
+    loci : :class:`numpy.array`
+        Loci contained in this contig.
+
     """
     def __init__(self, header, loci):
         assert isinstance(header, Header)
