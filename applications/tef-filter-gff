@@ -2,8 +2,8 @@
 
 import sys
 import argparse
-from tefingerprint import _filter_gff
-from tefingerprint.compression import zopen
+from tefingerprint._applications import filter_gff
+from tefingerprint.util.io import zopen
 
 
 def main():
@@ -34,9 +34,9 @@ def main():
                         default=['-'])
     args = parser.parse_args(sys.argv[1:])
 
-    all_filters = [_filter_gff.parse_filter_string(string)
+    all_filters = [filter_gff.parse_filter_string(string)
                    for string in args.all]
-    any_filters = [_filter_gff.parse_filter_string(string)
+    any_filters = [filter_gff.parse_filter_string(string)
                    for string in args.any]
 
     input_gff = args.gff[0]
@@ -63,17 +63,17 @@ def main():
 
 def filter_features(lines, all_filters, any_filters):
     for line in lines:
-        feature = _filter_gff.parse_feature(line)
+        feature = filter_gff.parse_feature(line)
         if all_filters:
-            all_true = _filter_gff.apply_filters(feature,
-                                                 all_filters,
+            all_true = filter_gff.apply_filters(feature,
+                                                all_filters,
                                                  'ALL')
         else:
             all_true = True
 
         if any_filters:
-            any_true = _filter_gff.apply_filters(feature,
-                                                 any_filters,
+            any_true = filter_gff.apply_filters(feature,
+                                                any_filters,
                                                  'ANY')
         else:
             any_true = True

@@ -1,9 +1,7 @@
 #! /usr/bin/env python3
 
 import numpy as np
-import urllib
-from tefingerprint import util
-from tefingerprint import gff
+import tefingerprint.util as util
 from tefingerprint.cluster import UDBSCANx as _UDBSCANx
 from tefingerprint.cluster import UDBSCANxH as _UDBSCANxH
 
@@ -131,13 +129,13 @@ class Contig(object):
 
     :param header: a header that defines this contig
     :type header: :class:`Header`
-    :param loci: loci contaained in this contig
+    :param loci: loci contained in this contig
     :type loci: :class:`numpy.array`
     """
-    def __init__(self, header, array):
+    def __init__(self, header, loci):
         assert isinstance(header, Header)
         self.header = header
-        self.loci = array
+        self.loci = loci
 
     def __repr__(self):
         return repr((self.header, self.loci))
@@ -198,9 +196,9 @@ def as_array(contig):
     :return: a numpy array with no nested values
     :rtype: :class:`numpy.array`
     """
-    data = map(tuple, map(util.flatten_numpy_element, iter_values(contig)))
-    dtype = util.flatten_dtype(util.append_dtypes(contig.header.dtype,
-                                                  contig.loci.dtype))
+    data = map(tuple, map(util.numpy.element.flatten, iter_values(contig)))
+    dtype = util.numpy.dtype.flatten_fields(util.numpy.dtype.append(contig.header.dtype,
+                                                                    contig.loci.dtype))
     return np.array([i for i in data], dtype=dtype)
 
 
@@ -253,7 +251,8 @@ def drop_field(contig, field):
     :return: a contig of loci without the specified field
     :rtype: :class:`Contig`
     """
-    return Contig(contig.header, util.remove_array_field(contig.loci, field))
+    return Contig(contig.header,
+                  util.numpy.array.remove_field(contig.loci, field))
 
 
 def add_field(contig, field_dtype):
@@ -264,14 +263,13 @@ def add_field(contig, field_dtype):
     :type contig: :class:`Contig`
     :param field_dtype: a named numpy dtype for the added field
     :type field_dtype: :class:`numpy.dtype`
-    :param value: the optional default value to fill the new field with
-    :type value: None | any
 
     :return: a contig of loci
     :rtype: :class:`Contig`
     """
     array = np.zeros(len(contig.loci), dtype=field_dtype)
-    return Contig(contig.header, array=util.bind_arrays(contig.loci, array))
+    return Contig(contig.header,
+                  loci=util.numpy.array.bind(contig.loci, array))
 
 
 def clusters(contig,
@@ -627,9 +625,9 @@ class ContigSet(object):
         :return: a numpy array with no nested values
         :rtype: :class:`numpy.array`
         """
-        data = map(tuple, map(util.flatten_numpy_element, self.iter_values()))
-        dtype = util.flatten_dtype(util.append_dtypes(self.dtype_headers(),
-                                                      self.dtype_loci()))
+        data = map(tuple, map(util.numpy.element.flatten, self.iter_values()))
+        dtype = util.numpy.dtype.flatten_fields(util.numpy.dtype.append(self.dtype_headers(),
+                                                                        self.dtype_loci()))
         array = np.array([i for i in data], dtype=dtype)
 
         if order:
@@ -655,12 +653,12 @@ class ContigSet(object):
             plain text file
         :rtype: iterable[str]
         """
-        dtype = util.append_dtypes(self.dtype_headers(), self.dtype_loci())
-        columns = util.flatten_dtype_fields(dtype)
-        yield sep.join(map(util.quote_str, columns))
+        dtype = util.numpy.dtype.append(self.dtype_headers(), self.dtype_loci())
+        columns = util.numpy.dtype.flatten_fields(dtype)
+        yield sep.join(map(util.misc.quote_str, columns))
         for f in self.iter_values():
-            yield sep.join(map(util.quote_str,
-                               util.flatten_numpy_element(f)))
+            yield sep.join(map(util.misc.quote_str,
+                               util.numpy.element.flatten(f)))
 
     def as_gff_lines(self,
                      order=False,
@@ -713,18 +711,20 @@ class ContigSet(object):
             else:
                 type_value = '.'
 
-            attributes = ';'.join(('{0}={1}'.format(gff.encode_attribute(field),
-                                                    gff.encode_attribute(str(record[field])))
+            attributes = ';'.join(('{0}={1}'.format(
+                util.gff3.encode_attribute(field),
+                util.gff3.encode_attribute(str(record[field])))
                                    for field in attribute_fields))
-            yield template.format(gff.encode_column(record[reference_field]),
-                                  gff.encode_column(program_name),
-                                  gff.encode_column(type_value),
+            yield template.format(util.gff3.encode_column(record[reference_field]),
+                                  util.gff3.encode_column(program_name),
+                                  util.gff3.encode_column(type_value),
                                   record[start_field],
                                   record[stop_field],
                                   '.',
                                   record[strand_field],
                                   '.',
                                   attributes)
+
 
 if __name__ == "__main__":
     pass

@@ -3,7 +3,7 @@
 import os
 import numpy as np
 from tefingerprint import loci
-from tefingerprint import fingerprintio
+from tefingerprint._applications import fingerprintio
 
 DATA_PATH = os.path.dirname(os.path.realpath(__file__)) + '/data/'
 

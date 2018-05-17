@@ -2,8 +2,8 @@
 
 import sys
 import argparse
-from tefingerprint.fingerprint import fingerprint
-from tefingerprint.compression import zopen
+from tefingerprint._applications.fingerprint import fingerprint
+from tefingerprint.util.io import zopen
 
 
 def main():
