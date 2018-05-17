@@ -1,6 +1,8 @@
 #! /usr/bin/env python3
 import tempfile
 import os
+import shutil
+import gzip
 import pytest
 from tefingerprint._applications import extract_informative
 
@@ -240,14 +242,14 @@ TCCACTGTTTGGGGATTCGAACCCCCAACAAAAGGTTCAACATAT
 +
 @CCFFFDDHFFDFIHIJJ=FGIJIIIIJGIJIIIFGCHIJIJIJJ
 """
+    tempdir = tempfile.mkdtemp()
+    fastq = tempdir + '/temp.fastq.gz'
+    elements = extract_informative.capture_elements_and_write_fastq(query, fastq)
+    assert elements == answer_elements
 
-    with tempfile.NamedTemporaryFile() as fastq:
-        elements = extract_informative.capture_elements_and_write_fastq(query, fastq.name)
-        assert elements == answer_elements
-
-        with open(fastq.name, 'r') as handle:
-            assert handle.read() == answer_fastq
-    fastq.close()
+    with gzip.open(fastq, 'r') as handle:
+        assert handle.read().decode() == answer_fastq
+    shutil.rmtree(tempdir)
 
 
 def test_tag_danglers():
