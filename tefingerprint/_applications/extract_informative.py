@@ -4,8 +4,10 @@ import argparse
 import pysam
 import subprocess
 import os
+import glob
 import shutil
 import sys
+import gzip
 from tempfile import mkdtemp
 
 
@@ -17,7 +19,8 @@ class Program(object):
                  include_tails=True,
                  tail_minimum_length=38,
                  mate_element_tag='ME',
-                 temp_dir=None,
+                 use_temp_dir=False,
+                 keep_temp_files=False,
                  threads=1):
         self.input_bam = input_bam
         self.reference_fasta = reference_fasta
@@ -25,12 +28,16 @@ class Program(object):
         self.include_tails = include_tails
         self.tail_minimum_length = tail_minimum_length
         self.mate_element_tag = mate_element_tag
-        self.temp_dir = temp_dir
         self.threads = str(threads)
-        if self.temp_dir:
-            self.keep_temp_dir = True
+        self.use_temp_dir = use_temp_dir
+        self.temp_dir = None
+        self.temp_file_prefix = '.tmp.tefextractinformative'
+        if self.use_temp_dir:
+            self.keep_temp_files = False
+
         else:
-            self.keep_temp_dir = False
+            self.keep_temp_files = keep_temp_files
+
 
     @staticmethod
     def cli(args):
@@ -75,11 +82,16 @@ class Program(object):
                             nargs=1,
                             default=['ME'],
                             help='Tag used in bam file to indicate the element type mate read.')
-        parser.add_argument('--tempdir',
-                            type=str,
-                            nargs=1,
-                            default=[False],
-                            help="Optional directory to store temp files in (files will not be removed).")
+        parser.set_defaults(keep_temp_files=False)
+        parser.add_argument('--keep-temp-files',
+                            dest='keep_temp_files',
+                            action='store_true',
+                            help='Temporary intermediate files will not be deleted.')
+        parser.set_defaults(use_os_temp=False)
+        parser.add_argument('--use-os-temp',
+                            dest='use_os_temp',
+                            action='store_true',
+                            help='Optional writes temp data to a temp file provided by the OS.')
         parser.add_argument('-t', '--threads',
                             type=int,
                             nargs=1,
@@ -96,68 +108,76 @@ class Program(object):
                        include_tails=arguments.include_tails,
                        tail_minimum_length=arguments.tail_minimum_length[0],
                        mate_element_tag=arguments.mate_element_tag[0],
-                       temp_dir=arguments.tempdir[0],
+                       use_temp_dir=arguments.use_os_temp,
+                       keep_temp_files=arguments.keep_temp_files,
                        threads=arguments.threads[0])
 
     def _run_pipeline(self):
         """"""
-        temp_fastq = self.temp_dir + '/0.fastq'
-        temp_bam = self.temp_dir + '/1.bam'
-
         print('>>> Extracting reads from : {0}'.format(self.input_bam))
         informative_reads = extract_informative_reads(self.input_bam,
                                                       include_tails=self.include_tails,
                                                       minimum_tail=self.tail_minimum_length)
 
-        print('>>> Writing reads to : {0}'.format(temp_fastq))
-        element_tags = capture_elements_and_write_fastq(informative_reads, temp_fastq)
+        print('>>> Writing reads to : {0}'.format(self.temp_fastq))
+        element_tags = capture_elements_and_write_fastq(informative_reads, self.temp_fastq)
 
-        print('>>> Mapping reads to {0} in {1}'.format(self.reference_fasta, temp_bam))
-        map_danglers_to_reference(temp_fastq, self.reference_fasta, temp_bam, self.threads)
+        print('>>> Mapping reads to {0} in {1}'.format(self.reference_fasta, self.temp_bam))
+        map_danglers_to_reference(self.temp_fastq, self.reference_fasta, self.temp_bam, self.threads)
 
-        print('>>> Indexing: {0}'.format(temp_bam))
-        pysam.index(temp_bam)
+        print('>>> Indexing: {0}'.format(self.temp_bam))
+        pysam.index(self.temp_bam)
 
         print('>>> Tagging reads in: {0}'.format(self.output_bam))
-        tag_danglers(temp_bam, element_tags, self.output_bam, self.mate_element_tag)
+        tag_danglers(self.temp_bam, element_tags, self.output_bam, self.mate_element_tag)
 
         print('>>> Indexing: {0}'.format(self.output_bam))
         pysam.index(self.output_bam)
+
+    def _cleanup(self):
+        # if temp directory used then always remove files and dir
+        if self.use_temp_dir:
+            print('>>> Removing temporary directory: {0}'.format(self.temp_dir))
+            shutil.rmtree(self.temp_dir)
+        # else if keeping files requested then don't remove them
+        elif self.keep_temp_files:
+            temp_files = glob.glob(self.output_bam + self.temp_file_prefix + '*')
+            print('>>> Keeping temporary files: {0}'.format(temp_files))
+        # else remove temp files
+        else:
+            temp_files = glob.glob(self.output_bam + self.temp_file_prefix + '*')
+            print('>>> Removing temporary files: {0}'.format(temp_files))
+            for f in temp_files:
+                os.remove(f)
 
     def run(self):
         """"""
         # check if samtools and bwa are available
         check_programs_installed('bwa', 'samtools')
 
-        # create temp dir for intermediate files unless one is supplied by user
-        if self.keep_temp_dir:
-            print('>>> Using directory at: {0}'.format(self.temp_dir))
-            if not os.path.exists(self.temp_dir):
-                os.makedirs(self.temp_dir)
-        else:
+        # create temp dir for intermediate files if requested
+        if self.use_temp_dir:
             self.temp_dir = mkdtemp()
-            print('>>> Creating temporary directory at: {0}'.format(self.temp_dir))
+            print('>>> Creating temporary directory: {0}'.format(self.temp_dir))
+            self.temp_fastq = self.temp_dir + self.temp_file_prefix + '.0.fastq.gz'
+            self.temp_bam = self.temp_dir + self.temp_file_prefix + '.1.bam'
+
+        else:
+            self.temp_fastq = self.output_bam + self.temp_file_prefix + '.0.fastq.gz'
+            self.temp_bam = self.output_bam + self.temp_file_prefix + '.1.bam'
 
         # attempt running pipeline
         print('>>> Running Pipeline')
         try:
             self._run_pipeline()
         except:
-            # remove temp dir unless it was supplied by user
-            if self.temp_dir:
-                print('>>> Error Encountered... temporary files kept at: {0}'.format(self.temp_dir))
-            else:
-                print('>>> Error Encountered... Removing temporary directory at: {0}'.format(self.temp_dir))
-                shutil.rmtree(self.temp_dir)
-            # re-raise the error for debugging
+            # clean up and re-raise the error for debugging
+            print('>>> Error Encountered, cleaning up')
+            self._cleanup()
             raise
 
         # remove temp dir unless it was supplied by user
-        if self.keep_temp_dir:
-            pass
-        else:
-            print('>>> Removing temporary directory at: {0}'.format(self.temp_dir))
-            shutil.rmtree(self.temp_dir)
+        self._cleanup()
 
 
 def extract_informative_reads(bam, include_tails=True, minimum_tail=38):
@@ -248,7 +268,7 @@ def capture_elements_and_write_fastq(reads, fastq):
     """
     element_tags = {}
 
-    with open(fastq, 'w') as fq:
+    with gzip.open(fastq, 'w') as fq:
         for read in reads:
 
             # add read name and element name to dict
@@ -257,7 +277,7 @@ def capture_elements_and_write_fastq(reads, fastq):
             # write read to fastq
             fq.write("@{0}\n{1}\n+\n{2}\n".format(read['name'],
                                                   read['sequence'],
-                                                  read['quality']))
+                                                  read['quality']).encode('utf-8'))
     return element_tags
 
 
