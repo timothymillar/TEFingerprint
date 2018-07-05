@@ -197,14 +197,17 @@ def main():
                          colourise_output=args.colourise_output,
                          cores=args.threads[0])
 
+    # output features ordered by
+    order = ['reference', 'start', 'stop', 'category']
+
     # TSV output
     tsv = args.tsv[0]
     if tsv == '-':
-        for line in result.as_tabular_lines(sep='\t'):
+        for line in result.as_tabular_lines(sep='\t', order=order):
             print(line)
     elif tsv:
         with zopen(tsv, 'wb') as f:
-            for line in result.as_tabular_lines(sep='\t'):
+            for line in result.as_tabular_lines(sep='\t', order=order):
                 f.write(line.encode() + b'\n')
     else:
         pass
@@ -212,11 +215,11 @@ def main():
     # CSV output
     csv = args.csv[0]
     if csv == '-':
-        for line in result.as_tabular_lines(sep=',', quote=True):
+        for line in result.as_tabular_lines(sep=',', quote=True, order=order):
             print(line)
     elif csv:
         with zopen(csv, 'wb') as f:
-            for line in result.as_tabular_lines(sep=',', quote=True):
+            for line in result.as_tabular_lines(sep=',', quote=True, order=order):
                 f.write(line.encode() + b'\n')
     else:
         pass
@@ -224,17 +227,11 @@ def main():
     # GFF output
     gff = args.gff[0]
     if gff == '-':
-        for line in result.as_gff_lines(order=['reference',
-                                               'start',
-                                               'stop',
-                                               'category']):
+        for line in result.as_gff_lines(order=order):
             print(line)
     elif gff:
         with zopen(gff, 'wb') as f:
-            for line in result.as_gff_lines(order=['reference',
-                                                   'start',
-                                                   'stop',
-                                                   'category']):
+            for line in result.as_gff_lines(order=order):
                 f.write(line.encode() + b'\n')
     else:
         pass
