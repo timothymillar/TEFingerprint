@@ -1,6 +1,7 @@
 #! /usr/bin/env python3
 
 import sys
+import os
 import argparse
 from tefingerprint._applications.fingerprint import fingerprint
 from tefingerprint.util.io import zopen
@@ -206,6 +207,8 @@ def main():
         for line in result.as_tabular_lines(sep='\t', order=order):
             print(line)
     elif tsv:
+        if os.path.isfile(tsv):
+            os.remove(tsv)
         with zopen(tsv, 'wb') as f:
             for line in result.as_tabular_lines(sep='\t', order=order):
                 f.write(line.encode() + b'\n')
@@ -218,6 +221,8 @@ def main():
         for line in result.as_tabular_lines(sep=',', quote=True, order=order):
             print(line)
     elif csv:
+        if os.path.isfile(csv):
+            os.remove(csv)
         with zopen(csv, 'wb') as f:
             for line in result.as_tabular_lines(sep=',', quote=True, order=order):
                 f.write(line.encode() + b'\n')
@@ -230,6 +235,8 @@ def main():
         for line in result.as_gff_lines(order=order):
             print(line)
     elif gff:
+        if os.path.isfile(gff):
+            os.remove(gff)
         with zopen(gff, 'wb') as f:
             for line in result.as_gff_lines(order=order):
                 f.write(line.encode() + b'\n')
