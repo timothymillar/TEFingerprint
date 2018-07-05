@@ -2,6 +2,7 @@
 
 import bz2
 import gzip
+from Bio import bgzf
 import os.path
 
 
@@ -18,7 +19,7 @@ def zopen(fname, *args, **kwargs):
             return f
     else:
         if fname.endswith('.gz'):
-            return gzip.open(fname, *args, **kwargs)
+            return bgzf.open(fname, *args, **kwargs)
         elif fname.endswith('.bz2'):
             return bz2.open(fname, *args, **kwargs)
         else:

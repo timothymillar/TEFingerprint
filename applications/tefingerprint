@@ -1,6 +1,7 @@
 #! /usr/bin/env python3
 
 import sys
+import os
 import argparse
 from tefingerprint._applications.fingerprint import fingerprint
 from tefingerprint.util.io import zopen
@@ -149,13 +150,26 @@ def main():
                         help='Sam-tag used in bam file to indicate the '
                              'repeat element matched to each the mate read. '
                              'Default = "ME".')
+    parser.add_argument('--tsv',
+                        type=str,
+                        default=[False],
+                        nargs=1,
+                        help='File name for tab separated text output. '
+                             'Compression will be applied by extension '
+                             'e.g. ".gz" (block-gzip) or ".bz2". '
+                             'If compressed using block-gzip, the resulting '
+                             'file can be indexed with tabix using '
+                             '`tabix -s 1 -b 4 -e 5 -S 1 <file>`. '
+                             'Output may be written to standard output '
+                             'using "-". '
+                             'Default = None.')
     parser.add_argument('--csv',
                         type=str,
                         default=[False],
                         nargs=1,
-                        help='File name for CSV output. '
+                        help='File name for comma separated text output. '
                              'Compression will be applied by extension '
-                             'e.g. ".gz" or ".bz2". '
+                             'e.g. ".gz" (block-gzip) or ".bz2". '
                              'Output may be written to standard output '
                              'using "-". '
                              'Default = None.')
@@ -165,7 +179,7 @@ def main():
                         nargs=1,
                         help='File name for GFF output. '
                              'Compression will be applied by extension '
-                             'e.g. ".gz" or ".bz2". '
+                             'e.g. ".gz" (block-gzip) or ".bz2". '
                              'Output may be written to standard output '
                              'using "-". '
                              'Default = None.')
@@ -187,14 +201,33 @@ def main():
                          colourise_output=args.colourise_output,
                          cores=args.threads[0])
 
+    # output features ordered by
+    order = ['reference', 'start', 'stop', 'category']
+
+    # TSV output
+    tsv = args.tsv[0]
+    if tsv == '-':
+        for line in result.as_tabular_lines(sep='\t', order=order):
+            print(line)
+    elif tsv:
+        if os.path.isfile(tsv):
+            os.remove(tsv)
+        with zopen(tsv, 'wb') as f:
+            for line in result.as_tabular_lines(sep='\t', order=order):
+                f.write(line.encode() + b'\n')
+    else:
+        pass
+
     # CSV output
     csv = args.csv[0]
     if csv == '-':
-        for line in result.as_tabular_lines():
+        for line in result.as_tabular_lines(sep=',', quote=True, order=order):
             print(line)
     elif csv:
+        if os.path.isfile(csv):
+            os.remove(csv)
         with zopen(csv, 'wb') as f:
-            for line in result.as_tabular_lines():
+            for line in result.as_tabular_lines(sep=',', quote=True, order=order):
                 f.write(line.encode() + b'\n')
     else:
         pass
@@ -202,17 +235,13 @@ def main():
     # GFF output
     gff = args.gff[0]
     if gff == '-':
-        for line in result.as_gff_lines(order=['reference',
-                                               'start',
-                                               'stop',
-                                               'category']):
+        for line in result.as_gff_lines(order=order):
             print(line)
     elif gff:
+        if os.path.isfile(gff):
+            os.remove(gff)
         with zopen(gff, 'wb') as f:
-            for line in result.as_gff_lines(order=['reference',
-                                                   'start',
-                                                   'stop',
-                                                   'category']):
+            for line in result.as_gff_lines(order=order):
                 f.write(line.encode() + b'\n')
     else:
         pass

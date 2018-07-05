@@ -445,6 +445,8 @@ class ContigSet(object):
     """
     def __init__(self, *args, append_duplicate_headers=False):
         self._dict = {}
+        self._cached_array = None
+        self._cached_array_order = None
         if len(args) == 0:
             pass
         else:
@@ -481,6 +483,10 @@ class ContigSet(object):
 
     def __ne__(self, other):
         return not self.__eq__(other)
+
+    def _reset_array_cache(self):
+        self._cached_array = None
+        self._cached_array_order = None
 
     def dtype_headers(self):
         """
@@ -531,6 +537,8 @@ class ContigSet(object):
             loci of contigs with duplicate headers
         :type append_duplicate_headers: bool
         """
+        self._reset_array_cache()
+
         if len(self._dict.keys()) == 0:
             pass
         else:
@@ -562,6 +570,8 @@ class ContigSet(object):
             loci of contigs with duplicate headers
         :type append_duplicate_headers: bool
         """
+        self._reset_array_cache()
+
         for contig in contigs:
             self.add(contig, append_duplicate_headers=append_duplicate_headers)
 
@@ -612,6 +622,26 @@ class ContigSet(object):
             for val in iter_values(ctg):
                 yield val
 
+    def _rebuild_array_cache(self, order=False):
+        if order == self._cached_array_order:
+            pass
+        else:
+            self._reset_array_cache()
+
+            data = map(tuple,
+                       map(util.numpy.element.flatten, self.iter_values()))
+            dtype = util.numpy.dtype.flatten_fields(
+                util.numpy.dtype.append(self.dtype_headers(),
+                                        self.dtype_loci()))
+            self._cached_array = np.array([i for i in data], dtype=dtype)
+
+            if order:
+                if isinstance(order, str):
+                    order = [order]
+                index = np.argsort(self._cached_array[order],
+                                   order=(tuple(order)))
+                self._cached_array = self._cached_array[index]
+
     def as_array(self, order=False):
         """
         Converts a ContigSet to a flattened numpy array.
@@ -625,40 +655,39 @@ class ContigSet(object):
         :return: a numpy array with no nested values
         :rtype: :class:`numpy.array`
         """
-        data = map(tuple, map(util.numpy.element.flatten, self.iter_values()))
-        dtype = util.numpy.dtype.flatten_fields(util.numpy.dtype.append(self.dtype_headers(),
-                                                                        self.dtype_loci()))
-        array = np.array([i for i in data], dtype=dtype)
+        self._rebuild_array_cache(order=order)
+        return np.copy(self._cached_array)
 
-        if order:
-            if isinstance(order, str):
-                order = [order]
-            index = np.argsort(array[order],
-                               order=(tuple(order)))
-            array = array[index]
-
-        return array
-
-    def as_tabular_lines(self, sep=','):
+    def as_tabular_lines(self, sep='\t', quote=False, order=False):
         """
         Converts a ContigSet to an iterable of strings.
 
         Header values are included for every element in each contig.
         Nested loci values are flattened by appending nested field names.
 
-        :param sep: separator value (default: ',')
+        :param sep: separator value (default: '\t')
         :type sep: str
+        :param quote: logical to surround string values in quotations
+        :type quote: bool
 
         :return: an iterable of string suitable for writing to a tabular
             plain text file
         :rtype: iterable[str]
         """
+        self._rebuild_array_cache(order=order)
+
+        if quote:
+            string = util.misc.quote_str
+        else:
+            string = str
+
         dtype = util.numpy.dtype.append(self.dtype_headers(), self.dtype_loci())
-        columns = util.numpy.dtype.flatten_fields(dtype)
-        yield sep.join(map(util.misc.quote_str, columns))
-        for f in self.iter_values():
-            yield sep.join(map(util.misc.quote_str,
-                               util.numpy.element.flatten(f)))
+        columns = util.numpy.dtype.flatten_field_names(dtype)
+
+        yield sep.join(map(string, columns))
+
+        for element in self._cached_array:
+            yield sep.join(map(string, element))
 
     def as_gff_lines(self,
                      order=False,
@@ -694,9 +723,9 @@ class ContigSet(object):
             plain text file
         :rtype: iterable[str]
         """
-        array = self.as_array(order=order)
+        self._rebuild_array_cache(order=order)
 
-        attribute_fields = list(array.dtype.names)
+        attribute_fields = list(self._cached_array.dtype.names)
         for field in (reference_field, start_field, stop_field, strand_field):
             if field in attribute_fields:
                 attribute_fields.remove(field)
@@ -705,7 +734,7 @@ class ContigSet(object):
 
         template = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}"
 
-        for record in array:
+        for record in self._cached_array:
             if type_field:
                 type_value = record[type_field]
             else:
