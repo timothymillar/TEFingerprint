@@ -154,9 +154,12 @@ def main():
                         type=str,
                         default=[False],
                         nargs=1,
-                        help='File name for CSV output. '
+                        help='File name for tab separated text output. '
                              'Compression will be applied by extension '
-                             'e.g. ".gz" or ".bz2". '
+                             'e.g. ".gz" (block-gzip) or ".bz2". '
+                             'If compressed using block-gzip, the resulting '
+                             'file can be indexed with tabix using '
+                             '`tabix -s 1 -b 4 -e 5 -S 1 <file>`. '
                              'Output may be written to standard output '
                              'using "-". '
                              'Default = None.')
@@ -164,9 +167,9 @@ def main():
                         type=str,
                         default=[False],
                         nargs=1,
-                        help='File name for CSV output. '
+                        help='File name for comma separated text output. '
                              'Compression will be applied by extension '
-                             'e.g. ".gz" or ".bz2". '
+                             'e.g. ".gz" (block-gzip) or ".bz2". '
                              'Output may be written to standard output '
                              'using "-". '
                              'Default = None.')
@@ -176,7 +179,7 @@ def main():
                         nargs=1,
                         help='File name for GFF output. '
                              'Compression will be applied by extension '
-                             'e.g. ".gz" or ".bz2". '
+                             'e.g. ".gz" (block-gzip) or ".bz2". '
                              'Output may be written to standard output '
                              'using "-". '
                              'Default = None.')
