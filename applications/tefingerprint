@@ -196,6 +196,7 @@ def main():
                          annotation=args.annotation_of_known_elements[0],
                          colourise_output=args.colourise_output,
                          cores=args.threads[0])
+
     # TSV output
     tsv = args.tsv[0]
     if tsv == '-':
@@ -208,15 +209,14 @@ def main():
     else:
         pass
 
-
     # CSV output
     csv = args.csv[0]
     if csv == '-':
-        for line in result.as_tabular_lines(sep=','):
+        for line in result.as_tabular_lines(sep=',', quote=True):
             print(line)
     elif csv:
         with zopen(csv, 'wb') as f:
-            for line in result.as_tabular_lines(sep=','):
+            for line in result.as_tabular_lines(sep=',', quote=True):
                 f.write(line.encode() + b'\n')
     else:
         pass

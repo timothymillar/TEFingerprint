@@ -639,7 +639,7 @@ class ContigSet(object):
 
         return array
 
-    def as_tabular_lines(self, sep='\t'):
+    def as_tabular_lines(self, sep='\t', quote=False):
         """
         Converts a ContigSet to an iterable of strings.
 
@@ -648,6 +648,8 @@ class ContigSet(object):
 
         :param sep: separator value (default: ',')
         :type sep: str
+        :param quote: logical to surround string values in quotations
+        :type quote: bool
 
         :return: an iterable of string suitable for writing to a tabular
             plain text file
@@ -655,10 +657,13 @@ class ContigSet(object):
         """
         dtype = util.numpy.dtype.append(self.dtype_headers(), self.dtype_loci())
         columns = util.numpy.dtype.flatten_field_names(dtype)
-        yield sep.join(map(util.misc.quote_str, columns))
+        if quote:
+            string = util.misc.quote_str
+        else:
+            string = str
+        yield sep.join(map(string, columns))
         for f in self.iter_values():
-            yield sep.join(map(util.misc.quote_str,
-                               util.numpy.element.flatten(f)))
+            yield sep.join(map(string, util.numpy.element.flatten(f)))
 
     def as_gff_lines(self,
                      order=False,
