@@ -654,7 +654,7 @@ class ContigSet(object):
         :rtype: iterable[str]
         """
         dtype = util.numpy.dtype.append(self.dtype_headers(), self.dtype_loci())
-        columns = util.numpy.dtype.flatten_fields(dtype)
+        columns = util.numpy.dtype.flatten_field_names(dtype)
         yield sep.join(map(util.misc.quote_str, columns))
         for f in self.iter_values():
             yield sep.join(map(util.misc.quote_str,
