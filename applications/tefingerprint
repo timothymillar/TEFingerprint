@@ -149,6 +149,16 @@ def main():
                         help='Sam-tag used in bam file to indicate the '
                              'repeat element matched to each the mate read. '
                              'Default = "ME".')
+    parser.add_argument('--tsv',
+                        type=str,
+                        default=[False],
+                        nargs=1,
+                        help='File name for CSV output. '
+                             'Compression will be applied by extension '
+                             'e.g. ".gz" or ".bz2". '
+                             'Output may be written to standard output '
+                             'using "-". '
+                             'Default = None.')
     parser.add_argument('--csv',
                         type=str,
                         default=[False],
@@ -186,15 +196,27 @@ def main():
                          annotation=args.annotation_of_known_elements[0],
                          colourise_output=args.colourise_output,
                          cores=args.threads[0])
+    # TSV output
+    tsv = args.tsv[0]
+    if tsv == '-':
+        for line in result.as_tabular_lines(sep='\t'):
+            print(line)
+    elif tsv:
+        with zopen(tsv, 'wb') as f:
+            for line in result.as_tabular_lines(sep='\t'):
+                f.write(line.encode() + b'\n')
+    else:
+        pass
+
 
     # CSV output
     csv = args.csv[0]
     if csv == '-':
-        for line in result.as_tabular_lines():
+        for line in result.as_tabular_lines(sep=','):
             print(line)
     elif csv:
         with zopen(csv, 'wb') as f:
-            for line in result.as_tabular_lines():
+            for line in result.as_tabular_lines(sep=','):
                 f.write(line.encode() + b'\n')
     else:
         pass

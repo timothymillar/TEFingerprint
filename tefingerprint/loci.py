@@ -639,7 +639,7 @@ class ContigSet(object):
 
         return array
 
-    def as_tabular_lines(self, sep=','):
+    def as_tabular_lines(self, sep='\t'):
         """
         Converts a ContigSet to an iterable of strings.
 
