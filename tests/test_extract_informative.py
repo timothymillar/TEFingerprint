@@ -14,7 +14,7 @@ def test_reverse_complement(query, answer):
     assert extract_informative.reverse_complement(query) == answer
 
 
-@pytest.mark.parametrize('include_tails,minimum_tail,answer',
+@pytest.mark.parametrize('include_tails,soft_clip_minimum_length,answer',
                          [(False, 38,
                            [{'element': 'MULE_1',
                              'name': 'read01_forward_dangler',
@@ -139,12 +139,14 @@ def test_reverse_complement(query, answer):
                               'quality': '@CCFFFDDHF',
                               'sequence': 'TCCACTGTTT'}])
                           ])
-def test_extract_informative_reads(include_tails, minimum_tail, answer):
+def test_extract_informative_reads(include_tails, soft_clip_minimum_length, answer):
     """
     Tests read extraction parsing and filtering.
     """
     data_path = os.path.dirname(os.path.realpath(__file__)) + '/data/testPreprocessInput-2017-07-28.bam'
-    query = list(extract_informative.extract_informative_reads(data_path, include_tails=include_tails, minimum_tail=minimum_tail))
+    query = list(extract_informative.extract_informative_reads(data_path,
+                                                               include_soft_tails=include_tails,
+                                                               minimum_soft_clip_len=soft_clip_minimum_length))
     assert query == answer
 
 
