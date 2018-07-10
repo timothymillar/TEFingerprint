@@ -237,7 +237,6 @@ def extract_informative_soft_clip_tips(bam, minimum_soft_clip_len=38):
                     # tip is soft clipped and of sufficient length
                     clip = tip[1]
                     # return the clipped section as a read
-                    print('stip', read.qname)
                     yield {'name': read.qname,
                            'element': read.reference_name,
                            'sequence': read.seq[0: clip + 1],
@@ -252,7 +251,6 @@ def extract_informative_soft_clip_tips(bam, minimum_soft_clip_len=38):
                     # tip is soft clipped and of sufficient length
                     clip = tip[1]
                     # return the clipped section as a read
-                    print('stip', read.qname)
                     yield {'name': read.qname,
                                'element': read.reference_name,
                                'sequence': reverse_complement(read.seq[-clip:]),
@@ -353,7 +351,6 @@ def capture_elements_and_write_fastq(reads, fastq, skip=(), mode='w'):
         for read in reads:
             # filter
             if read['name'] in skip:
-                print('skip', read['name'])
                 pass
             else:
 
