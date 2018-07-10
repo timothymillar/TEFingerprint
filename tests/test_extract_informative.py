@@ -14,8 +14,8 @@ def test_reverse_complement(query, answer):
     assert extract_informative.reverse_complement(query) == answer
 
 
-@pytest.mark.parametrize('include_tips,include_tails,soft_clip_minimum_length,answer',
-                         [(False, False, 38,
+@pytest.mark.parametrize('include_tails,soft_clip_minimum_length,answer',
+                         [(False, 38,
                            [{'element': 'MULE_1',
                              'name': 'read01_forward_dangler',
                              'quality': 'HHHHHGHHHHHHHHHHHHHFCHHHHGIEGGHHHHHHEHHHHHHHHHF@HEGGGGGFHHAEHHDFGHHHHHHHFHHHHHHE?D?GFHHEHHEEFFHGF;FE',
@@ -48,7 +48,7 @@ def test_reverse_complement(query, answer):
                              'name': 'read08_reverse_dangler',
                              'quality': 'CCCFFFFFHHHHHJJJJJJJJJJJJJJJJJJIJJJJJHIGJJGJJJJJJJGIIJJJJJJJJJJJJJJJJJJJJJJJJJJJIJJIJJJJJJHHHHHHHHFF',
                              'sequence': 'ACATAACTTATCATATTTGATAATAATATCCTATACGTCAATAAAAATATAAATTTTATAAATATATATTTATTATTAAGTTGCATTATATATTAATTTA'}]),
-                          (False, True, 38,
+                          (True, 38,
                            [{'element': 'MULE_1',
                              'name': 'read01_forward_dangler',
                              'quality': 'HHHHHGHHHHHHHHHHHHHFCHHHHGIEGGHHHHHHEHHHHHHHHHF@HEGGGGGFHHAEHHDFGHHHHHHHFHHHHHHE?D?GFHHEHHEEFFHGF;FE',
@@ -89,7 +89,7 @@ def test_reverse_complement(query, answer):
                              'name': 'read12_reverse_tail',
                              'quality': '@CCFFFDDHFFDFIHIJJ=FGIJIIIIJGIJIIIFGCHIJIJIJJ',
                              'sequence': 'TCCACTGTTTGGGGATTCGAACCCCCAACAAAAGGTTCAACATAT'}]),
-                          (False, True, 10,
+                          (True, 10,
                             [{'element': 'MULE_1',
                               'name': 'read01_forward_dangler',
                               'quality': 'HHHHHGHHHHHHHHHHHHHFCHHHHGIEGGHHHHHHEHHHHHHHHHF@HEGGGGGFHHAEHHDFGHHHHHHHFHHHHHHE?D?GFHHEHHEEFFHGF;FE',
@@ -139,13 +139,12 @@ def test_reverse_complement(query, answer):
                               'quality': '@CCFFFDDHF',
                               'sequence': 'TCCACTGTTT'}])
                           ])
-def test_extract_informative_reads(include_tips, include_tails, soft_clip_minimum_length, answer):
+def test_extract_informative_reads(include_tails, soft_clip_minimum_length, answer):
     """
     Tests read extraction parsing and filtering.
     """
     data_path = os.path.dirname(os.path.realpath(__file__)) + '/data/testPreprocessInput-2017-07-28.bam'
     query = list(extract_informative.extract_informative_reads(data_path,
-                                                               include_soft_tips=include_tips,
                                                                include_soft_tails=include_tails,
                                                                minimum_soft_clip_len=soft_clip_minimum_length))
     assert query == answer

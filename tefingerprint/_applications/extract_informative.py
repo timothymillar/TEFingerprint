@@ -65,11 +65,14 @@ class Program(object):
                             type=str,
                             nargs=1,
                             help="Name of output bam file.")
-        parser.set_defaults(include_tips=True)
-        parser.add_argument('--exclude-tips',
+        parser.set_defaults(include_tips=False)
+        parser.add_argument('--include-tips',
                             dest='include_tips',
-                            action='store_false',
-                            help="Don't include soft-clipped tips.")
+                            action='store_true',
+                            help="Include soft-clipped tips instead of "
+                                 "their associated full length mate read. "
+                                 "This may improve precision but can reduce "
+                                 "depth of informative clusters.")
         parser.set_defaults(include_tails=True)
         parser.add_argument('--exclude-tails',
                             dest='include_tails',
@@ -79,7 +82,7 @@ class Program(object):
                             nargs=1,
                             type=int,
                             default=[38],
-                            help="Minimum required length for inclusion of soft-clipped tails.")
+                            help="Minimum required length for inclusion of soft-clipped tips and tails.")
         parser.add_argument('--mate-element-tag',
                             type=str,
                             nargs=1,
@@ -118,14 +121,32 @@ class Program(object):
 
     def _run_pipeline(self):
         """"""
+        if self.include_tips:
+            print('>>> Extracting soft clips from : {0}'.format(self.input_bam))
+            informative_clips = extract_informative_soft_clip_tips(self.input_bam,
+                                                                   minimum_soft_clip_len=self.soft_clip_minimum_length)
+
+            print('>>> Writing soft clips to : {0}'.format(self.temp_fastq))
+            # parameters for next segment
+            tip_tags = capture_elements_and_write_fastq(informative_clips, self.temp_fastq)
+            tip_names = {name for name in tip_tags.keys()}
+            fastq_mode = 'a'  # append to file just written
+        else:
+            # defaults if no soft clips used
+            tip_tags = dict()
+            tip_names = set()
+            fastq_mode = 'w'  # write new file
+
         print('>>> Extracting reads from : {0}'.format(self.input_bam))
         informative_reads = extract_informative_reads(self.input_bam,
-                                                      include_soft_tips=self.include_tips,
                                                       include_soft_tails=self.include_tails,
                                                       minimum_soft_clip_len=self.soft_clip_minimum_length)
 
         print('>>> Writing reads to : {0}'.format(self.temp_fastq))
-        element_tags = capture_elements_and_write_fastq(informative_reads, self.temp_fastq)
+        element_tags = capture_elements_and_write_fastq(informative_reads, self.temp_fastq, skip=tip_names, mode=fastq_mode)
+
+        # update tags, soft-clip tags overwrite regular read tags
+        element_tags.update(tip_tags)
 
         print('>>> Mapping reads to {0} in {1}'.format(self.reference_fasta, self.temp_bam))
         map_danglers_to_reference(self.temp_fastq, self.reference_fasta, self.temp_bam, self.threads)
@@ -185,17 +206,15 @@ class Program(object):
         self._cleanup()
 
 
-def extract_informative_reads(bam,
-                              include_soft_tails=True,
-                              include_soft_tips=True,
-                              minimum_soft_clip_len=38):
+def extract_informative_soft_clip_tips(bam, minimum_soft_clip_len=38):
     """
-    Extracts informative reads from a bam file of paired end reads aligned to a library of transposons.
+    Extracts informative soft clipped tips of reads from a bam file of paired
+    end reads aligned to a library of transposons.
 
     :param bam: path to a bam file of paired end reads aligned to a library of transposons
     :type bam: str
-    :param include_soft_tails: whether or not to include soft clipped tails as an additional source of information
-    :type include_soft_tails: bool
+    :param include_soft_tips: whether or not to include soft clipped tipss
+    :type include_soft_tips: bool
     :param minimum_soft_clip_len: minimum length of tail soft clips to include
     :type minimum_soft_clip_len: int
 
@@ -204,11 +223,11 @@ def extract_informative_reads(bam,
     """
     alignment = pysam.AlignmentFile(bam, 'r')
     for read in alignment:
-        if read.is_secondary or read.is_supplementary:
-            # read is bad
+        if read.is_secondary or read.is_supplementary or read.is_unmapped:
+            # read is bad, soft clipped reads are always mapped
             pass
 
-        elif include_soft_tips and read.mate_is_unmapped and not read.is_unmapped:
+        elif read.mate_is_unmapped:
             # potential tip soft clip
 
             if read.is_reverse:
@@ -218,6 +237,7 @@ def extract_informative_reads(bam,
                     # tip is soft clipped and of sufficient length
                     clip = tip[1]
                     # return the clipped section as a read
+                    print('stip', read.qname)
                     yield {'name': read.qname,
                            'element': read.reference_name,
                            'sequence': read.seq[0: clip + 1],
@@ -232,6 +252,7 @@ def extract_informative_reads(bam,
                     # tip is soft clipped and of sufficient length
                     clip = tip[1]
                     # return the clipped section as a read
+                    print('stip', read.qname)
                     yield {'name': read.qname,
                                'element': read.reference_name,
                                'sequence': reverse_complement(read.seq[-clip:]),
@@ -240,67 +261,81 @@ def extract_informative_reads(bam,
                     # not a soft clipped section or not  sufficient length
                     pass
 
-        elif read.mate_is_unmapped:
-            # not a dangler or tail soft clip
+
+def extract_informative_reads(bam,
+                              include_soft_tails=True,
+                              minimum_soft_clip_len=38):
+    """
+    Extracts informative reads from a bam file of paired end reads aligned to a library of transposons.
+
+    :param bam: path to a bam file of paired end reads aligned to a library of transposons
+    :type bam: str
+    :param include_soft_tails: whether or not to include soft clipped tails
+    :type include_soft_tails: bool
+    :param minimum_soft_clip_len: minimum length of tail soft clips to include
+    :type minimum_soft_clip_len: int
+
+    :return: parsed and filtered reads relating information about location of transposon insertions
+    :rtype: generator[dict[str: str]]
+    """
+    alignment = pysam.AlignmentFile(bam, 'r')
+    for read in alignment:
+        if read.is_secondary or read.is_supplementary or read.mate_is_unmapped:
+            # read is bad
             pass
 
-        else:
+        elif read.is_unmapped:
+            # read is a dangler
 
-            if read.is_unmapped:
-                # read is a dangler
+            if read.is_reverse:
+                # read is a reverse dangler
+                yield {'name': read.qname,
+                       'element': read.next_reference_name,  # will be identical to read.reference_name
+                       'sequence': reverse_complement(read.seq),
+                       'quality': read.qual[::-1]}
 
-                if read.is_reverse:
-                    # read is a reverse dangler
-                    yield {'name': read.qname,
-                           'element': read.next_reference_name,  # will be identical to read.reference_name
-                           'sequence': reverse_complement(read.seq),
-                           'quality': read.qual[::-1]}
-
-                else:
-                    # read is a forward dangler
-                    yield {'name': read.qname,
-                           'element': read.next_reference_name,  # will be identical to read.reference_name
-                           'sequence': read.seq,
-                           'quality': read.qual}
-
-            elif include_soft_tails and read.is_proper_pair:
-                # potential tail clip
-
-                if read.is_reverse:
-                    # potential reverse tail clip
-                    tail = read.cigar[-1]
-                    if tail[0] == 4 and tail[1] >= minimum_soft_clip_len:
-                        # tail is soft clipped and of sufficient length
-                        clip = tail[1]
-                        # return the clipped section as a read
-                        yield {'name': read.qname,
-                               'element': read.reference_name,
-                               'sequence': reverse_complement(read.seq[-clip:]),
-                               'quality': read.qual[-clip:][::-1]}
-                    else:
-                        # not a soft clipped section or not  sufficient length
-                        pass
-
-                else:
-                    # potential forward tail clip
-                    tail = read.cigar[0]
-                    if tail[0] == 4 and tail[1] >= minimum_soft_clip_len:
-                        # tail is soft clipped and of sufficient length
-                        clip = tail[1]
-                        # return the clipped section as a read
-                        yield {'name': read.qname,
-                               'element': read.reference_name,
-                               'sequence': read.seq[0: clip + 1],
-                               'quality': read.qual[0: clip + 1]}
-                    else:
-                        # not a soft clipped section or not  sufficient length
-                        pass
             else:
-                # neither dangler nor tail clip
-                pass
+                # read is a forward dangler
+                yield {'name': read.qname,
+                       'element': read.next_reference_name,  # will be identical to read.reference_name
+                       'sequence': read.seq,
+                       'quality': read.qual}
+
+        elif include_soft_tails and read.is_proper_pair:
+            # potential tail clip
+
+            if read.is_reverse:
+                # potential reverse tail clip
+                tail = read.cigar[-1]
+                if tail[0] == 4 and tail[1] >= minimum_soft_clip_len:
+                    # tail is soft clipped and of sufficient length
+                    clip = tail[1]
+                    # return the clipped section as a read
+                    yield {'name': read.qname,
+                           'element': read.reference_name,
+                           'sequence': reverse_complement(read.seq[-clip:]),
+                           'quality': read.qual[-clip:][::-1]}
+                else:
+                    # not a soft clipped section or not  sufficient length
+                    pass
+
+            else:
+                # potential forward tail clip
+                tail = read.cigar[0]
+                if tail[0] == 4 and tail[1] >= minimum_soft_clip_len:
+                    # tail is soft clipped and of sufficient length
+                    clip = tail[1]
+                    # return the clipped section as a read
+                    yield {'name': read.qname,
+                           'element': read.reference_name,
+                           'sequence': read.seq[0: clip + 1],
+                           'quality': read.qual[0: clip + 1]}
+                else:
+                    # not a soft clipped section or not  sufficient length
+                    pass
 
 
-def capture_elements_and_write_fastq(reads, fastq):
+def capture_elements_and_write_fastq(reads, fastq, skip=(), mode='w'):
     """
     Captures writes parsed reads to a fastq file and returns a dictionary of read-element pairs.
 
@@ -314,16 +349,21 @@ def capture_elements_and_write_fastq(reads, fastq):
     """
     element_tags = {}
 
-    with gzip.open(fastq, 'w') as fq:
+    with gzip.open(fastq, mode) as fq:
         for read in reads:
+            # filter
+            if read['name'] in skip:
+                print('skip', read['name'])
+                pass
+            else:
 
-            # add read name and element name to dict
-            element_tags[read['name']] = read['element']
+                # add read name and element name to dict
+                element_tags[read['name']] = read['element']
 
-            # write read to fastq
-            fq.write("@{0}\n{1}\n+\n{2}\n".format(read['name'],
-                                                  read['sequence'],
-                                                  read['quality']).encode('utf-8'))
+                # write read to fastq
+                fq.write("@{0}\n{1}\n+\n{2}\n".format(read['name'],
+                                                      read['sequence'],
+                                                      read['quality']).encode('utf-8'))
     return element_tags
 
 
