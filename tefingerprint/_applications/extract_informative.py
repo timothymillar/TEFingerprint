@@ -46,23 +46,30 @@ class Program(object):
     @staticmethod
     def cli(args):
         """
-        Argument parser to handle commandline inputs for the preprocessing program.
+        Argument parser to handle commandline inputs for the
+        extract-informative program.
 
-        :param args: List of commandline arguments for the preprocess program
+        :param args: List of commandline arguments for the
+        extract-informative program
         :type args: []
 
         :return: Dictionary like object of arguments and values
         """
-        parser = argparse.ArgumentParser('Extract reads whose pair was mapped to a repeat element, '
-                                         'map them to a reference genome and tag them with their mates element name.')
+        parser = argparse.ArgumentParser('Extract reads whose pair was '
+                                         'mapped to a repeat element, '
+                                         'map them to a reference genome '
+                                         'and tag them with their mates '
+                                         'element name.')
         parser.add_argument('bam',
                             type=str,
                             nargs=1,
-                            help='A bam file containing paired end reads mapped to a library of repeat elements.')
+                            help='A bam file containing paired end reads '
+                                 'mapped to a library of repeat elements.')
         parser.add_argument('-r', '--reference',
                             type=str,
                             nargs=1,
-                            help="Reference genome in fasta format indexed with bwa.")
+                            help="Reference genome in fasta format indexed "
+                                 "with bwa.")
         parser.add_argument('-o', '--output',
                             type=str,
                             nargs=1,
@@ -94,22 +101,26 @@ class Program(object):
                             nargs=1,
                             type=int,
                             default=[38],
-                            help="Minimum required length for inclusion of soft-clipped tips and tails.")
+                            help="Minimum required length for inclusion of "
+                                 "soft-clipped tips and tails.")
         parser.add_argument('--mate-element-tag',
                             type=str,
                             nargs=1,
                             default=['ME'],
-                            help='Tag used in bam file to indicate the element type mate read.')
+                            help='Tag used in bam file to indicate the '
+                                 'element type mate read.')
         parser.set_defaults(keep_temp_files=False)
         parser.add_argument('--keep-temp-files',
                             dest='keep_temp_files',
                             action='store_true',
-                            help='Temporary intermediate files will not be deleted.')
+                            help='Temporary intermediate files will '
+                                 'not be deleted.')
         parser.set_defaults(use_os_temp=False)
         parser.add_argument('--use-os-temp',
                             dest='use_os_temp',
                             action='store_true',
-                            help='Optional writes temp data to a temp file provided by the OS.')
+                            help='Optional writes temp data to a temp '
+                                 'file provided by the OS.')
         parser.add_argument('-t', '--threads',
                             type=int,
                             nargs=1,
@@ -141,7 +152,8 @@ class Program(object):
 
             print('>>> Writing soft clips to : {0}'.format(self.temp_fastq))
             # parameters for next segment
-            tip_tags = capture_elements_and_write_fastq(informative_clips, self.temp_fastq)
+            tip_tags = capture_elements_and_write_fastq(informative_clips,
+                                                        self.temp_fastq)
             tip_names = {name for name in tip_tags.keys()}
             fastq_mode = 'a'  # append to file just written
         else:
@@ -158,21 +170,31 @@ class Program(object):
                                                           minimum_soft_clip_len=self.soft_clip_minimum_length)
 
             print('>>> Writing reads to : {0}'.format(self.temp_fastq))
-            element_tags = capture_elements_and_write_fastq(informative_reads, self.temp_fastq, skip=tip_names, mode=fastq_mode)
+            element_tags = capture_elements_and_write_fastq(informative_reads,
+                                                            self.temp_fastq,
+                                                            skip=tip_names,
+                                                            mode=fastq_mode)
         else:
             element_tags = {}
 
         # update tags, soft-clip tags overwrite regular read tags
         element_tags.update(tip_tags)
 
-        print('>>> Mapping reads to {0} in {1}'.format(self.reference_fasta, self.temp_bam))
-        map_danglers_to_reference(self.temp_fastq, self.reference_fasta, self.temp_bam, self.threads)
+        print('>>> Mapping reads to {0} in {1}'.format(self.reference_fasta,
+                                                       self.temp_bam))
+        map_danglers_to_reference(self.temp_fastq,
+                                  self.reference_fasta,
+                                  self.temp_bam,
+                                  self.threads)
 
         print('>>> Indexing: {0}'.format(self.temp_bam))
         pysam.index(self.temp_bam)
 
         print('>>> Tagging reads in: {0}'.format(self.output_bam))
-        tag_danglers(self.temp_bam, element_tags, self.output_bam, self.mate_element_tag)
+        tag_danglers(self.temp_bam,
+                     element_tags,
+                     self.output_bam,
+                     self.mate_element_tag)
 
         print('>>> Indexing: {0}'.format(self.output_bam))
         pysam.index(self.output_bam)
@@ -184,11 +206,15 @@ class Program(object):
             shutil.rmtree(self.temp_dir)
         # else if keeping files requested then don't remove them
         elif self.keep_temp_files:
-            temp_files = glob.glob(self.output_bam + self.temp_file_prefix + '*')
+            temp_files = glob.glob(self.output_bam +
+                                   self.temp_file_prefix +
+                                   '*')
             print('>>> Keeping temporary files: {0}'.format(temp_files))
         # else remove temp files
         else:
-            temp_files = glob.glob(self.output_bam + self.temp_file_prefix + '*')
+            temp_files = glob.glob(self.output_bam +
+                                   self.temp_file_prefix +
+                                   '*')
             print('>>> Removing temporary files: {0}'.format(temp_files))
             for f in temp_files:
                 os.remove(f)
@@ -202,12 +228,20 @@ class Program(object):
         if self.use_temp_dir:
             self.temp_dir = mkdtemp()
             print('>>> Creating temporary directory: {0}'.format(self.temp_dir))
-            self.temp_fastq = self.temp_dir + self.temp_file_prefix + '.0.fastq.gz'
-            self.temp_bam = self.temp_dir + self.temp_file_prefix + '.1.bam'
+            self.temp_fastq = (self.temp_dir +
+                               self.temp_file_prefix +
+                               '.0.fastq.gz')
+            self.temp_bam = (self.temp_dir +
+                             self.temp_file_prefix +
+                             '.1.bam')
 
         else:
-            self.temp_fastq = self.output_bam + self.temp_file_prefix + '.0.fastq.gz'
-            self.temp_bam = self.output_bam + self.temp_file_prefix + '.1.bam'
+            self.temp_fastq = (self.output_bam +
+                               self.temp_file_prefix +
+                               '.0.fastq.gz')
+            self.temp_bam = (self.output_bam +
+                             self.temp_file_prefix +
+                             '.1.bam')
 
         # attempt running pipeline
         print('>>> Running Pipeline')
@@ -228,14 +262,14 @@ def extract_informative_soft_clip_tips(bam, minimum_soft_clip_len=38):
     Extracts informative soft clipped tips of reads from a bam file of paired
     end reads aligned to a library of transposons.
 
-    :param bam: path to a bam file of paired end reads aligned to a library of transposons
+    :param bam: path to a bam file of paired end reads aligned to a library
+        of transposons
     :type bam: str
-    :param include_soft_tips: whether or not to include soft clipped tipss
-    :type include_soft_tips: bool
     :param minimum_soft_clip_len: minimum length of tail soft clips to include
     :type minimum_soft_clip_len: int
 
-    :return: parsed and filtered reads relating information about location of transposon insertions
+    :return: parsed and filtered reads relating information about location
+        of transposon insertions
     :rtype: generator[dict[str: str]]
     """
     alignment = pysam.AlignmentFile(bam, 'r')
@@ -269,9 +303,9 @@ def extract_informative_soft_clip_tips(bam, minimum_soft_clip_len=38):
                     clip = tip[1]
                     # return the clipped section as a read
                     yield {'name': read.qname,
-                               'element': read.reference_name,
-                               'sequence': reverse_complement(read.seq[-clip:]),
-                               'quality': read.qual[-clip:][::-1]}
+                           'element': read.reference_name,
+                           'sequence': reverse_complement(read.seq[-clip:]),
+                           'quality': read.qual[-clip:][::-1]}
                 else:
                     # not a soft clipped section or not  sufficient length
                     pass
@@ -282,16 +316,22 @@ def extract_informative_reads(bam,
                               include_soft_tails=True,
                               minimum_soft_clip_len=38):
     """
-    Extracts informative reads from a bam file of paired end reads aligned to a library of transposons.
+    Extracts informative reads from a bam file of paired end reads aligned to
+    a library of transposons.
 
-    :param bam: path to a bam file of paired end reads aligned to a library of transposons
+    :param bam: path to a bam file of paired end reads aligned to a library
+        of transposons
     :type bam: str
+    :param include_full_length_reads: whether or not to include full length
+        informative reads
+    :type include_full_length_reads: bool
     :param include_soft_tails: whether or not to include soft clipped tails
     :type include_soft_tails: bool
     :param minimum_soft_clip_len: minimum length of tail soft clips to include
     :type minimum_soft_clip_len: int
 
-    :return: parsed and filtered reads relating information about location of transposon insertions
+    :return: parsed and filtered reads relating information about location
+        of transposon insertions
     :rtype: generator[dict[str: str]]
     """
     alignment = pysam.AlignmentFile(bam, 'r')
@@ -306,14 +346,14 @@ def extract_informative_reads(bam,
             if read.is_reverse:
                 # read is a reverse dangler
                 yield {'name': read.qname,
-                       'element': read.next_reference_name,  # will be identical to read.reference_name
+                       'element': read.next_reference_name,
                        'sequence': reverse_complement(read.seq),
                        'quality': read.qual[::-1]}
 
             else:
                 # read is a forward dangler
                 yield {'name': read.qname,
-                       'element': read.next_reference_name,  # will be identical to read.reference_name
+                       'element': read.next_reference_name,
                        'sequence': read.seq,
                        'quality': read.qual}
 
@@ -353,17 +393,24 @@ def extract_informative_reads(bam,
 
 def capture_elements_and_write_fastq(reads, fastq, skip=(), mode='w'):
     """
-    Captures writes parsed reads to a fastq file and returns a dictionary of read-element pairs.
+    Captures writes parsed reads to a fastq file and returns a dictionary of
+    read-element pairs.
 
-    :param reads: sequence of dictionaries of reads with fields 'name', 'element', sequence' and 'quality'
+    :param reads: sequence of dictionaries of reads with fields 'name',
+        'element', sequence' and 'quality'
     :type reads: iterator[dict[str: str]]
     :param fastq: path to fastq to write
     :type fastq: str
+    :param skip: set of element names to not include
+    :type skip: set(str)
+    :param mode: mode for opening fastq file 'w' or 'a'
+    :type mode: str
 
     :return: dictionary of read-element pairs
     :rtype: dict[str, str]
     """
     element_tags = {}
+    template = "@{0}\n{1}\n+\n{2}\n"
 
     with gzip.open(fastq, mode) as fq:
         for read in reads:
@@ -376,9 +423,9 @@ def capture_elements_and_write_fastq(reads, fastq, skip=(), mode='w'):
                 element_tags[read['name']] = read['element']
 
                 # write read to fastq
-                fq.write("@{0}\n{1}\n+\n{2}\n".format(read['name'],
-                                                      read['sequence'],
-                                                      read['quality']).encode('utf-8'))
+                fq.write(template.format(read['name'],
+                                         read['sequence'],
+                                         read['quality']).encode('utf-8'))
     return element_tags
 
 
@@ -386,14 +433,16 @@ def reverse_complement(sequence):
     """
     Computes the reverse compliment of a nucleotide string.
 
-    :param sequence: capitalised string of nucleotides {'A', 'T', 'G', 'C', 'N'}
+    :param sequence: capitalised string of nucleotides in the set
+        {'A', 'T', 'G', 'C', 'N'}
     :type sequence: str
 
     :return: capitalised reverse compliment string of nucleotides
     :rtype: str
     """
     complement = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A', 'N': 'N'}
-    return "".join(complement.get(base, base) for base in reversed(sequence.upper()))
+    return "".join(complement.get(base, base)
+                   for base in reversed(sequence.upper()))
 
 
 def check_programs_installed(*args):
@@ -408,19 +457,24 @@ def check_programs_installed(*args):
     """
     for program in args:
         if shutil.which(program) is None:
-            raise EnvironmentError("could not find '{0}' in $PATH: {1}".format(program, os.environ['PATH']))
+            message="could not find '{0}' in $PATH: {1}"
+            raise EnvironmentError(message.format(program,
+                                                  os.environ['PATH']))
     return True
 
 
 def map_danglers_to_reference(fastq, reference_fasta, output_bam, threads=1):
     """
-    Maps dangler reads (non-mapped reads with pair mapping to repeat-element) to reference genome and writes a bam file.
+    Maps dangler reads (non-mapped reads with pair mapping to repeat-element)
+    to reference genome and writes a bam file.
 
-    :param fastq: fastq file of non-mapped reads with pair mapping to repeat-element
+    :param fastq: fastq file of non-mapped reads with pair mapping to
+        repeat-element
     :type fastq: str
     :param reference_fasta: fasta file containing reference genome
     :type reference_fasta: str
-    :param output_bam: bam file of dangler reads aligned to reference genome
+    :param output_bam: bam file of dangler reads aligned to reference
+        genome
     :type output_bam: str
     :param threads: number of threads to use in bwa
     :type threads: str
@@ -429,24 +483,31 @@ def map_danglers_to_reference(fastq, reference_fasta, output_bam, threads=1):
     :rtype: int
     """
     check_programs_installed('bwa', 'samtools')
-    command = 'bwa mem -t {threads} {reference} {fastq} | samtools view -Su - | samtools sort - -o {bam}'
-    command = command.format(threads=threads, reference=reference_fasta, fastq=fastq, bam=output_bam)
+    command = ('bwa mem -t {threads} {reference} {fastq} ' +
+               '| samtools view -Su - | samtools sort - -o {bam}')
+    command = command.format(threads=threads,
+                             reference=reference_fasta,
+                             fastq=fastq,
+                             bam=output_bam)
     return subprocess.call([command], shell=True)
 
 
 def tag_danglers(dangler_bam, mate_element_dict, output_bam, tag):
     """
-    Tags mapped danglers with the id of the element which their mate mapped to and writes to new bam.
+    Tags mapped danglers with the id of the element which their mate mapped
+    to and writes to new bam.
 
     :param dangler_bam: bam file of dangler reads aligned to reference genome
     :type dangler_bam: str
     :param mate_element_dict: dict of read-name, mate-element pairs
     :type mate_element_dict: dict[str, str]
-    :param output_bam: bam file of dangler reads aligned to reference genome and tagged with mate element
+    :param output_bam: bam file of dangler reads aligned to reference genome
+        and tagged with mate element
     :type output_bam: str
     """
     danglers_untagged = pysam.Samfile(dangler_bam, "rb")
-    danglers_tagged = pysam.Samfile(output_bam, "wb", template=danglers_untagged)
+    danglers_tagged = pysam.Samfile(output_bam, "wb",
+                                    template=danglers_untagged)
     for read in danglers_untagged.fetch():
         read.tags += [(tag, mate_element_dict[read.qname])]
         danglers_tagged.write(read)
