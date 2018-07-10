@@ -16,8 +16,9 @@ class Program(object):
     def __init__(self, input_bam,
                  reference_fasta,
                  output_bam,
+                 include_tips=True,
                  include_tails=True,
-                 tail_minimum_length=38,
+                 soft_clip_minimum_length=38,
                  mate_element_tag='ME',
                  use_temp_dir=False,
                  keep_temp_files=False,
@@ -25,8 +26,9 @@ class Program(object):
         self.input_bam = input_bam
         self.reference_fasta = reference_fasta
         self.output_bam = output_bam
+        self.include_tips = include_tips
         self.include_tails = include_tails
-        self.tail_minimum_length = tail_minimum_length
+        self.soft_clip_minimum_length = soft_clip_minimum_length
         self.mate_element_tag = mate_element_tag
         self.threads = str(threads)
         self.use_temp_dir = use_temp_dir
@@ -63,16 +65,17 @@ class Program(object):
                             type=str,
                             nargs=1,
                             help="Name of output bam file.")
+        parser.set_defaults(include_tips=True)
+        parser.add_argument('--exclude-tips',
+                            dest='include_tips',
+                            action='store_false',
+                            help="Don't include soft-clipped tips.")
         parser.set_defaults(include_tails=True)
-        parser.add_argument('--include-tails',
-                            dest='include_tails',
-                            action='store_true',
-                            help="Include soft-clipped tails of pairs properly mapping to a repeat element (default).")
         parser.add_argument('--exclude-tails',
                             dest='include_tails',
                             action='store_false',
                             help="Don't include soft-clipped tails.")
-        parser.add_argument('--tail-minimum-length',
+        parser.add_argument('--soft-clip-minimum-length',
                             nargs=1,
                             type=int,
                             default=[38],
@@ -105,8 +108,9 @@ class Program(object):
         return Program(arguments.bam[0],
                        arguments.reference[0],
                        arguments.output[0],
+                       include_tips=arguments.include_tips,
                        include_tails=arguments.include_tails,
-                       tail_minimum_length=arguments.tail_minimum_length[0],
+                       soft_clip_minimum_length=arguments.soft_clip_minimum_length[0],
                        mate_element_tag=arguments.mate_element_tag[0],
                        use_temp_dir=arguments.use_os_temp,
                        keep_temp_files=arguments.keep_temp_files,
@@ -116,8 +120,9 @@ class Program(object):
         """"""
         print('>>> Extracting reads from : {0}'.format(self.input_bam))
         informative_reads = extract_informative_reads(self.input_bam,
-                                                      include_tails=self.include_tails,
-                                                      minimum_tail=self.tail_minimum_length)
+                                                      include_soft_tips=self.include_tips,
+                                                      include_soft_tails=self.include_tails,
+                                                      minimum_soft_clip_len=self.soft_clip_minimum_length)
 
         print('>>> Writing reads to : {0}'.format(self.temp_fastq))
         element_tags = capture_elements_and_write_fastq(informative_reads, self.temp_fastq)
@@ -180,26 +185,67 @@ class Program(object):
         self._cleanup()
 
 
-def extract_informative_reads(bam, include_tails=True, minimum_tail=38):
+def extract_informative_reads(bam,
+                              include_soft_tails=True,
+                              include_soft_tips=True,
+                              minimum_soft_clip_len=38):
     """
     Extracts informative reads from a bam file of paired end reads aligned to a library of transposons.
 
     :param bam: path to a bam file of paired end reads aligned to a library of transposons
     :type bam: str
-    :param include_tails: whether or not to include soft clipped tails as an additional source of information
-    :type include_tails: bool
-    :param minimum_tail: minimum length of tail soft clips to include
-    :type minimum_tail: int
+    :param include_soft_tails: whether or not to include soft clipped tails as an additional source of information
+    :type include_soft_tails: bool
+    :param minimum_soft_clip_len: minimum length of tail soft clips to include
+    :type minimum_soft_clip_len: int
 
     :return: parsed and filtered reads relating information about location of transposon insertions
     :rtype: generator[dict[str: str]]
     """
     alignment = pysam.AlignmentFile(bam, 'r')
     for read in alignment:
-        if any((read.is_secondary, read.is_supplementary, read.mate_is_unmapped)):
-            # read is bad - for our cases mate should always be mapped
+        if read.is_secondary or read.is_supplementary:
+            # read is bad
             pass
+
+        elif include_soft_tips and read.mate_is_unmapped and not read.is_unmapped:
+            # potential tip soft clip
+
+            if read.is_reverse:
+                # potential reverse tip clip
+                tip = read.cigar[0]
+                if tip[0] == 4 and tip[1] >= minimum_soft_clip_len:
+                    # tip is soft clipped and of sufficient length
+                    clip = tip[1]
+                    # return the clipped section as a read
+                    yield {'name': read.qname,
+                           'element': read.reference_name,
+                           'sequence': read.seq[0: clip + 1],
+                           'quality': read.qual[0: clip + 1]}
+                else:
+                    # not a soft clipped section or not  sufficient length
+                    pass
+            else:
+                # potential forward tip clip
+                tip = read.cigar[-1]
+                if tip[0] == 4 and tip[1] >= minimum_soft_clip_len:
+                    # tip is soft clipped and of sufficient length
+                    clip = tip[1]
+                    # return the clipped section as a read
+                    yield {'name': read.qname,
+                               'element': read.reference_name,
+                               'sequence': reverse_complement(read.seq[-clip:]),
+                               'quality': read.qual[-clip:][::-1]}
+                else:
+                    # not a soft clipped section or not  sufficient length
+                    pass
+
+        elif read.mate_is_unmapped:
+            # not a dangler or tail soft clip
+            pass
+
         else:
+
             if read.is_unmapped:
                 # read is a dangler
 
@@ -217,13 +263,13 @@ def extract_informative_reads(bam, include_tails=True, minimum_tail=38):
                            'sequence': read.seq,
                            'quality': read.qual}
 
-            elif include_tails and read.is_proper_pair:
+            elif include_soft_tails and read.is_proper_pair:
                 # potential tail clip
 
                 if read.is_reverse:
-                    # potential reverse clip
+                    # potential reverse tail clip
                     tail = read.cigar[-1]
-                    if tail[0] == 4 and tail[1] >= minimum_tail:
+                    if tail[0] == 4 and tail[1] >= minimum_soft_clip_len:
                         # tail is soft clipped and of sufficient length
                         clip = tail[1]
                         # return the clipped section as a read
@@ -236,9 +282,9 @@ def extract_informative_reads(bam, include_tails=True, minimum_tail=38):
                         pass
 
                 else:
-                    # potential forward clip
+                    # potential forward tail clip
                     tail = read.cigar[0]
-                    if tail[0] == 4 and tail[1] >= minimum_tail:
+                    if tail[0] == 4 and tail[1] >= minimum_soft_clip_len:
                         # tail is soft clipped and of sufficient length
                         clip = tail[1]
                         # return the clipped section as a read
