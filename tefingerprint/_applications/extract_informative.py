@@ -16,8 +16,9 @@ class Program(object):
     def __init__(self, input_bam,
                  reference_fasta,
                  output_bam,
-                 include_tips=True,
+                 include_tips=False,
                  include_tails=True,
+                 include_full_length_reads=True,
                  soft_clip_minimum_length=38,
                  mate_element_tag='ME',
                  use_temp_dir=False,
@@ -28,6 +29,7 @@ class Program(object):
         self.output_bam = output_bam
         self.include_tips = include_tips
         self.include_tails = include_tails
+        self.include_full_length_reads = include_full_length_reads
         self.soft_clip_minimum_length = soft_clip_minimum_length
         self.mate_element_tag = mate_element_tag
         self.threads = str(threads)
@@ -78,6 +80,16 @@ class Program(object):
                             dest='include_tails',
                             action='store_false',
                             help="Don't include soft-clipped tails.")
+        parser.set_defaults(include_full_length_reads=True)
+        parser.add_argument('--exclude-full-length-reads',
+                            dest='include_full_length_reads',
+                            action='store_false',
+                            help="Don't include full-length informative "
+                                 "reads. With high quality data and "
+                                 "annotations the exclution of full-length "
+                                 "'hanging' informative reads can improve "
+                                 "precision of insertion sites at the "
+                                 "expense of much lower cluster depth.")
         parser.add_argument('--soft-clip-minimum-length',
                             nargs=1,
                             type=int,
@@ -113,6 +125,7 @@ class Program(object):
                        arguments.output[0],
                        include_tips=arguments.include_tips,
                        include_tails=arguments.include_tails,
+                       include_full_length_reads=arguments.include_full_length_reads,
                        soft_clip_minimum_length=arguments.soft_clip_minimum_length[0],
                        mate_element_tag=arguments.mate_element_tag[0],
                        use_temp_dir=arguments.use_os_temp,
@@ -137,13 +150,17 @@ class Program(object):
             tip_names = set()
             fastq_mode = 'w'  # write new file
 
-        print('>>> Extracting reads from : {0}'.format(self.input_bam))
-        informative_reads = extract_informative_reads(self.input_bam,
-                                                      include_soft_tails=self.include_tails,
-                                                      minimum_soft_clip_len=self.soft_clip_minimum_length)
+        if self.include_full_length_reads or self.include_tails:
+            print('>>> Extracting reads from : {0}'.format(self.input_bam))
+            informative_reads = extract_informative_reads(self.input_bam,
+                                                          include_full_length_reads=self.include_full_length_reads,
+                                                          include_soft_tails=self.include_tails,
+                                                          minimum_soft_clip_len=self.soft_clip_minimum_length)
 
-        print('>>> Writing reads to : {0}'.format(self.temp_fastq))
-        element_tags = capture_elements_and_write_fastq(informative_reads, self.temp_fastq, skip=tip_names, mode=fastq_mode)
+            print('>>> Writing reads to : {0}'.format(self.temp_fastq))
+            element_tags = capture_elements_and_write_fastq(informative_reads, self.temp_fastq, skip=tip_names, mode=fastq_mode)
+        else:
+            element_tags = {}
 
         # update tags, soft-clip tags overwrite regular read tags
         element_tags.update(tip_tags)
@@ -261,6 +278,7 @@ def extract_informative_soft_clip_tips(bam, minimum_soft_clip_len=38):
 
 
 def extract_informative_reads(bam,
+                              include_full_length_reads=True,
                               include_soft_tails=True,
                               minimum_soft_clip_len=38):
     """
@@ -282,7 +300,7 @@ def extract_informative_reads(bam,
             # read is bad
             pass
 
-        elif read.is_unmapped:
+        elif include_full_length_reads and read.is_unmapped:
             # read is a dangler
 
             if read.is_reverse:
