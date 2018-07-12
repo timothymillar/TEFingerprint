@@ -218,8 +218,8 @@ soft-clipped and non-soft-clipped informative-reads.
 In OPTICS the different values of :math:`\varepsilon` may be manually selected
 for different part of the minimum spanning tree.
 This approach is unsuitable for dentifying transposon-flanking regions
-because of the share number of cluster expected (often in the hundreds of
-thousands.
+because of the share number of cluster expected which can be in the
+hundreds of thousands.
 
 We present Splitting-IDBCAN (SIDBCAN) a hierarchical version of IDBCAN.
 SIDBCAN requires the same parameters as IDBCAN  (:math:`\varepsilon` and
@@ -239,14 +239,7 @@ when :math:`\varepsilon = \varepsilon_\text{min}(\textbf{C})` but not when
 :math:`\varepsilon < \varepsilon_\text{min}(\textbf{C})` (i.e. is not a valid
 cluster).
 
-***Definition*** **8** (*maximum epsilon*). A cluster :math:`\textbf{C}` has
-*maximum epsilon* :math:`\varepsilon_\text{max}(\textbf{C})` such that if
-:math:`\varepsilon > \varepsilon_\text{max}(\textbf{C})` then sub-clusters
-within :math:`\textbf{C}` would be density-connected to one or more
-sub-clusters that are part of a separate cluster when
-:math:`\varepsilon = \varepsilon_\text{max}(\textbf{C})`.
-
-***Definition*** **9** (*core distance*). The *core distance*
+***Definition*** **8** (*core distance*). The *core distance*
 :math:`d_\text{core}(\textbf{x}_p)` of an object :math:`\textbf{x}_p`
  w.r.t. :math:`\varepsilon` and :math:`m_\text{pts}` is maximum distance
  between :math:`\textbf{x}_p` and any object in the set of objects comprising
@@ -259,23 +252,30 @@ Support of the initial clusters is then assessed in comparison to its child
 clusters (2 or more subsets of density connected objects that exist bellow the
 minimum epsilon of the initial/parent cluster) if present.
 
-We refer to difference between :math:`\varepsilon_{\text{initial}}` and
+We refer to difference between :math:`\varepsilon` and
 :math:`d_\text{core}(\textbf{x}_p)` as the
-*lifetime* of object :math:`\textbf{x}_p`.
+*lifetime* of a core object :math:`\textbf{x}_p`.
+
+.. math:: L(\textbf{x}_p) = \varepsilon - d_\text{core}(\textbf{x}_p)
+
+Note that by definition :math:`d_\text{core}(\textbf{x}_p) \leq \varepsilon`
+for any core object and therefore :math:`L(\textbf{x}_p) \geq 0`.
+
 The *total lifetimes* of all objects within cluster :math:`\textbf{C}_i` is
 calculated
 
-.. math:: L_\text{total}(\textbf{C}_i) = \sum_{\textbf{x}_j \in \textbf{C}_i} \varepsilon_{\text{initial}} - d_{\text{core}}(\textbf{x}_j)
+.. math:: L_\text{total}(\textbf{C}_i) = \sum_{\textbf{x}_j \in \textbf{C}_i} \varepsilon - d_{\text{core}}(\textbf{x}_j)
 
 The *support* for a cluster is defined as the portion of those lifetimes that
-occurs when :math:`\varepsilon \geq \varepsilon_{\text{min}}(\textbf{C}_i)`
+occur above :math:`\varepsilon_{\text{min}}(\textbf{C}_i)`
 
-.. math:: S(\textbf{C}_i) = \sum_{\textbf{x}_j \in \textbf{C}_i}  \varepsilon_{\text{initial}} - \text{max}\{d_{\text{core}}(\textbf{x}_j), \varepsilon_{\text{min}}(\textbf{C}_i)\}
+.. math:: S(\textbf{C}_i) = \sum_{\textbf{x}_j \in \textbf{C}_i}  \varepsilon - \text{max}\{d_{\text{core}}(\textbf{x}_j), \varepsilon_{\text{min}}(\textbf{C}_i)\}
 
 The *excess lifetimes* of objects within cluster :math:`\textbf{C}_i` is
 the portion of object lifetimes that
-occurs when :math:`\varepsilon < \varepsilon_{\text{min}}(\textbf{C}_i)`,
-i.e. when the cluster splits into child clusters or ceases to exist
+bellow :math:`\varepsilon_{\text{min}}(\textbf{C}_i)`,
+i.e. bellow the point at which :math:`\textbf{C}_i` would either ceases to
+exist or be classified as two or more "child" clusters.
 
 .. math:: \begin{aligned}
     L_\text{excess}(\textbf{C}_i)
@@ -283,15 +283,14 @@ i.e. when the cluster splits into child clusters or ceases to exist
     &= \sum_{\textbf{x}_j \in \textbf{C}_i} \text{max}\{d_{\text{core}}(\textbf{x}_j), \varepsilon_{\text{min}}(\textbf{C}_i)\} - d_{\text{core}}(\textbf{x}_j)
     \end{aligned}
 
-The cluster :math:`\textbf{C}_i` is selected if
+A cluster :math:`\textbf{C}_i` is selected if
 :math:`S(\textbf{C}_i) \geq L_\text{excess}(\textbf{C}_i)`,
 i.e. if the proportion of combined object lifetimes when
 :math:`\varepsilon \geq \varepsilon_{\text{min}}(\textbf{C}_i)`
 is greater or equal to the proportion of lifetimes when
 :math:`\varepsilon < \varepsilon_{\text{min}}(\textbf{C}_i)`.
 If a cluster is not selected then support is assessed for
-each child cluster within :math:`\textbf{C}_i`.
-This can be written
+each child cluster within :math:`\textbf{C}_i`
 
 .. math:: \text{selection}(\textbf{C}_i) =
     \begin{cases}
@@ -308,12 +307,11 @@ when :math:`\varepsilon < \varepsilon_{\text{min}}(\textbf{C}_i)`.
 If :math:`\textbf{C}_i` has no children it will always be selected because
 :math:`L_\text{excess}(\textbf{C}_i) = 0`.
 
-The use of a constant :math:`\varepsilon_{\text{initial}}` as opposed to
-:math:`\varepsilon_\text{max}(\textbf{C})` ensures that the parent cluster is
+The use of a constant :math:`\varepsilon` ensures that the parent cluster is
 increasingly favoured as the algorithm recurses down the cluster hierarchy.
 A direct effect of this selection criteria is that a set of child clusters
 will never be selected in preference of their parent :math:`\textbf{C}_i` if
-:math:`\varepsilon_\text{min}(\textbf{C}_i) < \varepsilon_{\text{initial}}/2`.
+:math:`\varepsilon_\text{min}(\textbf{C}_i) < \varepsilon/2`.
 
 Comparing Multiple Fingerprints
 -------------------------------
