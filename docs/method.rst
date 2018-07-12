@@ -31,9 +31,9 @@ information about the location of transposon insertions when compared to
 a reference genome.
 
 Paired end reads are mapped to a library of known transposon sequences.
-Pairs in which one read has mapped to a transposon
-and the other is unmapped are identified. Assuming that our library of known transposon
-sequences is largely complete, unmapped reads are likely to (primarily)
+Pairs in which one read has mapped to a transposon and the other is unmapped
+are identified. Assuming that our library of known transposon sequences is
+largely complete, unmapped reads are likely to (primarily)
 contain non-transposon-genomic DNA. Read pairs in which both reads have
 mapped to a transposon sequence can be used as an additional source of
 information if one read has a significant soft-clipped region at its
@@ -58,8 +58,8 @@ a *fingerprint*.
 Categorising informative read tips
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Informative-reads are grouped based on strand and user defined
-categories e.g. a taxonomic level such as super-family. The positions of the :math:`3^\prime`
+Informative-reads are grouped based on strand and user defined categories e.g.
+a taxonomic level such as super-family. The positions of the :math:`3^\prime`
 read-tips (i.e. the read ends closest to the potential transposon insertions)
 are then extracted into a array of integer values, per reference molecule for
 each categories-strand group.
@@ -82,7 +82,7 @@ The DBSCAN family of clustering algorithms identify clusters based on point
 points in sparse regions are classified as noise points. DBSCAN does not
 require the number of clusters to be specified as an input because clusters
 are defined entirely in terms of point density.
-A DBSCAN based approach is suitable for identifying transposon-flanking
+A DBSCAN-like approach is suitable for identifying transposon-flanking
 regions for the following reasons:
 
 1. We expect to find a variable and often large number of clusters for each array of read-tip positions and this number is not known *a priori*
@@ -107,81 +107,170 @@ as a single cluster or identify multiple sub-clusters in a single flanking
 region based alignment artefacts including the differing signal between
 soft-clipped and non-soft-clipped informative-reads.
 
-Description of non-hierarchical clustering algorithm
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+IDBCAN algorithm
+~~~~~~~~~~~~~~~~
 
-We present a novel algorithm for density based clustering of univariate points
-with noise.
-The basic version of our algorithm is derived from DBSCAN. 
-As in DBSCAN, a specific density of objects is 
-targeted by the minimum number of points (objects) required to form a cluster 
-:math:`m_\text{pts}` and a value epsilon :math:`\varepsilon` which 
-limits the dispersion of those objects.
-Unlike DBSCAN our method has a stricter criteria of the object density 
-required to form a cluster resulting in 'tighter' clusters.
+We present a novel algorithm IDBCAN (**I**nterval **D**ensity **B**ased
+**C**lustering of **A**pplications with **N**oise) which is derived from
+DBSCAN.
+IDBCAN identifies clusters based on the density of objects within intervals
+of a size.
+As in DBSCAN, IDBCAN requires a target density to be defined in terms of
+:math:`m_\text{pts}`, the minimum number of points (objects) required to
+form a cluster and :math:`\varepsilon` a distance that limits the dispersion
+of those objects.
 Here we use the following definitions:
 
-1. An set of (at least) :math:`m_\text{pts}` objects (i.e. read tips), :math:`\{\textbf{x}_p, ..., \textbf{x}_{p + m_\text{pts}}\}` are labeled as *core objects* w.r.t. :math:`\varepsilon` and :math:`m_\text{pts}` if they are all mutually within :math:`\varepsilon` range of one another. An object that is not a *core object* is a *noise object*.
-2. Two *core* objects :math:`\textbf{x}_p` and :math:`\textbf{x}_q` are :math:`\varepsilon`*-reachable* w.r.t. :math:`\varepsilon` if they are within :math:`\varepsilon` range of one another.
-3. Two *core* objects :math:`\textbf{x}_p` and :math:`\textbf{x}_q` are *density-connected* w.r.t. :math:`\varepsilon` if they are directly or transitively :math:`\varepsilon`-reachable.
-4. A *cluster* :math:`\textbf{C}` w.r.t. :math:`\varepsilon$ and $m_\text{pts}` is a non-empty maximal subset of the set of objects :math:`\textbf{X}` such that every pair of objects in :math:`\textbf{C}` is density connected.
-5. The *minimum epsilon* of a cluster :math:`\varepsilon_\text{min}(\textbf{C})` is the value of :math:`\varepsilon` bellow which the cluster :math:`\textbf{C}` either contains less than :math:`m_\text{pts}` core objects (ceases to be a cluster) or contains more than 1 set of density connected objects (is divided into child clusters).
-6. The *maximum epsilon* of a cluster :math:`\varepsilon_\text{max}(\textbf{C})` is the value above which the set of core objects within that cluster become density-connected with the set(s) of core objects in one or more previouly seperate clusters (is incorporated into a larger cluster).
-7. The *core distance* of an object :math:`d_\text{core}(\textbf{x}_p)` w.r.t. :math:`m_\text{pts}` is the maximum distance between *any* two objects in the set of objects comprising :math:`\textbf{x}_p` and it's :math:`m_\text{pts} - 1` nearest neighbours.
+***Definition*** **1** (*sub-cluster*). A *sub-cluster* w.r.t.
+:math:`\varepsilon` and :math:`m_\text{pts}`
+is a set of :math:`m_\text{pts}` objects,
+:math:`\textbf{X} = \{\textbf{x}_p, ..., \textbf{x}_{p + m_\text{pts}}\}`
+that are each within :math:`\varepsilon` range of every point in that set.
 
-Definitions 2-6 are identical to those given for DBSCAN* by Campello *et al.* (2015).
-Definitions 1 and 7 differ to those given by Campello *et al.* (2015) in that they require that
-*every pair of objects* in a set of :math:`m_\text{pts}` objects to be mutually within :math:`\varepsilon` range of one another
-in order to be clasified as core points and thus form a cluster.
-This differs from DBSCAN in which a single single core object with :math:`m_\text{pts} - 1` border objects
-can form a cluster in which not all objects are mutually :math:`\varepsilon`-reachable.
-Thus our method has a stricter criteria of the object density 
-required to form a cluster.
-Unlike DBSCAN* our method still guarantees that all clusters contain at least :math:`m_\text{pts}` objects.
+***Definition*** **2** (*core-object*). A *core-object* w.r.t.
+:math:`\varepsilon` and :math:`m_\text{pts}`
+is any object :math:`\textbf{x}` that is in one
+or more sets of :math:`m_\text{pts}` objects classified as a sub-cluster.
 
-The parameters required by our method can be intuatively infered for 
-identifying clusters of informative reads in TEFingerprint.
+***Definition*** **3** (*noise-object*). A *noise-object* w.r.t.
+:math:`\varepsilon` and :math:`m_\text{pts}`
+is any object that is not a core-object.
+
+***Definition*** **4** (*density-overlapping*). Two sub-clusters
+:math:`\textbf{c}_p` and :math:`\textbf{c}_q` are *density-overlapping*
+w.r.t. :math:`\varepsilon` and :math:`m_\text{pts}` if they share one
+or more core-objects.
+
+***Definition*** **5** (*density-connected*). Two sub-clusters
+:math:`\textbf{c}_p` and :math:`\textbf{c}_q`
+are *density-connected* w.r.t. :math:`\varepsilon`
+and :math:`m_\text{pts}` if they are directly or transitively
+density-overlapping.
+
+***Definition*** **6** (*cluster*). A *cluster* w.r.t. :math:`\varepsilon` and
+:math:`m_\text{pts}` is a non-empty maximal subset of the set of
+core-objects :math:`\textbf{X}` in which every pair of objects are found in
+either the same sub-cluster or within a pair density-connected sub-clusters.
+
+Based on definitions 1 and 2 IDBCAN differs from DBSCAN in that
+:math:`m_\text{pts}` objects must collectively be identified as core objects
+rather than identifying a single core object at a time.
+This in turn means that a cluster (following definitions 3-6) will always
+include at least :math:`m_\text{pts}` objects and that cluster identification
+is deterministic.
+In DBSCAN a cluster may contain fewer than :math:`m_\text{pts}` objects if on
+of its border-objects is "stolen" by a neighboring cluster and the
+assignment of border-objects to clusters is not deterministic (though often
+border-object assignment is deterministic based on the implementation).
+DBSCAN* is a variation of DBSCAN in which border-objects are treated as noise
+objects, this results in deterministic identification of clusters but cluster
+will often contain fewer than :math:`m_\text{pts}` objects (as few a single
+object in a cluster regardless :math:`m_\text{pts}`.
+
+The properties of IDBCAN make for intuitive identification of clusters in a
+univariate space and the appropriate values for parameters required by IDBCAN
+can be logically estimated when identifying clusters of informative reads
+in TEFingerprint.
 The value :math:`\varepsilon` is the expected interval width of a 
 region of informative reads flanking a transposon insertion and can
-be resonably estimated as the approximate insertion size of paired-reads.
+be reasonably estimated as being no larger than the approximate insertion size
+of paired-reads.
 The value :math:`m_\text{pts}` is the minimum number of read (tips)
 required within an :math:`\varepsilon`-wide region for that region to
 be identified as flanking a transposon insertion.
+This can reasonably estimated from the observed depth of informative reads
+and is a trade off between type one and type two error.
 
-Description of hierarchical clustering algorithm
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+SIDBCAN algorithm
+~~~~~~~~~~~~~~~~~
 
-We present a hierarchical version of our algorithm is loosely derived 
-from HDBSCAN but produces clusters that are mostly consistent with the 
-non-hierarchical version of our algorithm with the addition of some 
-flexibility to split poorly supported clusters into more strongly 
-supported sub-clusters.
+The primary aim of TEFingerprint is to identify the signal of transposon
+insertion sites using clusters of informative reads mapped to a reference
+genome.
+A potential issue with both IDBCAN and DBSCAN is that they assume that all
+clusters can be identified based on a single density threshold.
+In principle this is a fair assumption because we expect that genome regions
+adjacent to an insertion site will have high read densities identified as
+clusters and that other genome regions will have low read densities classified
+as noise.
+However if two or more insertion sites are sufficiently close to one another,
+the region between then may be above the specified read density (i.e. a
+contiguous region of overlapping sub-clusters).
+In IDBCAN, overlapping (sub)-clusters of reads are by definition classified as
+a single cluster.
+Therefore the signal of two or more proximate insertions may be
+interpreted as a single cluster from which single insertion site is inferred.
+This phenomenon can be mitigated by a clustering algorithm that can identify
+clusters at multiple density levels.
 
-The hierarchical version of our algorithm requires two parameters; 
-:math:`m_\text{pts}` as described in the non-hierarchical version
-and a global maximum epsilon :math:`\mathcal{E}`.
+Several hierarchical extensions of DBSCAN have been proposed including
+HDBSCAN* (Campello *et al.* 2015) and OPTICS (Ankerst *et al.* 1999).
+HDBSCAN* builds a minimal spanning tree of hierarchical clusters.
+The algorithm then selects a non-nested set of clusters from the minimal
+spanning tree based on a measure of cluster density for all values of
+:math:`\varepsilon`.
+This approach is too flexible to be suitable for identifying
+transposon-flanking regions.
+For example, HDBSCAN will often identify regions with high transposon density
+as a single cluster or identify multiple sub-clusters in a single flanking
+region based alignment artefact's including the differing signal between
+soft-clipped and non-soft-clipped informative-reads.
+In OPTICS the different values of :math:`\varepsilon` may be manually selected
+for different part of the minimum spanning tree.
+This approach is unsuitable for dentifying transposon-flanking regions
+because of the share number of cluster expected (often in the hundreds of
+thousands.
 
-Initial clusters are identified as in the non-hierarchical version 
-using a density defined :math:`m_\text{pts}` and
-:math:`\varepsilon = \mathcal{E}`.
-Thus the initial clusters are identical to those found by the 
-non-hierarchical version version of our algorithm.
+We present Splitting-IDBCAN (SIDBCAN) a hierarchical version of IDBCAN.
+SIDBCAN requires the same parameters as IDBCAN  (:math:`\varepsilon` and
+:math:`m_\text{pts}`) and initially identifies the same set of clusters.
+SIDBCAN then attempts to split poorly supported clusters into more strongly
+supported clusters that may be found with a lower value of :math:`\varepsilon`.
+
+***Definition*** **7** (*minimum epsilon*). The *minimum epsilon* of a cluster
+:math:`\varepsilon_\text{min}(\textbf{C})` is the value of :math:`\varepsilon`
+such that either two or more density-connected sub-clusters within
+:math:`\textbf{C}` when
+:math:`\varepsilon = \varepsilon_\text{min}(\textbf{C})`
+would be non-density-connected sub-clusters when
+:math:`\varepsilon < \varepsilon_\text{min}(\textbf{C})`.
+Or :math:`\textbf{C}` consistis of one or more density-connected sub-clusters
+when :math:`\varepsilon = \varepsilon_\text{min}(\textbf{C})` but not when
+:math:`\varepsilon < \varepsilon_\text{min}(\textbf{C})` (i.e. is not a valid
+cluster).
+
+***Definition*** **8** (*maximum epsilon*). A cluster :math:`\textbf{C}` has
+*maximum epsilon* :math:`\varepsilon_\text{max}(\textbf{C})` such that if
+:math:`\varepsilon > \varepsilon_\text{max}(\textbf{C})` then sub-clusters
+within :math:`\textbf{C}` would be density-connected to one or more
+sub-clusters that are part of a separate cluster when
+:math:`\varepsilon = \varepsilon_\text{max}(\textbf{C})`.
+
+***Definition*** **9** (*core distance*). The *core distance*
+:math:`d_\text{core}(\textbf{x}_p)` of an object :math:`\textbf{x}_p`
+ w.r.t. :math:`\varepsilon` and :math:`m_\text{pts}` is maximum distance
+ between :math:`\textbf{x}_p` and any object in the set of objects comprising
+ its :math:`m_\text{pts} - 1` nearest neighbours.
+
+
+Initial clusters are identified as in IDBCAN
+using a density defined by :math:`m_\text{pts}` and :math:`\varepsilon`.
 Support of the initial clusters is then assessed in comparison to its child
 clusters (2 or more subsets of density connected objects that exist bellow the
 minimum epsilon of the initial/parent cluster) if present.
 
-We refer to difference between :math:`\mathcal{E}` and
+We refer to difference between :math:`\varepsilon_{\text{initial}}` and
 :math:`d_\text{core}(\textbf{x}_p)` as the
 *lifetime* of object :math:`\textbf{x}_p`.
 The *total lifetimes* of all objects within cluster :math:`\textbf{C}_i` is
 calculated
 
-.. math:: L_\text{total}(\textbf{C}_i) = \sum_{\textbf{x}_j \in \textbf{C}_i} \mathcal{E} - d_{\text{core}}(\textbf{x}_j)
+.. math:: L_\text{total}(\textbf{C}_i) = \sum_{\textbf{x}_j \in \textbf{C}_i} \varepsilon_{\text{initial}} - d_{\text{core}}(\textbf{x}_j)
 
 The *support* for a cluster is defined as the portion of those lifetimes that
 occurs when :math:`\varepsilon \geq \varepsilon_{\text{min}}(\textbf{C}_i)`
 
-.. math:: S(\textbf{C}_i) = \sum_{\textbf{x}_j \in \textbf{C}_i}  \mathcal{E} - \text{max}\{d_{\text{core}}(\textbf{x}_j), \varepsilon_{\text{min}}(\textbf{C}_i)\}
+.. math:: S(\textbf{C}_i) = \sum_{\textbf{x}_j \in \textbf{C}_i}  \varepsilon_{\text{initial}} - \text{max}\{d_{\text{core}}(\textbf{x}_j), \varepsilon_{\text{min}}(\textbf{C}_i)\}
 
 The *excess lifetimes* of objects within cluster :math:`\textbf{C}_i` is
 the portion of object lifetimes that
@@ -219,12 +308,12 @@ when :math:`\varepsilon < \varepsilon_{\text{min}}(\textbf{C}_i)`.
 If :math:`\textbf{C}_i` has no children it will always be selected because
 :math:`L_\text{excess}(\textbf{C}_i) = 0`.
 
-The use of a constant :math:`\mathcal{E}` as opposed to
+The use of a constant :math:`\varepsilon_{\text{initial}}` as opposed to
 :math:`\varepsilon_\text{max}(\textbf{C})` ensures that the parent cluster is
 increasingly favoured as the algorithm recurses down the cluster hierarchy.
 A direct effect of this selection criteria is that a set of child clusters
 will never be selected in preference of their parent :math:`\textbf{C}_i` if
-:math:`\varepsilon_\text{min}(\textbf{C}_i) < \mathcal{E}/2`.
+:math:`\varepsilon_\text{min}(\textbf{C}_i) < \varepsilon_{\text{initial}}/2`.
 
 Comparing Multiple Fingerprints
 -------------------------------
