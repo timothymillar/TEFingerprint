@@ -57,7 +57,7 @@ Manual Installation
 GitHub Installation
 -------------------
 
-Installing a specific version e.g. 0.2.0
+Installing a specific version e.g. 0.3.0
 
 ::
 
