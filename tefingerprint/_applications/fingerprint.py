@@ -131,7 +131,7 @@ def _fingerprint_dispatch(bams,
                                        minimum_reads,
                                        epsilon,
                                        minimum_epsilon=minimum_epsilon,
-                                       hierarchical_method=splitting_method))
+                                       method=splitting_method))
 
     # buffered union of clusters
     clusters = clusters.map(lambda x:

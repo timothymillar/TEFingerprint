@@ -1,5 +1,6 @@
 #! /usr/bin/env python3
 
+import warnings
 import numpy as np
 
 
@@ -282,21 +283,23 @@ class SIDBCAN(IDBCAN):
     :param min_eps: An optional value for the minimum value of eps to
         be used when calculating cluster depth
     :type min_eps: int
-    :param method: method for calculating support of parent clusters,
-        one of 'conservative' (default) or 'aggressive'
-    :type method: str
+    :param aggressive_method: use old more aggressive splitting method
+    :type aggressive_method: bool
     """
 
     def __init__(self,
                  min_points,
                  max_eps=None,
                  min_eps=None,
-                 method='conservative'):
-        assert method in {'aggressive', 'conservative'}
+                 aggressive_method=False):
         self.min_points = min_points
         self.max_eps = max_eps
         self.min_eps = min_eps
-        self.method = method
+        self.aggressive_method = aggressive_method
+        if aggressive_method:
+            warnings.warn("The aggressive splitting method is deprecated "
+                          "and may be removed in future versions.",
+                          DeprecationWarning)
         self.slices = np.array([], dtype=IDBCAN._DTYPE_SLICE)
         self.input_array = np.array([], dtype=int)
 
@@ -446,17 +449,14 @@ class SIDBCAN(IDBCAN):
         local_min_eps = fork_epsilon
 
         # Compare support for cluster and its children
-        if self.method == 'aggressive':
+        if self.aggressive_method:
             support = np.sum(local_max_eps -
                              np.maximum(local_min_eps,
                                         local_points['core_dist']))
-        elif self.method == 'conservative':
+        else:
             support = np.sum(self.max_eps -
                              np.maximum(local_min_eps,
                                         local_points['core_dist']))
-        else:
-            message = 'Clustering method not recognised {0}'
-            raise ValueError(message.format(self.method))
 
         support_children = np.sum(np.maximum(0,
                                              local_min_eps -
@@ -496,7 +496,6 @@ class SIDBCAN(IDBCAN):
         :rtype: :class:`numpy.ndarray`[(int, int)]
         """
         assert self._sorted_ascending(array)
-        assert self.method in {'aggressive', 'conservative'}
 
         if len(array) < self.min_points:
             # not enough points to form a cluster
@@ -552,7 +551,7 @@ class SIDBCAN(IDBCAN):
                 min_points,
                 max_eps=None,
                 min_eps=None,
-                method='conservative'):
+                aggressive_method=False):
         """
         Provides functional use of :class:`SIDBCAN`.
 
@@ -569,8 +568,8 @@ class SIDBCAN(IDBCAN):
         :param min_eps: An optional value for the minimum value of
             eps to be used when calculating cluster depth
         :type min_eps: int
-        :param method: 'aggressive' or 'conservative'
-        :type method: str
+        :param aggressive_method: use old more aggressive splitting method
+        :type aggressive_method: bool
 
         :return: An array of paired lower and upper indices for each
             cluster found in the array
@@ -579,7 +578,7 @@ class SIDBCAN(IDBCAN):
         model = SIDBCAN(min_points,
                         max_eps=max_eps,
                         min_eps=min_eps,
-                        method=method)
+                        aggressive_method=aggressive_method)
         model.fit(array)
         return model.slices
 

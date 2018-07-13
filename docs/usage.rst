@@ -217,8 +217,8 @@ Arguments:
    required to form a cluster. This should be approximately equal to the insert
    size of paired reads. *Default = 250*.
 -  ``-s/--splitting-method`` Method used for splitting proximate clusters.
-   One of "none", "aggressive" or "conservative". See the full documentation
-    for details. *Default = "conservative"*.
+   One of "IDBCAN", "SIDBCAN" or "IDBCAN-aggressive" (deprecated).
+   See the full documentation for details. *Default = "SIDBCAN"*.
 -  ``-b/--buffer-fingerprints`` Additional buffer to be added to margins of
    fingerprints. This is used avoid identifying small clusters as unique, when
    there is only slight miss-match in read positions across samples

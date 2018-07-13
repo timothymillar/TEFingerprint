@@ -258,8 +258,12 @@ class TestSIDBCAN:
         answer_conservative = np.fromiter([(0, 7), (8, 11)],
                                           dtype=SIDBCAN._DTYPE_SLICE)
 
-        npt.assert_array_equal(SIDBCAN.sidbcan(array, 3, 6, method='aggressive'), answer_aggressive)
-        npt.assert_array_equal(SIDBCAN.sidbcan(array, 3, 6, method='conservative'), answer_conservative)
+        npt.assert_array_equal(SIDBCAN.sidbcan(array, 3, 6,
+                                               aggressive_method=True),
+                               answer_aggressive)
+        npt.assert_array_equal(SIDBCAN.sidbcan(array, 3, 6,
+                                               aggressive_method=False),
+                               answer_conservative)
 
     def test_sidbcan_initial_parent_support_calculation(self):
         """
