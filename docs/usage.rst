@@ -124,16 +124,26 @@ Additional arguments:
    properly mapping to a single repeat element are included as an
    additional source of information. This option will exclude
    soft-clipped tails from the resulting bam file.
--  ``--tail-minimum-length`` the minimum length allowed for soft-clipped
-   tails to be included (defaults to ``38``).
--  ``--tempdir`` by default, the intermediate files are written to a
-   temporary directory that is automatically removed when the pipeline
-   is completed. There may be limited temporary space on some systems in
-   this option should be used. If this option is used the intermediate files
-   will not be automatically removed.
+-  ``--include-tips`` This option will use the soft-clipped tip of
+   a read mapped to a transposon instead of the associated unmapped read
+   if the soft-clipped read is of the required length.
+-  ``--soft-clip-minimum-length`` the minimum length allowed for soft-clipped
+   tips or tails to be included (defaults to ``38``).
+-  ``--exclude-full-length-reads`` exclude full-length informative reads.
+   This option can improve cluster precision by only using soft-clipped
+   tips (if included) and tails. However this will result in much lower
+   cluster depth and should only be used with high read depths and high
+   quality reference transposon sequences.
 -  ``--mate-element-tag`` by default, the sam-tag used to store repeat
    element names associated with each read is ``ME`` (Mate Element).
    An alternative tag can be specified with this option.
+-  ``--keep-temp-files`` Temporary intermediate files will not be deleted.
+-  ``--use-os-temp`` by default, the intermediate files are written to the
+   same location as the output and then removed when the pipeline
+   is completed.
+   This flag will instead write temporary files to a location provided by the
+   operating system which may be faster on some systems.
+   This flag will ignore the --keep-temp-files flag.
 
 The output file ``informative.bam`` contains informative reads mapped to the
 reference genome. Each of these reads is tagged with the repeat element that
@@ -173,12 +183,17 @@ Or when specifying most common parameters:
         -q 30 \
         -t 4 \
         --gff fingerprint.gff.gz \
-        --csv fingerprint.csv.gz
+        --tsv fingerprint.tsv.gz
 
 Where ``informative1.bam ...`` are the bam file(s) being fingerprinted, and
-``fingerprint.gff.gz`` and ``fingerprint.csv.gz`` are respectively the output
-in (compressed) csv and gff3 formats (these can be uncompressed by removing
-the ``.gz`` extension).
+``fingerprint.gff.gz`` and ``fingerprint.tsv.gz`` are respectively the output
+in (block-gzip compressed) gff3 and tab delimited text formats.
+Output files will be uncompressed if the ``.gz`` suffix is not specified.
+
+If block-gzipped , the gff output can be tabix indexed with
+``tabix -p gff fingerprint.gff.gz``
+and the tab delimited text output can be tabix indexed with
+``tabix -s 1 -b 4 -e 5 -S 1 fingerprint.tsv.gz``.
 
 Arguments:
 
@@ -225,10 +240,16 @@ Arguments:
    number of threads that can be utilised is the number of reference molecules
    to be fingerprinted. *Default = 1*.
 -  ``--gff`` File name for GFF output. Compression will be applied by extension
-   e.g. ".gz" or ".bz2". Output may be written to standard output using "-".
+   e.g. ".gz" (block-gzip) or ".bz2".
+   Output may be written to standard output using "-".
    *Default = None*.
 -  ``--csv`` File name for CSV output. Compression will be applied by extension
-   e.g. ".gz" or ".bz2". Output may be written to standard output using "-".
+   e.g. ".gz" (block-gzip) or ".bz2".
+   Output may be written to standard output using "-".
+   *Default = None*.
+-  ``--tsv`` File name for tab delimited text output.
+   Compression will be applied by extension e.g. ".gz"  (block-gzip)or ".bz2".
+   Output may be written to standard output using "-".
    *Default = None*.
 
 Additional arguments:
