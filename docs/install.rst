@@ -60,12 +60,14 @@ GitHub Installation
 Installing a specific version e.g. 0.2.0
 
 ::
-    pip install git://github.com/PlantandFoodResearch/TEFingerprint.git@v0.2.0#egg=tefingerprint-0.2.0
+
+    pip install git://github.com/PlantandFoodResearch/TEFingerprint.git@v0.3.0
 
 If using two factor authentication with ssh
 
 ::
-    pip install git+ssh://git@github.com/PlantandFoodResearch/TEFingerprint.git@v0.2.0#egg=tefingerprint-0.2.0
+
+    pip install git+ssh://git@github.com/PlantandFoodResearch/TEFingerprint.git@v0.3.0
 
 Testing
 -------
