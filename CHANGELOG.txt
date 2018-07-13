@@ -1,6 +1,36 @@
 # TEFingerprint
 # A Python 3 library and command line tool for transposon fingerprinting
 
+v0.3.0
+- alpha
+- new features
+    - informative reads
+        - option to include soft-clipped tips in place of their mate informative read
+        - option to exclude full-length informative reads completely
+    - output formats
+        - outputs with the .gz extension are compressed with block-gzip rather than regular gzip #104
+        - option to output tab-delimited plain text files suitable for tabix indexing when block-gzipped #103
+    - extract-informative temporary files #106
+        - temporary files are now written to the same location as the output by default
+        - option to not remove these files
+        - option to write them to a temp location provided by the operating system
+- changes
+    - added Biopython as a dependency to support block-gzip compression
+    - refactor submodules to hide application specific code
+    - refactor clustering classes/methods to use new names
+        - non-hierarchical method named IDBCAN (Interval Density Based Clustering of Applications with Noise)
+        - conservative-hierarchical method named SIDBCAN (Splitting-IDBCAN)
+        - aggressive-hierarchical method named SIDBCAN-aggressive and deprecated
+- bug fixes
+    - python 3 shebang lines #98
+    - add MANIFEST.in to allow for github install with pip #89
+- documentation
+    - named clustering algorithms loosely based on DBSCAN
+        - non-hierarchical method named IDBCAN (Interval Density Based Clustering of Applications with Noise)
+        - hierarchical method named SIDBCAN (Splitting-IDBCAN)
+    - many corrections to documentation of clustering algorithms #99
+    - specify tabix command to index block-gzipped output
+
 v0.2.0
 - alpha
 - new features

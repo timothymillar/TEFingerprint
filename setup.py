@@ -9,7 +9,7 @@ def read_file(file_name):
 
 
 setup(name='tefingerprint',
-      version='0.2.0',
+      version='0.3.0',
       author='Tim Millar',
       author_email='tim.millar@plantandfood.co.nz',
       url='https://github.com/PlantandFoodResearch/TEFingerprint',
