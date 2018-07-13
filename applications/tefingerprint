@@ -83,13 +83,13 @@ def main():
                              'Default = 0.')
     parser.add_argument('-s', '--splitting-method',
                         type=str,
-                        default=['conservative'],
+                        default=['SIDBCAN'],
                         nargs=1,
-                        help='Method used for splitting proximate '
-                             'clusters. One of "none", "aggressive" or '
-                             '"conservative". See the full documentation'
+                        help='Method used for identifying and splitting '
+                             'clusters. One of "IDBCAN", "SIDBCAN" or '
+                             '"SIDBCAN-aggressive". See the full documentation'
                              'for details. '
-                             'Default = "conservative".')
+                             'Default = "SIDBCAN".')
     parser.add_argument('-n', '--number-of-common-elements',
                         type=int,
                         default=[3],

@@ -2,8 +2,8 @@
 
 import numpy as np
 import tefingerprint.util as util
-from tefingerprint.cluster import UDBSCANx as _UDBSCANx
-from tefingerprint.cluster import UDBSCANxH as _UDBSCANxH
+from tefingerprint.cluster import IDBCAN as _IDBCAN
+from tefingerprint.cluster import SIDBCAN as _SIDBCAN
 
 
 class Header(object):
@@ -277,7 +277,7 @@ def clusters(contig,
              minimum_points,
              epsilon,
              minimum_epsilon=0,
-             hierarchical_method='conservative',
+             method='SIDBCAN',
              lower_bound='start',
              upper_bound='stop'):
     """
@@ -302,9 +302,9 @@ def clusters(contig,
     :type epsilon: int
     :param minimum_epsilon: minimum value when calculating hierarchical splits
     :type minimum_epsilon: int
-    :param hierarchical_method: use hierarchical or non-hierarchical version of
-        the algorithm. one of None, 'none', 'aggressive', 'conservative'
-    :type hierarchical_method: None | str
+    :param method: use hierarchical or non-hierarchical version of
+        the algorithm. one of 'IDBCAN', 'SIDBCAN', 'SIDBCAN-aggressive'
+    :type method: str
     :param lower_bound: field name to use for lower bound of clusters
     :type lower_bound: str
     :param upper_bound: field name to use for upper bound of clusters
@@ -313,15 +313,19 @@ def clusters(contig,
     :return: a contig of cluster interval loci
     :rtype: :class:`Contig`
     """
-    assert hierarchical_method in {None, 'none', 'aggressive', 'conservative'}
+    assert method in {'IDBCAN', 'SIDBCAN', 'SIDBCAN-aggressive'}
 
-    if hierarchical_method in {'aggressive', 'conservative'}:
-        model = _UDBSCANxH(minimum_points,
-                           max_eps=epsilon,
-                           min_eps=minimum_epsilon,
-                           method=hierarchical_method)
+    if method in {'SIDBCAN', 'SIDBCAN-aggressive'}:
+        if method == 'SIDBCAN-aggressive':
+            aggressive_method = True
+        else:
+            aggressive_method = False
+        model = _SIDBCAN(minimum_points,
+                         max_eps=epsilon,
+                         min_eps=minimum_epsilon,
+                         aggressive_method=aggressive_method)
     else:
-        model = _UDBSCANx(minimum_points, epsilon)
+        model = _IDBCAN(minimum_points, epsilon)
     model.fit(contig.loci[field])
 
     dtype = np.dtype([(lower_bound, np.int64), (upper_bound, np.int64)])
