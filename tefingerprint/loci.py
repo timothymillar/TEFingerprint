@@ -2,8 +2,8 @@
 
 import numpy as np
 import tefingerprint.util as util
-from tefingerprint.cluster import UDBSCANx as _UDBSCANx
-from tefingerprint.cluster import UDBSCANxH as _UDBSCANxH
+from tefingerprint.cluster import IDBCAN as _UDBSCANx
+from tefingerprint.cluster import SIDBCAN as _UDBSCANxH
 
 
 class Header(object):
