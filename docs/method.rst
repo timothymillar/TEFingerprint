@@ -30,21 +30,69 @@ The initial stage of the TEFingerprint process is to identify
 information about the location of transposon insertions when compared to
 a reference genome.
 
-Paired end reads are mapped to a library of known transposon sequences.
+Paired end reads are initially mapped to a library of known transposon and or
+repeat element sequences.
+Any pairs in which neither read is mapped are considered uninformative and
+ignored.
+
+Full-length Informative Reads
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 Pairs in which one read has mapped to a transposon and the other is unmapped
-are identified. Assuming that our library of known transposon sequences is
-largely complete, unmapped reads are likely to (primarily)
-contain non-transposon-genomic DNA. Read pairs in which both reads have
+are identified and the unmapped read is labeled as an informative read.
+Assuming that our library of known transposon sequences is
+largely complete, these informative reads are likely to contain
+non-transposon-genomic DNA.
+
+When these full-length informative reads are mapped to a reference genome
+These reads will tend to map in stranded clusters at either end of a location
+at which a transposon is present in the sample.
+The exact distance between a full-length informative read and it's associated
+insertion site will vary based on the insertion size of the original read
+pairs.
+
+Soft Clipped Informative Tails
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Read pairs in which both reads have
 mapped to a transposon sequence can be used as an additional source of
 information if one read has a significant soft-clipped region at its
-5-prime (outer) end. In these cases, the soft-clipped section can be
-extracted and included as (short) informative read. Any pairs in which
-neither read is mapped are uninformative and are ignored.
+5-prime end (tail). In these cases, the soft-clipped section can be
+extracted and included as (short) informative read.
 
-The (unmapped) informative reads are tagged with the transposon that
-their pair has mapped to, and then mapped to a reference genome. These reads
-will tend to map in stranded clusters either end of a location at which
-a transposon is present in the sample.
+Assuming that the reference transposon is accurate,
+soft-clipped tips will theoretically provide greater precision than most
+full-length informative reads because the soft-clipped region should be
+immediately adjacent to the transposon insertion.
+However, the short soft-clipped regions may align poorly.
+
+In TEFingerprint soft-clipped tips that are included by default if
+they are :math:`\geq 38` bases in length.
+options are available to change the required length or to
+excluded soft-clipped tips entirely.
+
+
+Soft Clipped Informative Tips
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If a read with an unmapped mate is partially mapped to transposon by it's
+outer 5-prime end (tail) the soft-clipped  3-prime end (tip) may be used as an
+informative read.
+However the unmapped mate will be classified as a full-length informative
+read.
+
+Inclusion of both the soft-clipped tip and the full-length read may
+bias the final results as these reads are non-independent and will provide
+twice the weight to a single insertion site.
+Depending on the accuracy of the reference transposon, the soft-clipped tip
+may contain some repetitive sequence resulting in a poor alignment to the
+reference genome.
+
+Because of these concerns, soft-clipped tips are not used in TEFingerprint by
+default.
+Aan optional flag is available to include soft-clipped tips
+instead of their full-length mate if the soft-clipped region is over a
+specified length.
 
 Fingerprinting
 --------------
@@ -64,18 +112,11 @@ read-tips (i.e. the read ends closest to the potential transposon insertions)
 are then extracted into a array of integer values, per reference molecule for
 each categories-strand group.
 
-A non-soft-clipped informative read is identified when its mate read
-has mapped to a know transposon.
-The informative read has then been mapped to a reference genome where it will
-(usually) be within insert-length distance of a transposon insertion in the
-sample genome.
-Thus the insertion size of the initial paired end data is a reasonable estimate
-of the expected size of transposon-flanking clusters of informative reads.
-Using this information, clusters of informative read-tips are identified
-using a novel density-based clustering algorithm described bellow.
-
 Density based clustering
 ~~~~~~~~~~~~~~~~~~~~~~~~
+
+Within each array of tip positions we expect to find clusters of tips with
+widths that are proportional to the insertion size of the initial paired reads.
 
 The DBSCAN family of clustering algorithms identify clusters based on point
 *density*. Points that form dense regions are grouped into cluster while
