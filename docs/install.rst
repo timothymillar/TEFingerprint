@@ -22,22 +22,16 @@ This will create a `virtual
 environment <http://conda.pydata.org/docs/using/envs.html>`__ called
 ``tefingerprint``.
 
-Dependencies
-------------
-
-The current development version supports Python 3.5 or higher and pysam
-0.9 or higher.
-
-Building and Installation
--------------------------
-
--  Activate the development environment:
+Activate the development environment:
 
 ::
 
-    source activate tefingerprint
+    conda activate tefingerprint
 
--  Uninstall any previous version:
+Manual Installation
+-------------------------
+
+- Uninstall any previous version:
 
 ::
 
@@ -59,6 +53,21 @@ Building and Installation
 ::
 
     pip install -e ./
+
+GitHub Installation
+-------------------
+
+Installing a specific version e.g. 0.3.0
+
+::
+
+    pip install git://github.com/PlantandFoodResearch/TEFingerprint.git@v0.3.0
+
+If using two factor authentication with ssh
+
+::
+
+    pip install git+ssh://git@github.com/PlantandFoodResearch/TEFingerprint.git@v0.3.0
 
 Testing
 -------

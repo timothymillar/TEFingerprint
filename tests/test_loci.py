@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 
 import pytest
 import numpy as np
@@ -414,7 +414,7 @@ def test_cluster():
                          10,
                          epsilon=200,
                          minimum_epsilon=10,
-                         hierarchical_method='aggressive') == answer
+                         method='SIDBCAN-aggressive') == answer
 
 
 def test_cluster_empty():
@@ -437,7 +437,7 @@ def test_cluster_empty():
                          10,
                          epsilon=200,
                          minimum_epsilon=10,
-                         hierarchical_method='aggressive') == answer
+                         method='SIDBCAN-aggressive') == answer
 
 
 @pytest.mark.parametrize("query, answer",

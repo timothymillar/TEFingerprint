@@ -1,5 +1,6 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 
+import warnings
 import numpy as np
 
 
@@ -11,7 +12,7 @@ def core_distances(array, min_points):
     :param array: An array of integers sorted in ascending order
     :type array: :class:`numpy.ndarray`[int]
     :param min_points: number of points used to form a subcluster
-    :type n: int
+    :type min_points: int
 
     :return: An array of minimum eps values
     :rtype: :class:`numpy.ndarray`[int]
@@ -31,13 +32,9 @@ def core_distances(array, min_points):
     return np.min(eps_2d, axis=0)
 
 
-class UDBSCANx(object):
+class IDBCAN(object):
     """
-    Univariate implimentation of DBSCAN*.
-
-    This is an implementation of the DBSCAN* (Campello et al 2015)
-    clustering method for use on a sorted (in ascending order)
-    univariate array of integers.
+    Univariate integer implimentation of IDBCAN.
 
     Clusters are identified as suitably dense, continuous regions in
     the data where the threshold density is specified by parameters
@@ -62,7 +59,7 @@ class UDBSCANx(object):
     def __init__(self, min_points, epsilon):
         self.min_points = min_points
         self.epsilon = epsilon
-        self.slices = np.array([], dtype=UDBSCANx._DTYPE_SLICE)
+        self.slices = np.array([], dtype=IDBCAN._DTYPE_SLICE)
         self.input_array = np.array([], dtype=int)
 
     @staticmethod
@@ -113,12 +110,12 @@ class UDBSCANx(object):
 
         # return slices formatted as a numpy array
         return np.fromiter(_melter(lowers, uppers, splits),
-                           dtype=UDBSCANx._DTYPE_SLICE)
+                           dtype=IDBCAN._DTYPE_SLICE)
 
     @staticmethod
     def _subcluster(array, min_points, epsilon):
         """
-        Calculate subclusters of an array and return their slice indices.
+        Calculate sub-clusters of an array and return their slice indices.
 
         The input array must be sorted in ascending order.
         If n is greater than the length of the array, an empty array
@@ -136,7 +133,7 @@ class UDBSCANx(object):
             subcluster found in the array
         :rtype: :class:`numpy.ndarray`[(int, int)]
         """
-        assert UDBSCANx._sorted_ascending(array)
+        assert IDBCAN._sorted_ascending(array)
 
         offset = min_points - 1
         upper = array[offset:]
@@ -145,7 +142,7 @@ class UDBSCANx(object):
         lower_index = np.arange(0, len(lower))[selected]
         upper_index = np.arange(offset, len(array))[selected] + 1
         return np.fromiter(zip(lower_index, upper_index),
-                           dtype=UDBSCANx._DTYPE_SLICE)
+                           dtype=IDBCAN._DTYPE_SLICE)
 
     @staticmethod
     def _cluster(array, min_points, epsilon):
@@ -168,14 +165,14 @@ class UDBSCANx(object):
         :rtype: :class:`numpy.ndarray`[(int, int)]
         """
         # sorted-ascending checked in method _subcluster
-        slices = UDBSCANx._subcluster(array, min_points, epsilon)
+        slices = IDBCAN._subcluster(array, min_points, epsilon)
         if len(slices) > 1:
-            slices = UDBSCANx._melt_slices(slices)
+            slices = IDBCAN._melt_slices(slices)
         return slices
 
     def fit(self, array):
         """
-        Fit an array to a Univariate Density Cluster model.
+        Fit an array to an IDBCAN model.
         The input array must be sorted in ascending order.
 
         :param array: An array of integers sorted in ascending order
@@ -188,17 +185,17 @@ class UDBSCANx(object):
                                     self.epsilon)
 
     @staticmethod
-    def udbscanx(array, min_points, epsilon):
+    def idbcan(array, min_points, epsilon):
         """
-        Provides functional use of :class:`UDBSCANx`.
+        Provides functional use of :class:`IDBCAN`.
 
-        See documentation for :class:`UDBSCANx`.
+        See documentation for :class:`IDBCAN`.
 
         :param array: An array of ints sorted in ascending order
         :type array: :class:`numpy.ndarray`[int]
         :param min_points: The minimum number of points in each
             (sub)cluster
-        :type n: int
+        :type min_points: int
         :param epsilon: The maximum distance allowed in among each
             set of n points
         :type epsilon: int
@@ -207,7 +204,7 @@ class UDBSCANx(object):
             each cluster found in the array
         :rtype: :class:`numpy.ndarray`[int, int]
         """
-        model = UDBSCANx(min_points, epsilon)
+        model = IDBCAN(min_points, epsilon)
         model.fit(array)
         return model.slices
 
@@ -249,50 +246,24 @@ class UDBSCANx(object):
         return labels
 
 
-class UDBSCANxH(UDBSCANx):
+class SIDBCAN(IDBCAN):
     """
-    Univariate DBSCAN* with Hierarchical component.
+    Univariate integer implimentation of Splitting-IDBCAN.
 
-    This is a variation of the DBSCAN*/HDBSCAN* (Campello et al 2015)
-    clustering methods which produces results similar to DBSCAN* while
-    allowing some flexibility when calculating
-    density based clusters. While it has a hierarchical component it
-    differs significantly from HDBSCAN* in how cluster support is
-    calculated and clusters are selected.
+    Clusters are identified as suitably dense, continuous regions in
+    the data where the threshold density is specified by parameters
+    minimum points and epsilon. Points in the array that do not fall
+    inside a cluster are classified as noise points.
 
-    This implementation is for use on a sorted (in ascending order)
-    univariate array of integers.
+    The range in values among every set of min-points in the array is
+    calculated and compared to epsilon. Sets of n points with a range
+    equal to, or less than epsilon are classified as subclusters.
+    Overlapping subclusters are then merged together to form clusters.
 
-    This method is useful when there is some existing knowledge about
-    the expected density of informative clusters that are present in
-    the data.
-    It is preferred over DBSCAN* because it allows *some* flexibility
-    in the density of clusters identified.
-    However its flexibility is much more limited than HDBSCAN* to
-    ensure that clusters are of similar density to one another.
-
-    Two variations 'conservative' (default) and 'aggressive' are available.
-    These are defined using the definitions of Campello et al 2015 with
-    an additional constant value of maximum allowable epsilon
-    :math:`\mathcal{E}`.
-
-    Using  'conservative' method a cluster is selected if
-
-    .. math::
-        \sum_{\textbf{x}_j \in \textbf{C}_i} \frac{ \mathcal{E} - \text{max}\{d_{\text{core}}(\textbf{x}_j), \varepsilon_{\text{min}}(\textbf{C}_i)\} }{ \text{max}\{d_{\text{core}}(\textbf{x}_j), \varepsilon_{\text{min}}(\textbf{C}_i)\} - d_{\text{core}}(\textbf{x}_j)} \geq 1
-
-    Using  'aggressive' method a cluster is selected if
-
-    .. math::
-        \sum_{\textbf{x}_j \in \textbf{C}_i} \frac{ \text{min}\{\mathcal{E}, \varepsilon_{\text{max}}(\textbf{C}_i)\} - \text{max}\{d_{\text{core}}(\textbf{x}_j), \varepsilon_{\text{min}}(\textbf{C}_i)\} }{ \text{max}\{d_{\text{core}}(\textbf{x}_j), \varepsilon_{\text{min}}(\textbf{C}_i)\} - d_{\text{core}}(\textbf{x}_j)} \geq 1
-
-    Clusters selection is performed in a top down manner from the
-    root of the tree. If a given cluster is not selected, cluster
-    support is calculated for each of its child clusters.
-    This occurs recursively until a cluster is selected.
-    A cluster cannot be selected if one of its ancestor clusters
-    has been selected.
-    This process results in a set of flat (non-overlapping) clusters.
+    Once the initial set of clusters has been identified following IDBCAN,
+    the support of each cluster is assessed in comparision to its child
+    clusters. If support for a cluster is weak it is split into it's
+    constituent child clusters which are in turn assessed recursively.
 
     The search space may be constrained by setting global maximum
     (:math:`\mathcal{E}`) and
@@ -312,22 +283,24 @@ class UDBSCANxH(UDBSCANx):
     :param min_eps: An optional value for the minimum value of eps to
         be used when calculating cluster depth
     :type min_eps: int
-    :param method: method for calculating support of parent clusters,
-        one of 'conservative' (default) or 'aggressive'
-    :type method: str
+    :param aggressive_method: use old more aggressive splitting method
+    :type aggressive_method: bool
     """
 
     def __init__(self,
                  min_points,
                  max_eps=None,
                  min_eps=None,
-                 method='conservative'):
-        assert method in {'aggressive', 'conservative'}
+                 aggressive_method=False):
         self.min_points = min_points
         self.max_eps = max_eps
         self.min_eps = min_eps
-        self.method = method
-        self.slices = np.array([], dtype=UDBSCANx._DTYPE_SLICE)
+        self.aggressive_method = aggressive_method
+        if aggressive_method:
+            warnings.warn("The aggressive splitting method is deprecated "
+                          "and may be removed in future versions.",
+                          DeprecationWarning)
+        self.slices = np.array([], dtype=IDBCAN._DTYPE_SLICE)
         self.input_array = np.array([], dtype=int)
 
     @staticmethod
@@ -342,7 +315,7 @@ class UDBSCANxH(UDBSCANx):
         :param array: An array of integers sorted in ascending order
         :type array: :class:`numpy.ndarray`[int]
         :param min_points: number of points used to form a subcluster
-        :type n: int
+        :type min_points: int
 
         :return: An array of minimum eps values
         :rtype: :class:`numpy.ndarray`[int]
@@ -382,7 +355,7 @@ class UDBSCANxH(UDBSCANx):
         :param array: An array of integers sorted in ascending order
         :type array: :class:`numpy.ndarray`[int]
         :param min_points: number of points used to form a subcluster
-        :type n: int
+        :type min_points: int
 
         :return: An epsilon value or None
         :rtype: int
@@ -438,7 +411,7 @@ class UDBSCANxH(UDBSCANx):
         """
         if isinstance(item, list):
             for element in item:
-                for item in UDBSCANxH._flatten_list(element):
+                for item in SIDBCAN._flatten_list(element):
                     yield item
         else:
             yield item
@@ -476,17 +449,14 @@ class UDBSCANxH(UDBSCANx):
         local_min_eps = fork_epsilon
 
         # Compare support for cluster and its children
-        if self.method == 'aggressive':
+        if self.aggressive_method:
             support = np.sum(local_max_eps -
                              np.maximum(local_min_eps,
                                         local_points['core_dist']))
-        elif self.method == 'conservative':
+        else:
             support = np.sum(self.max_eps -
                              np.maximum(local_min_eps,
                                         local_points['core_dist']))
-        else:
-            message = 'Clustering method not recognised {0}'
-            raise ValueError(message.format(self.method))
 
         support_children = np.sum(np.maximum(0,
                                              local_min_eps -
@@ -516,7 +486,7 @@ class UDBSCANxH(UDBSCANx):
 
     def _run(self, array):
         """
-        See documentation for :class: `UDBSCANxH`.
+        See documentation for :class: `SIDBCAN`.
 
         :param array: An array of integers sorted in ascending order
         :type array: :class:`numpy.ndarray`[int]
@@ -526,11 +496,10 @@ class UDBSCANxH(UDBSCANx):
         :rtype: :class:`numpy.ndarray`[(int, int)]
         """
         assert self._sorted_ascending(array)
-        assert self.method in {'aggressive', 'conservative'}
 
         if len(array) < self.min_points:
             # not enough points to form a cluster
-            return np.array([], dtype=UDBSCANx._DTYPE_SLICE)
+            return np.array([], dtype=IDBCAN._DTYPE_SLICE)
 
         else:
             # create a structured array for tracking value, index and
@@ -564,11 +533,11 @@ class UDBSCANxH(UDBSCANx):
                                                     self.max_eps)
                         for points in child_points]
             return np.fromiter(self._flatten_list(clusters),
-                               dtype=UDBSCANx._DTYPE_SLICE)
+                               dtype=IDBCAN._DTYPE_SLICE)
 
     def fit(self, array):
         """
-        Fit an array to a Hierarchical Univariate Density Cluster model.
+        Fit an array to a SIDBCAN model.
         The input array must be sorted in ascending order.
 
         :param array: An array of integers sorted in ascending order
@@ -578,15 +547,15 @@ class UDBSCANxH(UDBSCANx):
         self.slices = self._run(self.input_array)
 
     @staticmethod
-    def udbscanxh(array,
-                  min_points,
-                  max_eps=None,
-                  min_eps=None,
-                  method='conservative'):
+    def sidbcan(array,
+                min_points,
+                max_eps=None,
+                min_eps=None,
+                aggressive_method=False):
         """
-        Provides functional use of :class:`UDBSCANxH`.
+        Provides functional use of :class:`SIDBCAN`.
 
-        See documentation for :class:`UDBSCANxH`.
+        See documentation for :class:`SIDBCAN`.
 
         :param array: An array of integers sorted in ascending order
         :type array: :class:`numpy.ndarray`[int]
@@ -599,17 +568,17 @@ class UDBSCANxH(UDBSCANx):
         :param min_eps: An optional value for the minimum value of
             eps to be used when calculating cluster depth
         :type min_eps: int
-        :param method: 'aggressive' or 'conservative'
-        :type method: str
+        :param aggressive_method: use old more aggressive splitting method
+        :type aggressive_method: bool
 
         :return: An array of paired lower and upper indices for each
             cluster found in the array
         :rtype: :class:`numpy.ndarray`[(int, int)]
         """
-        model = UDBSCANxH(min_points,
-                          max_eps=max_eps,
-                          min_eps=min_eps,
-                          method=method)
+        model = SIDBCAN(min_points,
+                        max_eps=max_eps,
+                        min_eps=min_eps,
+                        aggressive_method=aggressive_method)
         model.fit(array)
         return model.slices
 

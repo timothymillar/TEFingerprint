@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 
 import numpy as np
 from itertools import product
@@ -6,8 +6,8 @@ from functools import reduce
 from collections import Counter
 from multiprocessing import Pool
 from tefingerprint import util
-from tefingerprint import interval
-from tefingerprint import fingerprintio
+from tefingerprint.util.numpy import interval
+from tefingerprint._applications import fingerprintio
 from tefingerprint import loci
 
 
@@ -131,7 +131,7 @@ def _fingerprint_dispatch(bams,
                                        minimum_reads,
                                        epsilon,
                                        minimum_epsilon=minimum_epsilon,
-                                       hierarchical_method=splitting_method))
+                                       method=splitting_method))
 
     # buffered union of clusters
     clusters = clusters.map(lambda x:
@@ -179,11 +179,11 @@ def create_contig_ids(contig):
     """
     Create ids for contig based on category, reference, strand and position.
 
-    :param clusters: a collection of cluster loci (intervals)
-    :type clusters: :class:`loci.ContigSet`
+    :param contig: a collection of cluster loci (intervals)
+    :type contig: :class:`loci.Contig`
 
     :return: a collection of cluster loci (intervals) with 'ID' field
-    :rtype: :class:`loci.ContigSet`
+    :rtype: :class:`loci.Contig`
     """
     template = '{0}_{1}_{2}_'.format(contig.header.category,
                                      contig.header.reference,
@@ -199,7 +199,7 @@ def create_contig_ids(contig):
     ids = np.array(ids)
     ids = np.array(ids, dtype=np.dtype([('ID', '<O')]))
 
-    loci_data = util.bind_arrays(contig.loci, ids)
+    loci_data = util.numpy.array.bind(contig.loci, ids)
 
     return loci.Contig(contig.header, loci_data)
 
@@ -257,8 +257,8 @@ def count_reads(clusters, reads, trim=True, n_common_elements=0):
                                    ('count', np.int64),
                                    ('element', dtype_elements)])
     if n_common_elements == 0:
-        dtype_sample_count = util.remove_dtype_field(dtype_sample_count,
-                                                     'element')
+        dtype_sample_count = util.numpy.dtype.remove_field(dtype_sample_count,
+                                                           'element')
     dtype_samples = np.dtype([(str(i), dtype_sample_count)
                               for i, _ in enumerate(sources)])
     dtype_new = np.dtype([('median', np.int64),
@@ -368,7 +368,6 @@ def colourise_read_counts(contig):
     return contig
 
 
-
 def _known_insertion_matcher(contig, known_insertions, distance=0):
     """matches clusters on a contig to known elements"""
     if contig.header.strand == '+':
@@ -443,8 +442,9 @@ def match_known_insertions(clusters, known_insertions, distance=0):
         matches = np.array(matches,
                            dtype=np.dtype([('known_element', '<O')]))
 
-        matched.add(loci.Contig(contig.header, util.bind_arrays(contig.loci,
-                                                                matches)))
+        matched.add(loci.Contig(contig.header,
+                                util.numpy.array.bind(contig.loci,
+                                                      matches)))
 
     return matched
 
@@ -574,11 +574,11 @@ def pair_clusters(clusters, distance=0, use_known_elements=True):
 
         # combine existing data with join data and add to new contig set
         joint_clusters.add(loci.Contig(header.mutate(strand='+'),
-                                       util.bind_arrays(forward.loci,
-                                                        forward_join_data)))
+                                       util.numpy.array.bind(forward.loci,
+                                                             forward_join_data)))
         joint_clusters.add(loci.Contig(header.mutate(strand='-'),
-                                       util.bind_arrays(reverse.loci,
-                                                        reverse_join_data)))
+                                       util.numpy.array.bind(reverse.loci,
+                                                             reverse_join_data)))
 
     return joint_clusters
 

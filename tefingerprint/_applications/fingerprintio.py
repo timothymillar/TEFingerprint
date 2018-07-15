@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 
 import os
 import pysam
@@ -6,9 +6,9 @@ import numpy as np
 from itertools import product
 from collections import deque
 from tefingerprint import loci
-from tefingerprint import interval
-from tefingerprint.gff import decode_column, decode_attribute
-from tefingerprint.compression import zopen
+from tefingerprint.util.numpy import interval
+from tefingerprint.util.gff3 import decode_column
+from tefingerprint.util.io import zopen
 
 
 def extract_references_from_bam(bam):
@@ -31,7 +31,7 @@ def extract_references_from_bams(*args):
     Extract names of references from a multiple bam files.
 
     :param args: paths to bam files
-    :type args: list[str]
+    :type args: str
 
     :return: list of bam reference names
     :rtype: list[str]
@@ -67,7 +67,7 @@ def _extract_bam_read_data(bam, reference, quality=0, tags=None):
     for read in gen.fetch(region=reference):
         if read.mapping_quality >= quality:
             data = {
-                'reference':reference.split(':')[0],
+                'reference': reference.split(':')[0],
                 'strand': '-' if read.is_reverse else '+',
                 'start': read.blocks[0][0] + 1,  # adjust for pysam indexing
                 'stop': read.blocks[-1][-1],
@@ -268,7 +268,7 @@ def extract_anchor_intervals(bams,
         anchors = anchors[adjusted_anchor_lengths <= insert_size]
 
         # use unions of filtered anchors as loci
-        intervals.add(loci.unions(loci.Contig(header=header, array=anchors)))
+        intervals.add(loci.unions(loci.Contig(header=header, loci=anchors)))
 
     return intervals
 

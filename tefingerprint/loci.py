@@ -1,11 +1,9 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 
 import numpy as np
-import urllib
-from tefingerprint import util
-from tefingerprint import gff
-from tefingerprint.cluster import UDBSCANx as _UDBSCANx
-from tefingerprint.cluster import UDBSCANxH as _UDBSCANxH
+import tefingerprint.util as util
+from tefingerprint.cluster import IDBCAN as _IDBCAN
+from tefingerprint.cluster import SIDBCAN as _SIDBCAN
 
 
 class Header(object):
@@ -131,13 +129,13 @@ class Contig(object):
 
     :param header: a header that defines this contig
     :type header: :class:`Header`
-    :param loci: loci contaained in this contig
+    :param loci: loci contained in this contig
     :type loci: :class:`numpy.array`
     """
-    def __init__(self, header, array):
+    def __init__(self, header, loci):
         assert isinstance(header, Header)
         self.header = header
-        self.loci = array
+        self.loci = loci
 
     def __repr__(self):
         return repr((self.header, self.loci))
@@ -198,9 +196,9 @@ def as_array(contig):
     :return: a numpy array with no nested values
     :rtype: :class:`numpy.array`
     """
-    data = map(tuple, map(util.flatten_numpy_element, iter_values(contig)))
-    dtype = util.flatten_dtype(util.append_dtypes(contig.header.dtype,
-                                                  contig.loci.dtype))
+    data = map(tuple, map(util.numpy.element.flatten, iter_values(contig)))
+    dtype = util.numpy.dtype.flatten_fields(util.numpy.dtype.append(contig.header.dtype,
+                                                                    contig.loci.dtype))
     return np.array([i for i in data], dtype=dtype)
 
 
@@ -253,7 +251,8 @@ def drop_field(contig, field):
     :return: a contig of loci without the specified field
     :rtype: :class:`Contig`
     """
-    return Contig(contig.header, util.remove_array_field(contig.loci, field))
+    return Contig(contig.header,
+                  util.numpy.array.remove_field(contig.loci, field))
 
 
 def add_field(contig, field_dtype):
@@ -264,14 +263,13 @@ def add_field(contig, field_dtype):
     :type contig: :class:`Contig`
     :param field_dtype: a named numpy dtype for the added field
     :type field_dtype: :class:`numpy.dtype`
-    :param value: the optional default value to fill the new field with
-    :type value: None | any
 
     :return: a contig of loci
     :rtype: :class:`Contig`
     """
     array = np.zeros(len(contig.loci), dtype=field_dtype)
-    return Contig(contig.header, array=util.bind_arrays(contig.loci, array))
+    return Contig(contig.header,
+                  loci=util.numpy.array.bind(contig.loci, array))
 
 
 def clusters(contig,
@@ -279,7 +277,7 @@ def clusters(contig,
              minimum_points,
              epsilon,
              minimum_epsilon=0,
-             hierarchical_method='conservative',
+             method='SIDBCAN',
              lower_bound='start',
              upper_bound='stop'):
     """
@@ -304,9 +302,9 @@ def clusters(contig,
     :type epsilon: int
     :param minimum_epsilon: minimum value when calculating hierarchical splits
     :type minimum_epsilon: int
-    :param hierarchical_method: use hierarchical or non-hierarchical version of
-        the algorithm. one of None, 'none', 'aggressive', 'conservative'
-    :type hierarchical_method: None | str
+    :param method: use hierarchical or non-hierarchical version of
+        the algorithm. one of 'IDBCAN', 'SIDBCAN', 'SIDBCAN-aggressive'
+    :type method: str
     :param lower_bound: field name to use for lower bound of clusters
     :type lower_bound: str
     :param upper_bound: field name to use for upper bound of clusters
@@ -315,15 +313,19 @@ def clusters(contig,
     :return: a contig of cluster interval loci
     :rtype: :class:`Contig`
     """
-    assert hierarchical_method in {None, 'none', 'aggressive', 'conservative'}
+    assert method in {'IDBCAN', 'SIDBCAN', 'SIDBCAN-aggressive'}
 
-    if hierarchical_method in {'aggressive', 'conservative'}:
-        model = _UDBSCANxH(minimum_points,
-                           max_eps=epsilon,
-                           min_eps=minimum_epsilon,
-                           method=hierarchical_method)
+    if method in {'SIDBCAN', 'SIDBCAN-aggressive'}:
+        if method == 'SIDBCAN-aggressive':
+            aggressive_method = True
+        else:
+            aggressive_method = False
+        model = _SIDBCAN(minimum_points,
+                         max_eps=epsilon,
+                         min_eps=minimum_epsilon,
+                         aggressive_method=aggressive_method)
     else:
-        model = _UDBSCANx(minimum_points, epsilon)
+        model = _IDBCAN(minimum_points, epsilon)
     model.fit(contig.loci[field])
 
     dtype = np.dtype([(lower_bound, np.int64), (upper_bound, np.int64)])
@@ -447,6 +449,8 @@ class ContigSet(object):
     """
     def __init__(self, *args, append_duplicate_headers=False):
         self._dict = {}
+        self._cached_array = None
+        self._cached_array_order = None
         if len(args) == 0:
             pass
         else:
@@ -483,6 +487,10 @@ class ContigSet(object):
 
     def __ne__(self, other):
         return not self.__eq__(other)
+
+    def _reset_array_cache(self):
+        self._cached_array = None
+        self._cached_array_order = None
 
     def dtype_headers(self):
         """
@@ -533,6 +541,8 @@ class ContigSet(object):
             loci of contigs with duplicate headers
         :type append_duplicate_headers: bool
         """
+        self._reset_array_cache()
+
         if len(self._dict.keys()) == 0:
             pass
         else:
@@ -564,6 +574,8 @@ class ContigSet(object):
             loci of contigs with duplicate headers
         :type append_duplicate_headers: bool
         """
+        self._reset_array_cache()
+
         for contig in contigs:
             self.add(contig, append_duplicate_headers=append_duplicate_headers)
 
@@ -614,6 +626,26 @@ class ContigSet(object):
             for val in iter_values(ctg):
                 yield val
 
+    def _rebuild_array_cache(self, order=False):
+        if order == self._cached_array_order:
+            pass
+        else:
+            self._reset_array_cache()
+
+            data = map(tuple,
+                       map(util.numpy.element.flatten, self.iter_values()))
+            dtype = util.numpy.dtype.flatten_fields(
+                util.numpy.dtype.append(self.dtype_headers(),
+                                        self.dtype_loci()))
+            self._cached_array = np.array([i for i in data], dtype=dtype)
+
+            if order:
+                if isinstance(order, str):
+                    order = [order]
+                index = np.argsort(self._cached_array[order],
+                                   order=(tuple(order)))
+                self._cached_array = self._cached_array[index]
+
     def as_array(self, order=False):
         """
         Converts a ContigSet to a flattened numpy array.
@@ -627,40 +659,39 @@ class ContigSet(object):
         :return: a numpy array with no nested values
         :rtype: :class:`numpy.array`
         """
-        data = map(tuple, map(util.flatten_numpy_element, self.iter_values()))
-        dtype = util.flatten_dtype(util.append_dtypes(self.dtype_headers(),
-                                                      self.dtype_loci()))
-        array = np.array([i for i in data], dtype=dtype)
+        self._rebuild_array_cache(order=order)
+        return np.copy(self._cached_array)
 
-        if order:
-            if isinstance(order, str):
-                order = [order]
-            index = np.argsort(array[order],
-                               order=(tuple(order)))
-            array = array[index]
-
-        return array
-
-    def as_tabular_lines(self, sep=','):
+    def as_tabular_lines(self, sep='\t', quote=False, order=False):
         """
         Converts a ContigSet to an iterable of strings.
 
         Header values are included for every element in each contig.
         Nested loci values are flattened by appending nested field names.
 
-        :param sep: separator value (default: ',')
+        :param sep: separator value (default: '\t')
         :type sep: str
+        :param quote: logical to surround string values in quotations
+        :type quote: bool
 
         :return: an iterable of string suitable for writing to a tabular
             plain text file
         :rtype: iterable[str]
         """
-        dtype = util.append_dtypes(self.dtype_headers(), self.dtype_loci())
-        columns = util.flatten_dtype_fields(dtype)
-        yield sep.join(map(util.quote_str, columns))
-        for f in self.iter_values():
-            yield sep.join(map(util.quote_str,
-                               util.flatten_numpy_element(f)))
+        self._rebuild_array_cache(order=order)
+
+        if quote:
+            string = util.misc.quote_str
+        else:
+            string = str
+
+        dtype = util.numpy.dtype.append(self.dtype_headers(), self.dtype_loci())
+        columns = util.numpy.dtype.flatten_field_names(dtype)
+
+        yield sep.join(map(string, columns))
+
+        for element in self._cached_array:
+            yield sep.join(map(string, element))
 
     def as_gff_lines(self,
                      order=False,
@@ -696,9 +727,9 @@ class ContigSet(object):
             plain text file
         :rtype: iterable[str]
         """
-        array = self.as_array(order=order)
+        self._rebuild_array_cache(order=order)
 
-        attribute_fields = list(array.dtype.names)
+        attribute_fields = list(self._cached_array.dtype.names)
         for field in (reference_field, start_field, stop_field, strand_field):
             if field in attribute_fields:
                 attribute_fields.remove(field)
@@ -707,24 +738,26 @@ class ContigSet(object):
 
         template = "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}\t{8}"
 
-        for record in array:
+        for record in self._cached_array:
             if type_field:
                 type_value = record[type_field]
             else:
                 type_value = '.'
 
-            attributes = ';'.join(('{0}={1}'.format(gff.encode_attribute(field),
-                                                    gff.encode_attribute(str(record[field])))
+            attributes = ';'.join(('{0}={1}'.format(
+                util.gff3.encode_attribute(field),
+                util.gff3.encode_attribute(str(record[field])))
                                    for field in attribute_fields))
-            yield template.format(gff.encode_column(record[reference_field]),
-                                  gff.encode_column(program_name),
-                                  gff.encode_column(type_value),
+            yield template.format(util.gff3.encode_column(record[reference_field]),
+                                  util.gff3.encode_column(program_name),
+                                  util.gff3.encode_column(type_value),
                                   record[start_field],
                                   record[stop_field],
                                   '.',
                                   record[strand_field],
                                   '.',
                                   attributes)
+
 
 if __name__ == "__main__":
     pass

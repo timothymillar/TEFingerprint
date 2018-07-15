@@ -1,9 +1,9 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 
 
 import re
 import fnmatch
-from tefingerprint.gff import *
+from tefingerprint.util.gff3 import *
 
 
 COLUMN_NAMES = ["seqid",
