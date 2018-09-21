@@ -153,8 +153,7 @@ def _fingerprint_dispatch(bams,
     # colour features based on read count proportions
     if colourise_output:
         if len(bams) > 1:
-            clusters = clusters.map(max_count_proportion)
-            clusters = clusters.map(colourise_read_counts)
+            clusters = clusters.map(colourise_max_read_count_proportion)
 
     # match clusters to known elements if used
     if annotation is None:
@@ -338,31 +337,7 @@ _GFF_PROPORTION_COLOURS = {0: '#C6DBEF',
                            10: '#08306B'}
 
 
-def max_count_proportion(contig):
-    """
-    Calculate proportion of reads counted in the sample with the most reads.
-
-    :param contig: a contig of loci with read counts
-    :type contig: :class:`Contig`
-
-    :return: a contig of loci with a 'max_proportion' field
-    :rtype: :class:`loci.Contig`
-    """
-    contig = loci.add_field(contig, np.dtype([('max_count_proportion', np.float64)]))
-    if len(contig) > 0:
-        samples = [str(i)
-                   for i in range(len(contig.loci[0]['sample'].dtype.descr))]
-        if len(samples) > 1:
-            for i, counts in enumerate(zip(*[contig.loci['sample'][s]['count']
-                                             for s in samples])):
-                proportion = np.max(counts) / np.sum(counts)
-                contig.loci['max_count_proportion'][i] = proportion
-        else:
-            contig.loci['max_count_proportion'] = 1.0
-    return contig
-
-
-def colourise_read_counts(contig):
+def colourise_max_read_count_proportion(contig):
     """
     Add html colour field based on read count proportions.
 
@@ -376,19 +351,26 @@ def colourise_read_counts(contig):
     :param contig: a contig of loci with read counts
     :type contig: :class:`Contig`
     
-    :return: a contig of loci with a 'color' field
+    :return: a contig of loci with a 'max_count_proportion' and 'color' fields
     :rtype: :class:`loci.Contig`
     """
+    contig = loci.add_field(contig,
+                            np.dtype([('max_count_proportion', np.float64)]))
     contig = loci.add_field(contig, np.dtype([('color', 'O')]))
+
     if len(contig) > 0:
         samples = [str(i)
                    for i in range(len(contig.loci[0]['sample'].dtype.descr))]
         if len(samples) > 1:
             for i, counts in enumerate(zip(*[contig.loci['sample'][s]['count']
                                              for s in samples])):
-                proportion = int(10 * (max(counts) / sum(counts)))
-                contig.loci['color'][i] = _GFF_PROPORTION_COLOURS[proportion]
+                proportion = np.max(counts) / np.sum(counts)
+                contig.loci['max_count_proportion'][i] = proportion
+
+                colour_int = int(10 * (max(counts) / sum(counts)))
+                contig.loci['color'][i] = _GFF_PROPORTION_COLOURS[colour_int]
         else:
+            contig.loci['max_count_proportion'] = 1.0
             contig.loci['color'] = '#0112b6'  # default igv colour
     return contig
 
