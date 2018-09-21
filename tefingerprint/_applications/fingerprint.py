@@ -24,7 +24,7 @@ def fingerprint(bams,
                 quality=0,
                 transposon_tag='ME',
                 annotation=None,
-                colourise_output=True,
+                max_count_proportion=True,
                 cores=1):
     """
     Create a transposon fingerprint of one or more bam files.
@@ -42,7 +42,7 @@ def fingerprint(bams,
     :param quality:
     :param transposon_tag:
     :param annotation:
-    :param colourise_output:
+    :param max_count_proportion:
     :param cores:
     :return:
     """
@@ -72,7 +72,7 @@ def fingerprint(bams,
                    [splitting_method],
                    [fingerprint_buffer],
                    [join_distance],
-                   [colourise_output])
+                   [max_count_proportion])
 
     result = loci.ContigSet()
 
@@ -103,7 +103,7 @@ def _fingerprint_dispatch(bams,
                           splitting_method,
                           fingerprint_buffer,
                           join_distance,
-                          colourise_output):
+                          max_count_proportion):
     """dispatch a single job of a fingerprint"""
 
     # read informative reads
@@ -150,8 +150,8 @@ def _fingerprint_dispatch(bams,
                            reads,
                            n_common_elements=n_common_elements)
 
-    # colour features based on read count proportions
-    if colourise_output:
+    # colour features based on max read count proportion
+    if max_count_proportion:
         if len(bams) > 1:
             clusters = clusters.map(colourise_max_read_count_proportion)
 
