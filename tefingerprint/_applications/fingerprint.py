@@ -348,7 +348,7 @@ def max_count_proportion(contig):
     :return: a contig of loci with a 'max_proportion' field
     :rtype: :class:`loci.Contig`
     """
-    contig = loci.add_field(contig, np.dtype([('max_proportion', np.float64)]))
+    contig = loci.add_field(contig, np.dtype([('max_count_proportion', np.float64)]))
     if len(contig) > 0:
         samples = [str(i)
                    for i in range(len(contig.loci[0]['sample'].dtype.descr))]
@@ -356,9 +356,9 @@ def max_count_proportion(contig):
             for i, counts in enumerate(zip(*[contig.loci['sample'][s]['count']
                                              for s in samples])):
                 proportion = np.max(counts) / np.sum(counts)
-                contig.loci['max_proportion'][i] = proportion
+                contig.loci['max_count_proportion'][i] = proportion
         else:
-            contig.loci['max_proportion'] = 1.0
+            contig.loci['max_count_proportion'] = 1.0
     return contig
 
 
