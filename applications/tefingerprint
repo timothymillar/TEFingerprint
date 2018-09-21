@@ -128,12 +128,15 @@ def main():
                              'they are within twice this distance of one '
                              'another. '
                              'Default = 25.')
-    parser.set_defaults(colourise_output=True)
-    parser.add_argument('--no-colour',
-                        dest='colourise_output',
+    parser.set_defaults(max_count_proportion=True)
+    parser.add_argument('--no-max-count-proportion',
+                        dest='max_count_proportion',
                         action='store_false',
-                        help='Switch to disable colour coding of gff output. '
-                             'This may improve performance')
+                        help='Switch to disable calculation and colour coding '
+                             'of gff output based on max count proportion. '
+                             'This metric is useful for identifying '
+                             'potentially unique insertions but disabling it '
+                             'may improve performance')
     parser.add_argument('-t', '--threads',
                         type=int,
                         default=[1],
@@ -198,7 +201,7 @@ def main():
                          fingerprint_buffer=args.buffer_fingerprints[0],
                          join_distance=args.join_distance[0],
                          annotation=args.annotation_of_known_elements[0],
-                         colourise_output=args.colourise_output,
+                         max_count_proportion=args.max_count_proportion,
                          cores=args.threads[0])
 
     # output features ordered by
