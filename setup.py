@@ -8,14 +8,31 @@ def read_file(file_name):
     return os.path.join(os.path.dirname(__file__), file_name)
 
 
+# read readme as long description
+long_description = read_file('README.rst')
+
+
+# read version from single location
+__version__ = 'undefined'
+version_file = os.path.dirname(os.path.realpath(__file__)) + \
+               '/tefingerprint/version.py'
+exec(open(version_file).read())
+
+
+# set download url based on version
+download_url = ('https://github.com/PlantandFoodResearch/TEFingerprint/'
+                'archive/'
+                'v' + __version__ + '.tar.gz')
+
+
 setup(name='tefingerprint',
-      version='0.3.0',
+      version=__version__,
       author='Tim Millar',
       author_email='tim.millar@plantandfood.co.nz',
       url='https://github.com/PlantandFoodResearch/TEFingerprint',
-      download_url='https://github.com/PlantandFoodResearch/TEFingerprint/archive/v0.2.0.tar.gz',
+      download_url=download_url,
       description='Toolkit for identifying transposon movement',
-      long_description=read_file('README.rst'),
+      long_description=long_description,
       scripts=['applications/tefingerprint',
                'applications/tef-extract-informative',
                'applications/tef-filter-gff'],
