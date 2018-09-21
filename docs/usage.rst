@@ -259,8 +259,10 @@ Additional arguments:
    usually be left as 0. *Default = 0*.
 -  ``--mate-element-tag`` Sam-tag used in bam file to indicate the repeat
    element matched to each the mate read. *Default = "ME"*.
--  ``--no-colour`` Switch to disable colour coding of gff output. This may
-   improve performance
+-  ``--no-max-count-proportion`` Switch to disable calculation and colour
+   coding of gff output based on max count proportion. This metric is useful
+   for identifying potentially unique insertions but disabling it
+   may improve performance.
 
 Filtering GFF Output
 --------------------
