@@ -1,4 +1,4 @@
-.PHONY: all dist doc test clean install uninstall
+.PHONY: all dist doc test test-cov clean install uninstall
 
 all: doc dist
 
@@ -30,4 +30,7 @@ uninstall:
 
 test: 
 	python -m pytest -v ./
+
+test-cov:
+	python -m pytest --cov -v ./
 
