@@ -16,7 +16,7 @@ class TestTEFingerprint:
                                 'chr1\tTEFingerprint\t.\t3217\t3800\t.\t-\t.\tcategory=Gypsy;median=3525;sample_0_name=testA-2017-06-08.bam;sample_0_count=8;ID=Gypsy_chr1_-_3217;pair=Gypsy_chr1_+_24217\n'
                                 'chr1\tTEFingerprint\t.\t24787\t24919\t.\t-\t.\tcategory=Gypsy;median=24866;sample_0_name=testA-2017-06-08.bam;sample_0_count=12;ID=Gypsy_chr1_-_24787;pair=.\n')
                                ),
-                              (['tefingerprint', DATA_PATH + 'testA-2017-06-08.bam', '-f', 'Gypsy', 'PIF', '-e', '30000', '-m', '5', '-n', '0', '-s', 'IDBCAN', '--gff', '-'],
+                              (['tefingerprint', DATA_PATH + 'testA-2017-06-08.bam', '-f', 'Gypsy', 'PIF', '-e', '30000', '-m', '5', '-n', '0', '-s', 'DBICAN', '--gff', '-'],
                                ('chr1\tTEFingerprint\t.\t2452\t24217\t.\t+\t.\tcategory=Gypsy;median=2907;sample_0_name=testA-2017-06-08.bam;sample_0_count=18;ID=Gypsy_chr1_+_24217;pair=Gypsy_chr1_-_3217\n'
                                 'chr1\tTEFingerprint\t.\t3217\t24919\t.\t-\t.\tcategory=Gypsy;median=24824;sample_0_name=testA-2017-06-08.bam;sample_0_count=20;ID=Gypsy_chr1_-_3217;pair=Gypsy_chr1_+_24217\n')
                                )

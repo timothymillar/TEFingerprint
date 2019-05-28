@@ -18,7 +18,7 @@ def fingerprint(bams,
                 epsilon,
                 minimum_epsilon=0,
                 n_common_elements=0,
-                splitting_method='conservative',
+                method='SDBICAN',
                 fingerprint_buffer=0,
                 join_distance=0,
                 quality=0,
@@ -36,7 +36,7 @@ def fingerprint(bams,
     :param epsilon:
     :param minimum_epsilon:
     :param n_common_elements:
-    :param splitting_method:
+    :param method:
     :param fingerprint_buffer:
     :param join_distance:
     :param quality:
@@ -69,7 +69,7 @@ def fingerprint(bams,
                    [epsilon],
                    [minimum_epsilon],
                    [n_common_elements],
-                   [splitting_method],
+                   [method],
                    [fingerprint_buffer],
                    [join_distance],
                    [max_count_proportion])
@@ -100,7 +100,7 @@ def _fingerprint_dispatch(bams,
                           epsilon,
                           minimum_epsilon,
                           n_common_elements,
-                          splitting_method,
+                          method,
                           fingerprint_buffer,
                           join_distance,
                           max_count_proportion):
@@ -131,7 +131,7 @@ def _fingerprint_dispatch(bams,
                                        minimum_reads,
                                        epsilon,
                                        minimum_epsilon=minimum_epsilon,
-                                       method=splitting_method))
+                                       method=method))
 
     # buffered union of clusters
     clusters = clusters.map(lambda x:

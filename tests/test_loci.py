@@ -414,7 +414,7 @@ def test_cluster():
                          10,
                          epsilon=200,
                          minimum_epsilon=10,
-                         method='SIDBCAN-aggressive') == answer
+                         method='SDBICAN-aggressive') == answer
 
 
 def test_cluster_empty():
@@ -437,7 +437,7 @@ def test_cluster_empty():
                          10,
                          epsilon=200,
                          minimum_epsilon=10,
-                         method='SIDBCAN-aggressive') == answer
+                         method='SDBICAN-aggressive') == answer
 
 
 @pytest.mark.parametrize("query, answer",
