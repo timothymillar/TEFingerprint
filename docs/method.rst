@@ -148,15 +148,16 @@ as a single cluster or identify multiple sub-clusters in a single flanking
 region based alignment artefacts including the differing signal between
 soft-clipped and non-soft-clipped informative-reads.
 
-IDBCAN algorithm
+Here we present two variations of DBSCAN adapted to identifying dense intervals
+of points within a univariate space.
+
+DBICAN algorithm
 ~~~~~~~~~~~~~~~~
 
-We present a novel algorithm IDBCAN (**I**nterval **D**ensity **B**ased
-**C**lustering of **A**pplications with **N**oise) which is derived from
-DBSCAN.
-IDBCAN identifies clusters based on the density of objects within intervals
-of a size.
-As in DBSCAN, IDBCAN requires a target density to be defined in terms of
+DBICAN (**D**ensity **B**ased **I**nterval **C**lustering of **A**pplications
+with **N**oise) identifies clusters based on the density of objects within
+intervals of a size.
+As in DBSCAN, DBICAN requires a target density to be defined in terms of
 :math:`m_\text{pts}`, the minimum number of points (objects) required to
 form a cluster and :math:`\varepsilon` a distance that limits the dispersion
 of those objects.
@@ -193,7 +194,7 @@ density-overlapping.
 core-objects :math:`\textbf{X}` in which every pair of objects are found in
 either the same sub-cluster or within a pair density-connected sub-clusters.
 
-Based on definitions 1 and 2 IDBCAN differs from DBSCAN in that
+Based on definitions 1 and 2 DBICAN differs from DBSCAN in that
 :math:`m_\text{pts}` objects must collectively be identified as core objects
 rather than identifying a single core object at a time.
 This in turn means that a cluster (following definitions 3-6) will always
@@ -208,8 +209,8 @@ objects, this results in deterministic identification of clusters but cluster
 will often contain fewer than :math:`m_\text{pts}` objects (as few a single
 object in a cluster regardless :math:`m_\text{pts}`.
 
-The properties of IDBCAN make for intuitive identification of clusters in a
-univariate space and the appropriate values for parameters required by IDBCAN
+The properties of DBICAN make for intuitive identification of clusters in a
+univariate space and the appropriate values for parameters required by DBICAN
 can be logically estimated when identifying clusters of informative reads
 in TEFingerprint.
 The value :math:`\varepsilon` is the expected interval width of a 
@@ -222,13 +223,13 @@ be identified as flanking a transposon insertion.
 This can reasonably estimated from the observed depth of informative reads
 and is a trade off between type one and type two error.
 
-SIDBCAN algorithm
+SDBICAN algorithm
 ~~~~~~~~~~~~~~~~~
 
 The primary aim of TEFingerprint is to identify the signal of transposon
 insertion sites using clusters of informative reads mapped to a reference
 genome.
-A potential issue with both IDBCAN and DBSCAN is that they assume that all
+A potential issue with both DBICAN and DBSCAN is that they assume that all
 clusters can be identified based on a single density threshold.
 In principle this is a fair assumption because we expect that genome regions
 adjacent to an insertion site will have high read densities identified as
@@ -237,7 +238,7 @@ as noise.
 However if two or more insertion sites are sufficiently close to one another,
 the region between then may be above the specified read density (i.e. a
 contiguous region of overlapping sub-clusters).
-In IDBCAN, overlapping (sub)-clusters of reads are by definition classified as
+In DBICAN, overlapping (sub)-clusters of reads are by definition classified as
 a single cluster.
 Therefore the signal of two or more proximate insertions may be
 interpreted as a single cluster from which single insertion site is inferred.
@@ -262,10 +263,10 @@ This approach is unsuitable for dentifying transposon-flanking regions
 because of the share number of cluster expected which can be in the
 hundreds of thousands.
 
-We present Splitting-IDBCAN (SIDBCAN) a hierarchical version of IDBCAN.
-SIDBCAN requires the same parameters as IDBCAN  (:math:`\varepsilon` and
+We present Splitting-DBICAN (SDBICAN) a hierarchical version of DBICAN.
+SDBICAN requires the same parameters as DBICAN  (:math:`\varepsilon` and
 :math:`m_\text{pts}`) and initially identifies the same set of clusters.
-SIDBCAN then attempts to split poorly supported clusters into more strongly
+SDBICAN then attempts to split poorly supported clusters into more strongly
 supported clusters that may be found with a lower value of :math:`\varepsilon`.
 
 ***Definition*** **7** (*minimum epsilon*). The *minimum epsilon* of a cluster
@@ -287,7 +288,7 @@ cluster).
  its :math:`m_\text{pts} - 1` nearest neighbours.
 
 
-Initial clusters are identified as in IDBCAN
+Initial clusters are identified as in DBICAN
 using a density defined by :math:`m_\text{pts}` and :math:`\varepsilon`.
 Support of the initial clusters is then assessed in comparison to its child
 clusters (2 or more subsets of density connected objects that exist bellow the
