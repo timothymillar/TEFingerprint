@@ -79,7 +79,8 @@ def main():
                         help='Minimum epsilon values used when calculating '
                              'support for clusters. '
                              'This is only used in hierarchical clustering '
-                             'and should usually be left as 0. '
+                             'and should usually be left as 0. This '
+                             'option may be deprecated in a future release. '
                              'Default = 0.')
     parser.add_argument('-s', '--splitting-method',
                         type=str,
@@ -87,8 +88,10 @@ def main():
                         nargs=1,
                         help='Method used for identifying and splitting '
                              'clusters. One of "DBICAN", "SDBICAN" or '
-                             '"SDBICAN-aggressive". See the full documentation'
-                             'for details. '
+                             '"SDBICAN-aggressive". The "SDBICAN-aggressive"'
+                             'method is deprecated and will be removed in'
+                             'a future release. '
+                             'See the full documentation for details. '
                              'Default = "SDBICAN".')
     parser.add_argument('-n', '--number-of-common-elements',
                         type=int,

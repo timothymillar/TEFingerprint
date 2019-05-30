@@ -185,7 +185,7 @@ class DBICAN(object):
                                     self.epsilon)
 
     @staticmethod
-    def DBICAN(array, min_points, epsilon):
+    def dbican(array, min_points, epsilon):
         """
         Provides functional use of :class:`DBICAN`.
 
@@ -265,36 +265,37 @@ class SDBICAN(DBICAN):
     clusters. If support for a cluster is weak it is split into it's
     constituent child clusters which are in turn assessed recursively.
 
-    The search space may be constrained by setting global maximum
-    (:math:`\mathcal{E}`) and
-    minimum allowable values of epsilon.
-    If a maximum value for epsilon is selected, the search algorithm
-    will start at the specified value.
+    The search space may be constrained by setting a
+    minimum allowable value of epsilon.
     If a minimum value for epsilon is selected, core distances bellow
-    the specified level are increased to that level (this is not normally
-    used).
+    the specified minimum epsilon are set to the specified minimum epsilon.
+    Setting a higher minimum epsilon will result in more conservative
+    splitting of clusters by SDBICAN.
+    This option is not typically used and may be deprecated in future
+    versions.
 
     :param min_points: The minimum number of points allowed in each
         cluster
     :type min_points: int
-    :param max_eps: An optional value for maximum distance allowed among
+    :param epsilon: The maximum distance allowed among
         each set of min-points
-    :type max_eps: int
-    :param min_eps: An optional value for the minimum value of eps to
+    :type epsilon: int
+    :param min_epsilon: An optional value for the minimum value of epsilon to
         be used when calculating cluster depth
-    :type min_eps: int
+    :type min_epsilon: int
     :param aggressive_method: use old more aggressive splitting method
+        (deprecated)
     :type aggressive_method: bool
     """
 
     def __init__(self,
                  min_points,
-                 max_eps=None,
-                 min_eps=None,
+                 epsilon,
+                 min_epsilon=None,
                  aggressive_method=False):
         self.min_points = min_points
-        self.max_eps = max_eps
-        self.min_eps = min_eps
+        self.epsilon = epsilon
+        self.min_epsilon = min_epsilon
         self.aggressive_method = aggressive_method
         if aggressive_method:
             warnings.warn("The aggressive splitting method is deprecated "
@@ -341,7 +342,7 @@ class SDBICAN(DBICAN):
         However the minimum eps value calculated for the cluster that
         include both values is 22 (26 - 4 or 28 - 6).
 
-        Once eps is calculated for all gaps between values in an array,
+        Once epsilon is calculated for all gaps between values in an array,
         peaks are identified and classified as 'splits'.
         Splits are points at which a parent cluster are split into
         child clusters.
@@ -454,7 +455,7 @@ class SDBICAN(DBICAN):
                              np.maximum(local_min_eps,
                                         local_points['core_dist']))
         else:
-            support = np.sum(self.max_eps -
+            support = np.sum(self.epsilon -
                              np.maximum(local_min_eps,
                                         local_points['core_dist']))
 
@@ -511,26 +512,30 @@ class SDBICAN(DBICAN):
             points['value'] = array
             points['index'] = np.arange(len(array), dtype=int)
             points['core_dist'] = self._core_distances(array, self.min_points)
-            if not self.max_eps:
+            if self.epsilon is None:
+                warnings.warn("Automatic setting of epsilon is deprecated "
+                              "and may be removed in future versions. "
+                              "The value of epsilon should be set manually.",
+                              DeprecationWarning)
                 # start at first fork, i.e. bellow root node
                 # as in HDBSCAN* (Campello 2015)
-                self.max_eps = self._fork_epsilon(points['value'],
+                self.epsilon = self._fork_epsilon(points['value'],
                                                   self.min_points) - 1
-            if self.min_eps:
+            if self.min_epsilon:
                 # overwrite lower eps
-                points['core_dist'] = np.maximum(self.min_eps,
+                points['core_dist'] = np.maximum(self.min_epsilon,
                                                  points['core_dist'])
 
             # initial splits based on the specified max_eps
             initial_cluster_bounds = self._cluster(points['value'],
                                                    self.min_points,
-                                                   self.max_eps)
+                                                   self.epsilon)
             child_points = (points[left:right]
                             for left, right in initial_cluster_bounds)
 
             # recursively run on all clusters
             clusters = [self._traverse_cluster_tree(points,
-                                                    self.max_eps)
+                                                    self.epsilon)
                         for points in child_points]
             return np.fromiter(self._flatten_list(clusters),
                                dtype=DBICAN._DTYPE_SLICE)
@@ -547,10 +552,10 @@ class SDBICAN(DBICAN):
         self.slices = self._run(self.input_array)
 
     @staticmethod
-    def sDBICAN(array,
+    def sdbican(array,
                 min_points,
-                max_eps=None,
-                min_eps=None,
+                epsilon=None,
+                min_epsilon=None,
                 aggressive_method=False):
         """
         Provides functional use of :class:`SDBICAN`.
@@ -562,12 +567,12 @@ class SDBICAN(DBICAN):
         :param min_points: The minimum number of points allowed in
             each (sub)cluster
         :type min_points: int
-        :param max_eps: An optional value for maximum distance allowed
+        :param epsilon: An optional value for maximum distance allowed
             among each set of n points
-        :type max_eps: int
-        :param min_eps: An optional value for the minimum value of
+        :type epsilon: int
+        :param min_epsilon: An optional value for the minimum value of
             eps to be used when calculating cluster depth
-        :type min_eps: int
+        :type min_epsilon: int
         :param aggressive_method: use old more aggressive splitting method
         :type aggressive_method: bool
 
@@ -576,8 +581,8 @@ class SDBICAN(DBICAN):
         :rtype: :class:`numpy.ndarray`[(int, int)]
         """
         model = SDBICAN(min_points,
-                        max_eps=max_eps,
-                        min_eps=min_eps,
+                        epsilon=epsilon,
+                        min_epsilon=min_epsilon,
                         aggressive_method=aggressive_method)
         model.fit(array)
         return model.slices

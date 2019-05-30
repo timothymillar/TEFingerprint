@@ -2,11 +2,16 @@
 
 all: doc dist
 
+docs/figure/DBICAN.png: docs/figure/figures.py
+	python docs/figure/figures.py
+
+docs/figure/SDBICAN.png: docs/figure/figures.py
+	python docs/figure/figures.py
+
 docs/pdf/usage.pdf: docs/usage.rst
 	pandoc --toc docs/usage.rst -o docs/pdf/usage.pdf
 
-
-docs/pdf/method.pdf: docs/method.rst
+docs/pdf/method.pdf: docs/method.rst docs/figure/DBICAN.png docs/figure/SDBICAN.png
 	pandoc --toc docs/method.rst -o docs/pdf/method.pdf 
 
 doc: docs/pdf/usage.pdf docs/pdf/method.pdf

@@ -321,8 +321,8 @@ def clusters(contig,
         else:
             aggressive_method = False
         model = _SDBICAN(minimum_points,
-                         max_eps=epsilon,
-                         min_eps=minimum_epsilon,
+                         epsilon,
+                         min_epsilon=minimum_epsilon,
                          aggressive_method=aggressive_method)
     else:
         model = _DBICAN(minimum_points, epsilon)

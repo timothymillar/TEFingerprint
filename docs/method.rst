@@ -202,39 +202,34 @@ rather than identifying a single core object at a time.
 This in turn means that a cluster (following definitions 3-6) will always
 include at least :math:`m_\text{pts}` objects and that cluster identification
 is deterministic.
+
 In DBSCAN a cluster may contain fewer than :math:`m_\text{pts}` objects if on
-of its border-objects is "stolen" by a neighboring cluster and the
-assignment of border-objects to clusters is not deterministic (though often
+of its border-objects is "stolen" by a neighboring cluster (figure 1) and
+the assignment of border-objects to clusters is not deterministic (though often
 border-object assignment is deterministic based on the implementation).
 DBSCAN* (Campello *et al.* 2015) is a variation of DBSCAN in which
 border-objects are treated as noise objects,
 this results in deterministic identification of clusters but clusters
-will often contain fewer than :math:`m_\text{pts}` objects.
+will often contain fewer than :math:`m_\text{pts}` objects (figure 1).
 
-Interpretation of the parameters
+In DBICAN, the interpretation of the parameters
 :math:`m_\text{pts}` and :math:`\varepsilon` is intuitive because a cluster
 will always contain at least :math:`m_\text{pts}` objects within an interval
-of size :math:`\varepsilon`.
-For example, given an array of read tip positions
+of size :math:`\varepsilon` (figure 1).
 
-.. math:: \begin{bmatrix} 2 & 3 & 5 & 10 & 20 & 25 & 30 & 35 & 50 \end{bmatrix}
+.. figure:: docs/figure/DBICAN.png
+   :scale: 100 %
+   :alt: Comparison of DBSCAN, DBSCAN* and DBICAN
 
-and the parameters :math:`m_\text{pts} = 3` and :math:`\varepsilon = 5`.
-DBSCAN would label each point
-
-.. math:: \begin{bmatrix} 1 & 1 & 1 & 1 & 2 & 2 & 2 & 2 & .\end{bmatrix}
-
-DBSCAN* would label each point
-
-.. math:: \begin{bmatrix} 1 & 1 & 1 & . & . & 2 & 2 & . & .\end{bmatrix}
-
-and DBICAN would label each point
-
-.. math:: \begin{bmatrix} 1 & 1 & 1 & . & . & . & . & . & .\end{bmatrix}
-
-where a label of '1' or '2' indicates the point belongs to clusters
-'1' or '2' respectively and a label of '.' indicates that that point has been
-classified as a noise object.
+    Comparison of DBSCAN, DBSCAN* and DBICAN with  :math:`m_\text{pts=10}`
+    and :math:`\varepsilon=5` for the array of read tip positions
+    :math:`[1, 2, 2, 3, 3, 4, 4, 4, 5, 6, 6, 8, 11, 12, 12, 13, 13, 13, 14, 14, 14, 15, 15, 16, 18, 23, 25, 26,`
+    :math:`27, 27, 28, 29, 30, 31, 33]`.
+    Bars height indicates the number of read tips found at each location and
+    colour indicates the label applied to all read tips at that position
+    (grey = noise, blue = cluster 1, orange = cluster 2).
+    The arrow indicates a single read tip at position 23 which could be
+    assigned to either cluster 1 or 2 by DBSCAN.
 
 Note that DBICAN is the more conservative of the three algorithms and
 identifies tighter clusters given the same parameters while guaranteeing that
@@ -318,7 +313,7 @@ Initial clusters are identified as in DBICAN
 using a density defined by :math:`m_\text{pts}` and :math:`\varepsilon`.
 Support of the initial clusters is then assessed in comparison to its child
 clusters (2 or more subsets of density connected objects that exist bellow the
-minimum epsilon of the initial/parent cluster) if present.
+minimum epsilon of the initial/parent cluster) if present (figure 2).
 
 We refer to difference between :math:`\varepsilon` and
 :math:`d_\text{core}(\textbf{x}_p)` as the
@@ -374,6 +369,17 @@ which are formed from the set of objects
 when :math:`\varepsilon < \varepsilon_{\text{min}}(\textbf{C}_i)`.
 If :math:`\textbf{C}_i` has no children it will always be selected because
 :math:`L_\text{excess}(\textbf{C}_i) = 0`.
+
+.. figure:: docs/figure/SDBICAN.png
+   :scale: 100 %
+   :alt: Comparison of DBICAN and SDBICAN varying :math:`\varepsilon`
+
+    Comparison of DBICAN and SDBICAN with  :math:`m_\text{pts=10}`
+    and :math:`\varepsilon=1,...,10` for the array of read tip positions
+    :math:`[1, 2, 2, 3, 3, 4, 4, 4, 5, 6, 6, 8, 11, 12, 12, 13, 13, 13, 14, 14, 14, 15, 15, 16, 18]`.
+    Bars height indicates the number of read tips found at each location and
+    colour indicates the label applied to all read tips at that position
+    (grey = noise, blue = cluster 1, orange = cluster 2).
 
 The use of a constant :math:`\varepsilon` ensures that the parent cluster is
 increasingly favoured as the algorithm recurses down the cluster hierarchy.

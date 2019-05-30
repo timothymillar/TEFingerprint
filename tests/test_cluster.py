@@ -95,7 +95,7 @@ class TestDBICAN:
         If the length of the array is less than 'n' then an empty array will
         always be returned.
         """
-        npt.assert_array_equal(DBICAN.DBICAN(array, 5, 5), slices)
+        npt.assert_array_equal(DBICAN.dbican(array, 5, 5), slices)
 
     def test_fit(self):
         """
@@ -237,7 +237,7 @@ class TestSDBICAN:
         If the length of the array is less than 'n' then an empty array will
         always be returned.
         """
-        npt.assert_array_equal(SDBICAN.sDBICAN(array, min_points, max_eps), answer)
+        npt.assert_array_equal(SDBICAN.sdbican(array, min_points, max_eps), answer)
 
     def test_sDBICAN_variations(self):
         """
@@ -258,10 +258,10 @@ class TestSDBICAN:
         answer_conservative = np.fromiter([(0, 7), (8, 11)],
                                           dtype=SDBICAN._DTYPE_SLICE)
 
-        npt.assert_array_equal(SDBICAN.sDBICAN(array, 3, 6,
+        npt.assert_array_equal(SDBICAN.sdbican(array, 3, 6,
                                                aggressive_method=True),
                                answer_aggressive)
-        npt.assert_array_equal(SDBICAN.sDBICAN(array, 3, 6,
+        npt.assert_array_equal(SDBICAN.sdbican(array, 3, 6,
                                                aggressive_method=False),
                                answer_conservative)
 
@@ -292,13 +292,13 @@ class TestSDBICAN:
         answer_1 = np.fromiter([(0, 8)], dtype=SDBICAN._DTYPE_SLICE)
         answer_2 = np.fromiter([(1, 4), (4, 7)], dtype=SDBICAN._DTYPE_SLICE)
 
-        npt.assert_array_equal(DBICAN.DBICAN(array, 3, 4), answer_1)
-        npt.assert_array_equal(DBICAN.DBICAN(array, 3, 3), answer_1)
-        npt.assert_array_equal(DBICAN.DBICAN(array, 3, 2), answer_2)
+        npt.assert_array_equal(DBICAN.dbican(array, 3, 4), answer_1)
+        npt.assert_array_equal(DBICAN.dbican(array, 3, 3), answer_1)
+        npt.assert_array_equal(DBICAN.dbican(array, 3, 2), answer_2)
 
-        npt.assert_array_equal(SDBICAN.sDBICAN(array, 3, 4), answer_1)
-        npt.assert_array_equal(SDBICAN.sDBICAN(array, 3, 3), answer_2)
-        npt.assert_array_equal(SDBICAN.sDBICAN(array, 3, 2), answer_2)
+        npt.assert_array_equal(SDBICAN.sdbican(array, 3, 4), answer_1)
+        npt.assert_array_equal(SDBICAN.sdbican(array, 3, 3), answer_2)
+        npt.assert_array_equal(SDBICAN.sdbican(array, 3, 2), answer_2)
 
     def test_sDBICAN_child_support_calculation(self):
         """
@@ -319,7 +319,7 @@ class TestSDBICAN:
         """
         array = np.array([0, 1, 2, 7, 8, 13, 14, 16, 21, 23, 28, 30], dtype=int)
         answer = np.fromiter([(0, 3), (5, 8)], dtype=SDBICAN._DTYPE_SLICE)
-        npt.assert_array_equal(SDBICAN.sDBICAN(array, 3), answer)
+        npt.assert_array_equal(SDBICAN.sdbican(array, 3), answer)
 
     def test_sDBICAN_default_max_eps(self):
         """
@@ -331,7 +331,7 @@ class TestSDBICAN:
         """
         array = np.array([0, 1, 2, 3, 4, 5, 7, 9, 10, 11, 12, 13, 14], dtype=int)
         answer = np.fromiter([(0, 6), (7, 13)], dtype=SDBICAN._DTYPE_SLICE)
-        npt.assert_array_equal(SDBICAN.sDBICAN(array, 3), answer)
+        npt.assert_array_equal(SDBICAN.sdbican(array, 3), answer)
 
     def test_sDBICAN_real(self):
         """Test for method sDBICAN"""
@@ -345,7 +345,7 @@ class TestSDBICAN:
                                 1217, 1234, 1234, 1591, 1620, 1620, 1662, 1686, 1707, 1755, 1828,
                                 1828, 1848, 1848, 1848, 1848, 1851, 1851, 1852, 1917], dtype=int)
         answer_slices = np.fromiter([(0, 55), (56, 80), (83, 97)], dtype=SDBICAN._DTYPE_SLICE)
-        npt.assert_array_equal(SDBICAN.sDBICAN(input_array, 10, max_eps=200, min_eps=10), answer_slices)
+        npt.assert_array_equal(SDBICAN.sdbican(input_array, 10, epsilon=200, min_epsilon=10), answer_slices)
 
     def test_fit(self):
         """
@@ -354,7 +354,7 @@ class TestSDBICAN:
         New copy of points should be sorted.
         Most edge cases should be caught in tests for component methods.
         """
-        hudc_object = SDBICAN(10, max_eps=200, min_eps=10)
+        hudc_object = SDBICAN(10, epsilon=200, min_epsilon=10)
         input_array = np.array([   0,    0,   60,   61,   61,   61,   76,   78,  122,  122,  141,
                                  183,  251,  260,  260,  263,  263,  267,  267,  288,  288,  295,
                                  300,  310,  310,  317,  317,  334,  334,  335,  338,  338,  338,
