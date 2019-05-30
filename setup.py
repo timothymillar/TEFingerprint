@@ -49,5 +49,6 @@ setup(name='tefingerprint',
                    'Intended Audience :: Science/Research',
                    'Programming Language :: Python :: 3.4',
                    'Topic :: Scientific/Engineering',
-                   'Operating System :: Unix']
+                   'Operating System :: Unix'],
+      python_requires='>=3.4.0'
       )
