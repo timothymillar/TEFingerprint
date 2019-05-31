@@ -46,6 +46,9 @@ def test_filter_gff(query, answer):
     output, error = subprocess.Popen(query, stdout=subprocess.PIPE,
                                      stderr=subprocess.PIPE).communicate()
 
+    if len(error):
+        raise IOError('Subprocess failed with:\n' + error.decode())
+
     assert output.decode().splitlines() == answer
 
 

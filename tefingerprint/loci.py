@@ -2,6 +2,7 @@
 
 import numpy as np
 import tefingerprint.util as util
+from tefingerprint.util.misc import flatten_tuple as _flatten_tuple
 from tefingerprint.cluster import DBICAN as _DBICAN
 from tefingerprint.cluster import SDBICAN as _SDBICAN
 
@@ -180,7 +181,7 @@ def iter_values(contig):
     :rtype generator[tuple[any]]
     """
     for locus in contig.loci:
-        yield (*contig.header.tuple, *locus)
+        yield contig.header.tuple + tuple(locus)
 
 
 def as_array(contig):
