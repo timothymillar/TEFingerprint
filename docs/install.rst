@@ -5,6 +5,23 @@ Installing TEFingerprint
 :Authors: Tim Millar
 :Organization: Plant & Food Research
 
+
+Requirements
+------------
+
+Requires Python 3.4.0 or higher (Python 2 not supported)
+
+Python library requirements (from requirements.txt):
+
+- numpy>=1.10.0
+- pysam>=0.9.0
+- biopython>=1.65
+
+External software required for extracting informative reads:
+
+- samtools
+- bwa (bwa-mem)
+
 Development Environment
 -----------------------
 

@@ -19,15 +19,16 @@ This project is currently in a alpha state and rapidly changing.
 
 **Please see the linked documentation for more information:**
 
-- `Installation`_
-- `Command line usage`_
-- `Description of methods`_
+- `Requirements and Installation (rst)`_
+- `Command line usage (rst)`_
+- `Command line usage (pdf)`_
+- `Description of methods (rst)`_
+- `Description of methods (pdf)`_
 
-There are also `PDF versions`_ of some documentation.
 
 
-
-.. _`Installation`: docs/install.rst
-.. _`Command line usage`: docs/usage.rst
-.. _`Description of methods`: docs/method.rst
-.. _`PDF versions`: docs/pdf/
+.. _`Requirements and Installation (rst)`: docs/install.rst
+.. _`Command line usage (rst)`: docs/usage.rst
+.. _`Command line usage (pdf)`: docs/pdf/usage.pdf
+.. _`Description of methods (rst)`: docs/method.rst
+.. _`Description of methods (pdf)`: docs/pdf/method.rst
