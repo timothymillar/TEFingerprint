@@ -31,4 +31,4 @@ This project is currently in a alpha state and rapidly changing.
 .. _`Command line usage (rst)`: docs/usage.rst
 .. _`Command line usage (pdf)`: docs/pdf/usage.pdf
 .. _`Description of methods (rst)`: docs/method.rst
-.. _`Description of methods (pdf)`: docs/pdf/method.rst
+.. _`Description of methods (pdf)`: docs/pdf/method.pdf
