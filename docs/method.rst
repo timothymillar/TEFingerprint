@@ -118,8 +118,9 @@ Density based clustering
 Within each array of tip positions we expect to find clusters of tips with
 widths that are proportional to the insertion size of the initial paired reads.
 
-The DBSCAN family of clustering algorithms identify clusters based on point
-*density*. Points that form dense regions are grouped into cluster while
+The DBSCAN (Ester *et al.* 1996) family of clustering algorithms identify
+clusters based on point *density*.
+Points that form dense regions are grouped into cluster while
 points in sparse regions are classified as noise points. DBSCAN does not
 require the number of clusters to be specified as an input because clusters
 are defined entirely in terms of point density.
@@ -148,19 +149,21 @@ as a single cluster or identify multiple sub-clusters in a single flanking
 region based alignment artefacts including the differing signal between
 soft-clipped and non-soft-clipped informative-reads.
 
-IDBCAN algorithm
+Here we present two variations of DBSCAN adapted to identifying dense intervals
+of points within a univariate space.
+
+DBICAN algorithm
 ~~~~~~~~~~~~~~~~
 
-We present a novel algorithm IDBCAN (**I**nterval **D**ensity **B**ased
-**C**lustering of **A**pplications with **N**oise) which is derived from
-DBSCAN.
-IDBCAN identifies clusters based on the density of objects within intervals
-of a size.
-As in DBSCAN, IDBCAN requires a target density to be defined in terms of
+DBICAN (**D**ensity **B**ased **I**nterval **C**lustering of **A**pplications
+with **N**oise) identifies clusters based on the density of objects within
+intervals of a size.
+As in DBSCAN, DBICAN requires a target density to be defined in terms of
 :math:`m_\text{pts}`, the minimum number of points (objects) required to
 form a cluster and :math:`\varepsilon` a distance that limits the dispersion
 of those objects.
-Here we use the following definitions:
+Here we use the following definitions loosely following those of
+Campello *et al.* (2015):
 
 ***Definition*** **1** (*sub-cluster*). A *sub-cluster* w.r.t.
 :math:`\varepsilon` and :math:`m_\text{pts}`
@@ -193,42 +196,61 @@ density-overlapping.
 core-objects :math:`\textbf{X}` in which every pair of objects are found in
 either the same sub-cluster or within a pair density-connected sub-clusters.
 
-Based on definitions 1 and 2 IDBCAN differs from DBSCAN in that
+Based on definitions 1 and 2 DBICAN differs from DBSCAN in that
 :math:`m_\text{pts}` objects must collectively be identified as core objects
 rather than identifying a single core object at a time.
 This in turn means that a cluster (following definitions 3-6) will always
 include at least :math:`m_\text{pts}` objects and that cluster identification
 is deterministic.
-In DBSCAN a cluster may contain fewer than :math:`m_\text{pts}` objects if on
-of its border-objects is "stolen" by a neighboring cluster and the
-assignment of border-objects to clusters is not deterministic (though often
-border-object assignment is deterministic based on the implementation).
-DBSCAN* is a variation of DBSCAN in which border-objects are treated as noise
-objects, this results in deterministic identification of clusters but cluster
-will often contain fewer than :math:`m_\text{pts}` objects (as few a single
-object in a cluster regardless :math:`m_\text{pts}`.
 
-The properties of IDBCAN make for intuitive identification of clusters in a
-univariate space and the appropriate values for parameters required by IDBCAN
-can be logically estimated when identifying clusters of informative reads
-in TEFingerprint.
+In DBSCAN a cluster may contain fewer than :math:`m_\text{pts}` objects if on
+of its border-objects is "stolen" by a neighboring cluster (figure 1) and
+the assignment of border-objects to clusters is not deterministic (though often
+border-object assignment is deterministic based on the implementation).
+DBSCAN* (Campello *et al.* 2015) is a variation of DBSCAN in which
+border-objects are treated as noise objects,
+this results in deterministic identification of clusters but clusters
+will often contain fewer than :math:`m_\text{pts}` objects (figure 1).
+
+In DBICAN, the interpretation of the parameters
+:math:`m_\text{pts}` and :math:`\varepsilon` is intuitive because a cluster
+will always contain at least :math:`m_\text{pts}` objects within an interval
+of size :math:`\varepsilon` (figure 1).
+
+.. figure:: docs/figure/DBICAN.png
+   :scale: 100 %
+   :alt: Comparison of DBSCAN, DBSCAN* and DBICAN
+
+    Comparison of DBSCAN, DBSCAN* and DBICAN with  :math:`m_\text{pts=10}`
+    and :math:`\varepsilon=5` for the array of read tip positions
+    :math:`[1, 2, 2, 3, 3, 4, 4, 4, 5, 6, 6, 8, 11, 12, 12, 13, 13, 13, 14, 14, 14, 15, 15, 16, 18, 23, 25, 26,`
+    :math:`27, 27, 28, 29, 30, 31, 33]`.
+    Bars height indicates the number of read tips found at each location and
+    colour indicates the label applied to all read tips at that position
+    (grey = noise, blue = cluster 1, orange = cluster 2).
+    The arrow indicates a single read tip at position 23 which could be
+    assigned to either cluster 1 or 2 by DBSCAN.
+
+Note that DBICAN is the more conservative of the three algorithms and
+identifies tighter clusters given the same parameters while guaranteeing that
+at least :math:`m_\text{pts}` objects are within each cluster.
 The value :math:`\varepsilon` is the expected interval width of a 
 region of informative reads flanking a transposon insertion and can
 be reasonably estimated as being no larger than the approximate insertion size
-of paired-reads.
+of the initial paired-reads.
 The value :math:`m_\text{pts}` is the minimum number of read (tips)
-required within an :math:`\varepsilon`-wide region for that region to
+required within an :math:`\varepsilon`-wide interval for that region to
 be identified as flanking a transposon insertion.
 This can reasonably estimated from the observed depth of informative reads
 and is a trade off between type one and type two error.
 
-SIDBCAN algorithm
+SDBICAN algorithm
 ~~~~~~~~~~~~~~~~~
 
 The primary aim of TEFingerprint is to identify the signal of transposon
 insertion sites using clusters of informative reads mapped to a reference
 genome.
-A potential issue with both IDBCAN and DBSCAN is that they assume that all
+A potential issue with both DBICAN and DBSCAN is that they assume that all
 clusters can be identified based on a single density threshold.
 In principle this is a fair assumption because we expect that genome regions
 adjacent to an insertion site will have high read densities identified as
@@ -237,7 +259,7 @@ as noise.
 However if two or more insertion sites are sufficiently close to one another,
 the region between then may be above the specified read density (i.e. a
 contiguous region of overlapping sub-clusters).
-In IDBCAN, overlapping (sub)-clusters of reads are by definition classified as
+In DBICAN, overlapping (sub)-clusters of reads are by definition classified as
 a single cluster.
 Therefore the signal of two or more proximate insertions may be
 interpreted as a single cluster from which single insertion site is inferred.
@@ -262,10 +284,10 @@ This approach is unsuitable for dentifying transposon-flanking regions
 because of the share number of cluster expected which can be in the
 hundreds of thousands.
 
-We present Splitting-IDBCAN (SIDBCAN) a hierarchical version of IDBCAN.
-SIDBCAN requires the same parameters as IDBCAN  (:math:`\varepsilon` and
+We present Splitting-DBICAN (SDBICAN) a hierarchical version of DBICAN.
+SDBICAN requires the same parameters as DBICAN  (:math:`\varepsilon` and
 :math:`m_\text{pts}`) and initially identifies the same set of clusters.
-SIDBCAN then attempts to split poorly supported clusters into more strongly
+SDBICAN then attempts to split poorly supported clusters into more strongly
 supported clusters that may be found with a lower value of :math:`\varepsilon`.
 
 ***Definition*** **7** (*minimum epsilon*). The *minimum epsilon* of a cluster
@@ -275,7 +297,7 @@ such that either two or more density-connected sub-clusters within
 :math:`\varepsilon = \varepsilon_\text{min}(\textbf{C})`
 would be non-density-connected sub-clusters when
 :math:`\varepsilon < \varepsilon_\text{min}(\textbf{C})`.
-Or :math:`\textbf{C}` consistis of one or more density-connected sub-clusters
+Or :math:`\textbf{C}` consists of one or more density-connected sub-clusters
 when :math:`\varepsilon = \varepsilon_\text{min}(\textbf{C})` but not when
 :math:`\varepsilon < \varepsilon_\text{min}(\textbf{C})` (i.e. is not a valid
 cluster).
@@ -287,11 +309,11 @@ cluster).
  its :math:`m_\text{pts} - 1` nearest neighbours.
 
 
-Initial clusters are identified as in IDBCAN
+Initial clusters are identified as in DBICAN
 using a density defined by :math:`m_\text{pts}` and :math:`\varepsilon`.
 Support of the initial clusters is then assessed in comparison to its child
 clusters (2 or more subsets of density connected objects that exist bellow the
-minimum epsilon of the initial/parent cluster) if present.
+minimum epsilon of the initial/parent cluster) if present (figure 2).
 
 We refer to difference between :math:`\varepsilon` and
 :math:`d_\text{core}(\textbf{x}_p)` as the
@@ -348,6 +370,17 @@ when :math:`\varepsilon < \varepsilon_{\text{min}}(\textbf{C}_i)`.
 If :math:`\textbf{C}_i` has no children it will always be selected because
 :math:`L_\text{excess}(\textbf{C}_i) = 0`.
 
+.. figure:: docs/figure/SDBICAN.png
+   :scale: 100 %
+   :alt: Comparison of DBICAN and SDBICAN varying :math:`\varepsilon`
+
+    Comparison of DBICAN and SDBICAN with  :math:`m_\text{pts=10}`
+    and :math:`\varepsilon=1,...,10` for the array of read tip positions
+    :math:`[1, 2, 2, 3, 3, 4, 4, 4, 5, 6, 6, 8, 11, 12, 12, 13, 13, 13, 14, 14, 14, 15, 15, 16, 18]`.
+    Bars height indicates the number of read tips found at each location and
+    colour indicates the label applied to all read tips at that position
+    (grey = noise, blue = cluster 1, orange = cluster 2).
+
 The use of a constant :math:`\varepsilon` ensures that the parent cluster is
 increasingly favoured as the algorithm recurses down the cluster hierarchy.
 A direct effect of this selection criteria is that a set of child clusters
@@ -398,3 +431,18 @@ Instead it summarises the input data into a flexible format that can
 be used for multiple downstream tasks.
 The output formats available are GFF3 and CSV (or other delimited text
 formats).
+
+
+References
+----------
+
+- Ankerst, Mihael & M. Breunig, Markus & Kriegel, Hans-Peter & Sander, Joerg.
+  (1999). OPTICS: Ordering Points to Identify the Clustering Structure.
+  Sigmod Record. 28. 49-60. 10.1145/304182.304187.
+- Campello, R.J.G.B., Moulavi, D. et al. (2015) Hierarchical density estimates
+  for data clustering, visualization, and outlier detection. Acm T Knowl
+  Discov D, 10.
+- Ester, M., Kriegel, H.-P. et al. (1996) A density-based algorithm for
+  discovering clusters in large spatial databases with noise. In, Proceedings
+  of the 2nd ACM International Conference on Knowledge Discovery and Data
+  Mining (KDD). p. 226–231.

@@ -256,7 +256,8 @@ Additional arguments:
 
 -  ``--minimum-epsilon`` Minimum epsilon values used when calculating support
    for clusters. This is only used in hierarchical clustering 'and should
-   usually be left as 0. *Default = 0*.
+   usually be left as 0. *Default = 0*. This option may be deprecated in a
+   future release.
 -  ``--mate-element-tag`` Sam-tag used in bam file to indicate the repeat
    element matched to each the mate read. *Default = "ME"*.
 -  ``--no-max-count-proportion`` Switch to disable calculation and colour

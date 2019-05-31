@@ -1,7 +1,8 @@
 #! /usr/bin/env python3
 
 import numpy as np
-from tefingerprint import util
+#from tefingerprint import util
+from .dtype import remove_field as _dtype_remove_field
 
 
 def bind(x, y):
@@ -40,7 +41,7 @@ def remove_field(array, field):
     :return: a numpy array
     :rtype: :class:`numpy.array`
     """
-    dtype = util.numpy.dtype.remove_field(array.dtype, field)
+    dtype = _dtype_remove_field(array.dtype, field)
     new = np.empty(len(array), dtype=dtype)
     for field in dtype.names:
         new[field] = array[field]

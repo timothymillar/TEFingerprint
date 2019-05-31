@@ -79,17 +79,20 @@ def main():
                         help='Minimum epsilon values used when calculating '
                              'support for clusters. '
                              'This is only used in hierarchical clustering '
-                             'and should usually be left as 0. '
+                             'and should usually be left as 0. This '
+                             'option may be deprecated in a future release. '
                              'Default = 0.')
     parser.add_argument('-s', '--splitting-method',
                         type=str,
-                        default=['SIDBCAN'],
+                        default=['SDBICAN'],
                         nargs=1,
                         help='Method used for identifying and splitting '
-                             'clusters. One of "IDBCAN", "SIDBCAN" or '
-                             '"SIDBCAN-aggressive". See the full documentation'
-                             'for details. '
-                             'Default = "SIDBCAN".')
+                             'clusters. One of "DBICAN", "SDBICAN" or '
+                             '"SDBICAN-aggressive". The "SDBICAN-aggressive"'
+                             'method is deprecated and will be removed in'
+                             'a future release. '
+                             'See the full documentation for details. '
+                             'Default = "SDBICAN".')
     parser.add_argument('-n', '--number-of-common-elements',
                         type=int,
                         default=[3],
@@ -197,7 +200,7 @@ def main():
                          epsilon=args.epsilon[0],
                          minimum_epsilon=args.minimum_epsilon[0],
                          n_common_elements=args.number_of_common_elements[0],
-                         splitting_method=args.splitting_method[0],
+                         method=args.splitting_method[0],
                          fingerprint_buffer=args.buffer_fingerprints[0],
                          join_distance=args.join_distance[0],
                          annotation=args.annotation_of_known_elements[0],

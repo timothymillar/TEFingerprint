@@ -414,7 +414,7 @@ def test_cluster():
                          10,
                          epsilon=200,
                          minimum_epsilon=10,
-                         method='SIDBCAN-aggressive') == answer
+                         method='SDBICAN-aggressive') == answer
 
 
 def test_cluster_empty():
@@ -437,7 +437,7 @@ def test_cluster_empty():
                          10,
                          epsilon=200,
                          minimum_epsilon=10,
-                         method='SIDBCAN-aggressive') == answer
+                         method='SDBICAN-aggressive') == answer
 
 
 @pytest.mark.parametrize("query, answer",
@@ -853,12 +853,12 @@ class TestContigSet:
 
         query = loci.ContigSet(contig_1, contig_2)
 
-        answer = [('chr1', '+', 'gypsy', 1, 'gypsy1'),
+        answer = {('chr1', '+', 'gypsy', 1, 'gypsy1'),
                   ('chr1', '+', 'gypsy', 7, 'gypsy4'),
                   ('chr2', '+', 'gypsy', 3, 'gypsy7'),
-                  ('chr2', '+', 'gypsy', 9, 'gypsy1')]
+                  ('chr2', '+', 'gypsy', 9, 'gypsy1')}
 
-        assert list(query.iter_values()) == answer
+        assert set(query.iter_values()) == answer
 
     def test_as_array(self):
         pass

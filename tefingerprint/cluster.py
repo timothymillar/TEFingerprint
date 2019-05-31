@@ -32,9 +32,9 @@ def core_distances(array, min_points):
     return np.min(eps_2d, axis=0)
 
 
-class IDBCAN(object):
+class DBICAN(object):
     """
-    Univariate integer implimentation of IDBCAN.
+    Univariate integer implimentation of DBICAN.
 
     Clusters are identified as suitably dense, continuous regions in
     the data where the threshold density is specified by parameters
@@ -59,7 +59,7 @@ class IDBCAN(object):
     def __init__(self, min_points, epsilon):
         self.min_points = min_points
         self.epsilon = epsilon
-        self.slices = np.array([], dtype=IDBCAN._DTYPE_SLICE)
+        self.slices = np.array([], dtype=DBICAN._DTYPE_SLICE)
         self.input_array = np.array([], dtype=int)
 
     @staticmethod
@@ -110,7 +110,7 @@ class IDBCAN(object):
 
         # return slices formatted as a numpy array
         return np.fromiter(_melter(lowers, uppers, splits),
-                           dtype=IDBCAN._DTYPE_SLICE)
+                           dtype=DBICAN._DTYPE_SLICE)
 
     @staticmethod
     def _subcluster(array, min_points, epsilon):
@@ -133,7 +133,7 @@ class IDBCAN(object):
             subcluster found in the array
         :rtype: :class:`numpy.ndarray`[(int, int)]
         """
-        assert IDBCAN._sorted_ascending(array)
+        assert DBICAN._sorted_ascending(array)
 
         offset = min_points - 1
         upper = array[offset:]
@@ -142,7 +142,7 @@ class IDBCAN(object):
         lower_index = np.arange(0, len(lower))[selected]
         upper_index = np.arange(offset, len(array))[selected] + 1
         return np.fromiter(zip(lower_index, upper_index),
-                           dtype=IDBCAN._DTYPE_SLICE)
+                           dtype=DBICAN._DTYPE_SLICE)
 
     @staticmethod
     def _cluster(array, min_points, epsilon):
@@ -165,14 +165,14 @@ class IDBCAN(object):
         :rtype: :class:`numpy.ndarray`[(int, int)]
         """
         # sorted-ascending checked in method _subcluster
-        slices = IDBCAN._subcluster(array, min_points, epsilon)
+        slices = DBICAN._subcluster(array, min_points, epsilon)
         if len(slices) > 1:
-            slices = IDBCAN._melt_slices(slices)
+            slices = DBICAN._melt_slices(slices)
         return slices
 
     def fit(self, array):
         """
-        Fit an array to an IDBCAN model.
+        Fit an array to an DBICAN model.
         The input array must be sorted in ascending order.
 
         :param array: An array of integers sorted in ascending order
@@ -185,11 +185,11 @@ class IDBCAN(object):
                                     self.epsilon)
 
     @staticmethod
-    def idbcan(array, min_points, epsilon):
+    def dbican(array, min_points, epsilon):
         """
-        Provides functional use of :class:`IDBCAN`.
+        Provides functional use of :class:`DBICAN`.
 
-        See documentation for :class:`IDBCAN`.
+        See documentation for :class:`DBICAN`.
 
         :param array: An array of ints sorted in ascending order
         :type array: :class:`numpy.ndarray`[int]
@@ -204,7 +204,7 @@ class IDBCAN(object):
             each cluster found in the array
         :rtype: :class:`numpy.ndarray`[int, int]
         """
-        model = IDBCAN(min_points, epsilon)
+        model = DBICAN(min_points, epsilon)
         model.fit(array)
         return model.slices
 
@@ -246,9 +246,9 @@ class IDBCAN(object):
         return labels
 
 
-class SIDBCAN(IDBCAN):
+class SDBICAN(DBICAN):
     """
-    Univariate integer implimentation of Splitting-IDBCAN.
+    Univariate integer implimentation of Splitting-DBICAN.
 
     Clusters are identified as suitably dense, continuous regions in
     the data where the threshold density is specified by parameters
@@ -260,47 +260,48 @@ class SIDBCAN(IDBCAN):
     equal to, or less than epsilon are classified as subclusters.
     Overlapping subclusters are then merged together to form clusters.
 
-    Once the initial set of clusters has been identified following IDBCAN,
+    Once the initial set of clusters has been identified following DBICAN,
     the support of each cluster is assessed in comparision to its child
     clusters. If support for a cluster is weak it is split into it's
     constituent child clusters which are in turn assessed recursively.
 
-    The search space may be constrained by setting global maximum
-    (:math:`\mathcal{E}`) and
-    minimum allowable values of epsilon.
-    If a maximum value for epsilon is selected, the search algorithm
-    will start at the specified value.
+    The search space may be constrained by setting a
+    minimum allowable value of epsilon.
     If a minimum value for epsilon is selected, core distances bellow
-    the specified level are increased to that level (this is not normally
-    used).
+    the specified minimum epsilon are set to the specified minimum epsilon.
+    Setting a higher minimum epsilon will result in more conservative
+    splitting of clusters by SDBICAN.
+    This option is not typically used and may be deprecated in future
+    versions.
 
     :param min_points: The minimum number of points allowed in each
         cluster
     :type min_points: int
-    :param max_eps: An optional value for maximum distance allowed among
+    :param epsilon: The maximum distance allowed among
         each set of min-points
-    :type max_eps: int
-    :param min_eps: An optional value for the minimum value of eps to
+    :type epsilon: int
+    :param min_epsilon: An optional value for the minimum value of epsilon to
         be used when calculating cluster depth
-    :type min_eps: int
+    :type min_epsilon: int
     :param aggressive_method: use old more aggressive splitting method
+        (deprecated)
     :type aggressive_method: bool
     """
 
     def __init__(self,
                  min_points,
-                 max_eps=None,
-                 min_eps=None,
+                 epsilon,
+                 min_epsilon=None,
                  aggressive_method=False):
         self.min_points = min_points
-        self.max_eps = max_eps
-        self.min_eps = min_eps
+        self.epsilon = epsilon
+        self.min_epsilon = min_epsilon
         self.aggressive_method = aggressive_method
         if aggressive_method:
             warnings.warn("The aggressive splitting method is deprecated "
                           "and may be removed in future versions.",
                           DeprecationWarning)
-        self.slices = np.array([], dtype=IDBCAN._DTYPE_SLICE)
+        self.slices = np.array([], dtype=DBICAN._DTYPE_SLICE)
         self.input_array = np.array([], dtype=int)
 
     @staticmethod
@@ -341,7 +342,7 @@ class SIDBCAN(IDBCAN):
         However the minimum eps value calculated for the cluster that
         include both values is 22 (26 - 4 or 28 - 6).
 
-        Once eps is calculated for all gaps between values in an array,
+        Once epsilon is calculated for all gaps between values in an array,
         peaks are identified and classified as 'splits'.
         Splits are points at which a parent cluster are split into
         child clusters.
@@ -411,7 +412,7 @@ class SIDBCAN(IDBCAN):
         """
         if isinstance(item, list):
             for element in item:
-                for item in SIDBCAN._flatten_list(element):
+                for item in SDBICAN._flatten_list(element):
                     yield item
         else:
             yield item
@@ -454,7 +455,7 @@ class SIDBCAN(IDBCAN):
                              np.maximum(local_min_eps,
                                         local_points['core_dist']))
         else:
-            support = np.sum(self.max_eps -
+            support = np.sum(self.epsilon -
                              np.maximum(local_min_eps,
                                         local_points['core_dist']))
 
@@ -486,7 +487,7 @@ class SIDBCAN(IDBCAN):
 
     def _run(self, array):
         """
-        See documentation for :class: `SIDBCAN`.
+        See documentation for :class: `SDBICAN`.
 
         :param array: An array of integers sorted in ascending order
         :type array: :class:`numpy.ndarray`[int]
@@ -499,7 +500,7 @@ class SIDBCAN(IDBCAN):
 
         if len(array) < self.min_points:
             # not enough points to form a cluster
-            return np.array([], dtype=IDBCAN._DTYPE_SLICE)
+            return np.array([], dtype=DBICAN._DTYPE_SLICE)
 
         else:
             # create a structured array for tracking value, index and
@@ -511,33 +512,37 @@ class SIDBCAN(IDBCAN):
             points['value'] = array
             points['index'] = np.arange(len(array), dtype=int)
             points['core_dist'] = self._core_distances(array, self.min_points)
-            if not self.max_eps:
+            if self.epsilon is None:
+                warnings.warn("Automatic setting of epsilon is deprecated "
+                              "and may be removed in future versions. "
+                              "The value of epsilon should be set manually.",
+                              DeprecationWarning)
                 # start at first fork, i.e. bellow root node
                 # as in HDBSCAN* (Campello 2015)
-                self.max_eps = self._fork_epsilon(points['value'],
+                self.epsilon = self._fork_epsilon(points['value'],
                                                   self.min_points) - 1
-            if self.min_eps:
+            if self.min_epsilon:
                 # overwrite lower eps
-                points['core_dist'] = np.maximum(self.min_eps,
+                points['core_dist'] = np.maximum(self.min_epsilon,
                                                  points['core_dist'])
 
             # initial splits based on the specified max_eps
             initial_cluster_bounds = self._cluster(points['value'],
                                                    self.min_points,
-                                                   self.max_eps)
+                                                   self.epsilon)
             child_points = (points[left:right]
                             for left, right in initial_cluster_bounds)
 
             # recursively run on all clusters
             clusters = [self._traverse_cluster_tree(points,
-                                                    self.max_eps)
+                                                    self.epsilon)
                         for points in child_points]
             return np.fromiter(self._flatten_list(clusters),
-                               dtype=IDBCAN._DTYPE_SLICE)
+                               dtype=DBICAN._DTYPE_SLICE)
 
     def fit(self, array):
         """
-        Fit an array to a SIDBCAN model.
+        Fit an array to a SDBICAN model.
         The input array must be sorted in ascending order.
 
         :param array: An array of integers sorted in ascending order
@@ -547,27 +552,27 @@ class SIDBCAN(IDBCAN):
         self.slices = self._run(self.input_array)
 
     @staticmethod
-    def sidbcan(array,
+    def sdbican(array,
                 min_points,
-                max_eps=None,
-                min_eps=None,
+                epsilon=None,
+                min_epsilon=None,
                 aggressive_method=False):
         """
-        Provides functional use of :class:`SIDBCAN`.
+        Provides functional use of :class:`SDBICAN`.
 
-        See documentation for :class:`SIDBCAN`.
+        See documentation for :class:`SDBICAN`.
 
         :param array: An array of integers sorted in ascending order
         :type array: :class:`numpy.ndarray`[int]
         :param min_points: The minimum number of points allowed in
             each (sub)cluster
         :type min_points: int
-        :param max_eps: An optional value for maximum distance allowed
+        :param epsilon: An optional value for maximum distance allowed
             among each set of n points
-        :type max_eps: int
-        :param min_eps: An optional value for the minimum value of
+        :type epsilon: int
+        :param min_epsilon: An optional value for the minimum value of
             eps to be used when calculating cluster depth
-        :type min_eps: int
+        :type min_epsilon: int
         :param aggressive_method: use old more aggressive splitting method
         :type aggressive_method: bool
 
@@ -575,9 +580,9 @@ class SIDBCAN(IDBCAN):
             cluster found in the array
         :rtype: :class:`numpy.ndarray`[(int, int)]
         """
-        model = SIDBCAN(min_points,
-                        max_eps=max_eps,
-                        min_eps=min_eps,
+        model = SDBICAN(min_points,
+                        epsilon=epsilon,
+                        min_epsilon=min_epsilon,
                         aggressive_method=aggressive_method)
         model.fit(array)
         return model.slices

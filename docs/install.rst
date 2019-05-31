@@ -5,6 +5,23 @@ Installing TEFingerprint
 :Authors: Tim Millar
 :Organization: Plant & Food Research
 
+
+Requirements
+------------
+
+Requires Python 3.4.0 or higher (Python 2 not supported)
+
+Python library requirements (from requirements.txt):
+
+- numpy>=1.10.0
+- pysam>=0.9.0
+- biopython>=1.65
+
+External software required for extracting informative reads:
+
+- samtools
+- bwa (bwa-mem)
+
 Development Environment
 -----------------------
 
@@ -57,17 +74,17 @@ Manual Installation
 GitHub Installation
 -------------------
 
-Installing a specific version e.g. 0.3.0
+Installing a specific version e.g. 0.3.2
 
 ::
 
-    pip install git://github.com/PlantandFoodResearch/TEFingerprint.git@v0.3.0
+    pip install git://github.com/PlantandFoodResearch/TEFingerprint.git@v0.3.2
 
 If using two factor authentication with ssh
 
 ::
 
-    pip install git+ssh://git@github.com/PlantandFoodResearch/TEFingerprint.git@v0.3.0
+    pip install git+ssh://git@github.com/PlantandFoodResearch/TEFingerprint.git@v0.3.2
 
 Testing
 -------
