@@ -35,13 +35,11 @@ class Program(object):
         self.threads = str(threads)
         self.use_temp_dir = use_temp_dir
         self.temp_dir = None
-        self.temp_file_prefix = '.tmp.tefextractinformative'
         if self.use_temp_dir:
             self.keep_temp_files = False
-
         else:
             self.keep_temp_files = keep_temp_files
-
+        self.temp_file_prefix = self.output_bam +'.tmp.tefingerprint'
 
     @staticmethod
     def cli(args):
@@ -145,47 +143,50 @@ class Program(object):
 
     def _run_pipeline(self):
         """"""
-        if self.include_tips:
+        if self.include_tips or self.include_tails:
             print('>>> Extracting soft clips from : {0}'.format(self.input_bam))
-            informative_clips = extract_informative_soft_clip_tips(self.input_bam,
-                                                                   minimum_soft_clip_len=self.soft_clip_minimum_length)
+            informative_clips = extract_informative_tips(
+                self.input_bam,
+                include_soft_tips=self.include_tips,
+                include_soft_tails=self.include_tails,
+                minimum_soft_clip_len=self.soft_clip_minimum_length)
 
             print('>>> Writing soft clips to : {0}'.format(self.temp_fastq))
             # parameters for next segment
-            tip_tags = capture_elements_and_write_fastq(informative_clips,
-                                                        self.temp_fastq)
-            tip_names = {name for name in tip_tags.keys()}
+            clip_tags = capture_elements_and_write_fastq(informative_clips,
+                                                         self.temp_fastq)
+            # get names of original reads to skip in danglers
+            # clip names have 3 characters appended so remove these
+            skip_names = {name[:-3] for name in clip_tags.keys()}
             fastq_mode = 'a'  # append to file just written
         else:
             # defaults if no soft clips used
-            tip_tags = dict()
-            tip_names = set()
+            clip_tags = dict()
+            skip_names = set()
             fastq_mode = 'w'  # write new file
 
-        if self.include_full_length_reads or self.include_tails:
+        if self.include_full_length_reads:
             print('>>> Extracting reads from : {0}'.format(self.input_bam))
-            informative_reads = extract_informative_reads(self.input_bam,
-                                                          include_full_length_reads=self.include_full_length_reads,
-                                                          include_soft_tails=self.include_tails,
-                                                          minimum_soft_clip_len=self.soft_clip_minimum_length)
+            informative_reads = extract_informative_reads(self.input_bam)
 
             print('>>> Writing reads to : {0}'.format(self.temp_fastq))
             element_tags = capture_elements_and_write_fastq(informative_reads,
                                                             self.temp_fastq,
-                                                            skip=tip_names,
+                                                            skip=skip_names,
                                                             mode=fastq_mode)
         else:
             element_tags = {}
 
         # update tags, soft-clip tags overwrite regular read tags
-        element_tags.update(tip_tags)
+        element_tags.update(clip_tags)
 
         print('>>> Mapping reads to {0} in {1}'.format(self.reference_fasta,
                                                        self.temp_bam))
         map_danglers_to_reference(self.temp_fastq,
                                   self.reference_fasta,
                                   self.temp_bam,
-                                  self.threads)
+                                  temp_file_prefix=self.temp_sam_sort,
+                                  threads=self.threads)
 
         print('>>> Indexing: {0}'.format(self.temp_bam))
         pysam.index(self.temp_bam)
@@ -206,15 +207,11 @@ class Program(object):
             shutil.rmtree(self.temp_dir)
         # else if keeping files requested then don't remove them
         elif self.keep_temp_files:
-            temp_files = glob.glob(self.output_bam +
-                                   self.temp_file_prefix +
-                                   '*')
+            temp_files = glob.glob(self.temp_file_prefix + '*')
             print('>>> Keeping temporary files: {0}'.format(temp_files))
         # else remove temp files
         else:
-            temp_files = glob.glob(self.output_bam +
-                                   self.temp_file_prefix +
-                                   '*')
+            temp_files = glob.glob(self.temp_file_prefix + '*')
             print('>>> Removing temporary files: {0}'.format(temp_files))
             for f in temp_files:
                 os.remove(f)
@@ -228,20 +225,16 @@ class Program(object):
         if self.use_temp_dir:
             self.temp_dir = mkdtemp()
             print('>>> Creating temporary directory: {0}'.format(self.temp_dir))
-            self.temp_fastq = (self.temp_dir +
-                               self.temp_file_prefix +
-                               '.0.fastq.gz')
-            self.temp_bam = (self.temp_dir +
-                             self.temp_file_prefix +
-                             '.1.bam')
+            # generate tempfile prefix
+            self.temp_fastq = (self.temp_file_prefix + '.0.fastq.gz')
+            self.temp_bam = (self.temp_file_prefix + '.1.bam')
+            self.temp_sam_sort = (self.temp_file_prefix + '.sort')
 
         else:
-            self.temp_fastq = (self.output_bam +
-                               self.temp_file_prefix +
-                               '.0.fastq.gz')
-            self.temp_bam = (self.output_bam +
-                             self.temp_file_prefix +
-                             '.1.bam')
+            # generate tempfile prefix
+            self.temp_fastq = (self.temp_file_prefix + '.0.fastq.gz')
+            self.temp_bam = (self.temp_file_prefix + '.1.bam')
+            self.temp_sam_sort = (self.temp_file_prefix + '.sort')
 
         # attempt running pipeline
         print('>>> Running Pipeline')
@@ -391,6 +384,83 @@ def extract_informative_reads(bam,
                     pass
 
 
+def extract_informative_full_reads(bam):
+    alignment = pysam.AlignmentFile(bam, 'r')
+    for read in alignment:
+        if read.is_secondary or read.is_supplementary or read.mate_is_unmapped:
+            # read is bad
+            pass
+
+        elif read.is_unmapped:
+            # read is informative
+
+            if read.is_reverse:
+                # read is a reverse informative
+                yield {'name': read.qname,
+                       'element': read.next_reference_name,
+                       'sequence': reverse_complement(read.seq),
+                       'quality': read.qual[::-1]}
+
+            else:
+                # read is a forward informative
+                yield {'name': read.qname,
+                       'element': read.next_reference_name,
+                       'sequence': read.seq,
+                       'quality': read.qual}
+
+
+def extract_informative_tips(bam,
+                             include_soft_tips=True,
+                             include_soft_tails=True,
+                             minimum_soft_clip_len=38):
+    alignment = pysam.AlignmentFile(bam, 'r')
+    for read in alignment:
+
+        if read.is_secondary or read.is_supplementary or read.is_unmapped:
+            # read is bad, soft clipped reads are always mapped
+            pass
+
+        else:
+
+            tip_lower = read.cigar[0]
+            if tip_lower[0] == 4 and tip_lower[1] >= minimum_soft_clip_len:
+                # soft clip at lower end of read
+                clip = tip_lower[1]
+                if read.is_reverse:
+                    # reverse tip clip
+                    if include_soft_tips:
+                        yield {'name': read.qname + '_R3',
+                               'element': read.reference_name,
+                               'sequence': read.seq[0: clip + 1],
+                               'quality': read.qual[0: clip + 1]}
+                else:
+                    # forward tail clip
+                    if include_soft_tails:
+                        yield {'name': read.qname + '_F5',
+                               'element': read.reference_name,
+                               'sequence': read.seq[0: clip + 1],
+                               'quality': read.qual[0: clip + 1]}
+
+            tip_upper = read.cigar[-1]
+            if tip_upper[0] == 4 and tip_upper[1] >= minimum_soft_clip_len:
+                # soft clip at upper end of read
+                clip = tip_upper[1]
+                if read.is_reverse:
+                    # reverse tail clip
+                    if include_soft_tails:
+                        yield {'name': read.qname + '_R5',
+                               'element': read.reference_name,
+                               'sequence': reverse_complement(read.seq[-clip:]),
+                               'quality': read.qual[-clip:][::-1]}
+                else:
+                    # forward tip clip
+                    if include_soft_tips:
+                        yield {'name': read.qname + '_F3',
+                               'element': read.reference_name,
+                               'sequence': reverse_complement(read.seq[-clip:]),
+                               'quality': read.qual[-clip:][::-1]}
+
+
 def capture_elements_and_write_fastq(reads, fastq, skip=(), mode='w'):
     """
     Captures writes parsed reads to a fastq file and returns a dictionary of
@@ -463,7 +533,11 @@ def check_programs_installed(*args):
     return True
 
 
-def map_danglers_to_reference(fastq, reference_fasta, output_bam, threads=1):
+def map_danglers_to_reference(fastq,
+                              reference_fasta,
+                              output_bam,
+                              temp_file_prefix,
+                              threads=1):
     """
     Maps dangler reads (non-mapped reads with pair mapping to repeat-element)
     to reference genome and writes a bam file.
@@ -484,10 +558,11 @@ def map_danglers_to_reference(fastq, reference_fasta, output_bam, threads=1):
     """
     check_programs_installed('bwa', 'samtools')
     command = ('bwa mem -t {threads} {reference} {fastq} ' +
-               '| samtools view -Su - | samtools sort - -o {bam}')
+               '| samtools view -Su - | samtools sort - -T {tmp} -o {bam}')
     command = command.format(threads=threads,
                              reference=reference_fasta,
                              fastq=fastq,
+                             tmp=temp_file_prefix,
                              bam=output_bam)
     return subprocess.call([command], shell=True)
 
