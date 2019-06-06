@@ -239,6 +239,9 @@ class Program(object):
         # check if samtools and bwa are available
         check_programs_installed('bwa', 'samtools')
 
+        # check reference exists and is indexed
+        check_reference_fasta(self.reference_fasta)
+
         # create temp dir for intermediate files if requested
         if self.use_temp_dir:
             self.temp_dir = mkdtemp()
@@ -533,6 +536,24 @@ def reverse_complement(sequence):
     complement = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A', 'N': 'N'}
     return "".join(complement.get(base, base)
                    for base in reversed(sequence.upper()))
+
+
+def check_reference_fasta(path):
+    """Check reference fasta path is a valid file path and that the
+    `.pac` and `.sa` index files are valid file paths.
+
+    This is a simple check to save ambiguous errors after the initial fastq
+    is generated which can take some time.
+    This does not check that the reference and index files are correct,
+    just that they exist.
+    """
+    if not os.path.isfile(path):
+        raise FileNotFoundError("Reference file not found: '{0}'".format(path))
+    for suffix in ['.pac', '.sa']:
+        idx_path = path + suffix
+        if not os.path.isfile(idx_path):
+            message = "Reference index file not found: '{0}'".format(idx_path)
+            raise FileNotFoundError(message)
 
 
 def check_programs_installed(*args):
