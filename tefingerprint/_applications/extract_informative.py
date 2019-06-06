@@ -9,6 +9,7 @@ import shutil
 import sys
 import gzip
 from tempfile import mkdtemp
+import numpy
 
 
 class Program(object):
@@ -39,7 +40,7 @@ class Program(object):
             self.keep_temp_files = False
         else:
             self.keep_temp_files = keep_temp_files
-        self.temp_file_prefix = self.output_bam +'.tmp.tefingerprint'
+        self.temp_file_prefix = None
 
     @staticmethod
     def cli(args):
@@ -216,6 +217,23 @@ class Program(object):
             for f in temp_files:
                 os.remove(f)
 
+    def _generate_temp_file_path(self, prefix):
+        """Generate unique prefix for temp files.
+        Primarily defined by output bam name.
+        In addition a random number used (checked to be unique).
+        This is not bullet-proof but should be good enough.
+        """
+        searching = True
+        while searching:
+            suffix = '.TEFTMP' + str(numpy.random.randint(1000000)).zfill(7)
+            prefix = prefix + suffix
+            if glob.glob(prefix + '*'):
+                # this prefix is not unique
+                pass
+            else:
+                # prefix is unique
+                return prefix
+
     def run(self):
         """"""
         # check if samtools and bwa are available
@@ -226,12 +244,14 @@ class Program(object):
             self.temp_dir = mkdtemp()
             print('>>> Creating temporary directory: {0}'.format(self.temp_dir))
             # generate tempfile prefix
+            self.temp_file_prefix = self._generate_temp_file_path(self.temp_dir)
             self.temp_fastq = (self.temp_file_prefix + '.0.fastq.gz')
             self.temp_bam = (self.temp_file_prefix + '.1.bam')
             self.temp_sam_sort = (self.temp_file_prefix + '.sort')
 
         else:
             # generate tempfile prefix
+            self.temp_file_prefix = self._generate_temp_file_path(self.output_bam)
             self.temp_fastq = (self.temp_file_prefix + '.0.fastq.gz')
             self.temp_bam = (self.temp_file_prefix + '.1.bam')
             self.temp_sam_sort = (self.temp_file_prefix + '.sort')
