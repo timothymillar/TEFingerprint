@@ -146,7 +146,7 @@ class Program(object):
         """"""
         if self.include_tips or self.include_tails:
             print('>>> Extracting soft clips from : {0}'.format(self.input_bam))
-            informative_clips = extract_informative_tips(
+            informative_clips = extract_informative_clips(
                 self.input_bam,
                 include_soft_tips=self.include_tips,
                 include_soft_tails=self.include_tails,
@@ -168,7 +168,7 @@ class Program(object):
 
         if self.include_full_length_reads:
             print('>>> Extracting reads from : {0}'.format(self.input_bam))
-            informative_reads = extract_informative_reads(self.input_bam)
+            informative_reads = extract_informative_full_reads(self.input_bam)
 
             print('>>> Writing reads to : {0}'.format(self.temp_fastq))
             element_tags = capture_elements_and_write_fastq(informative_reads,
@@ -273,141 +273,18 @@ class Program(object):
         self._cleanup()
 
 
-def extract_informative_soft_clip_tips(bam, minimum_soft_clip_len=38):
-    """
-    Extracts informative soft clipped tips of reads from a bam file of paired
-    end reads aligned to a library of transposons.
-
-    :param bam: path to a bam file of paired end reads aligned to a library
-        of transposons
-    :type bam: str
-    :param minimum_soft_clip_len: minimum length of tail soft clips to include
-    :type minimum_soft_clip_len: int
-
-    :return: parsed and filtered reads relating information about location
-        of transposon insertions
-    :rtype: generator[dict[str: str]]
-    """
-    alignment = pysam.AlignmentFile(bam, 'r')
-    for read in alignment:
-        if read.is_secondary or read.is_supplementary or read.is_unmapped:
-            # read is bad, soft clipped reads are always mapped
-            pass
-
-        elif read.mate_is_unmapped:
-            # potential tip soft clip
-
-            if read.is_reverse:
-                # potential reverse tip clip
-                tip = read.cigar[0]
-                if tip[0] == 4 and tip[1] >= minimum_soft_clip_len:
-                    # tip is soft clipped and of sufficient length
-                    clip = tip[1]
-                    # return the clipped section as a read
-                    yield {'name': read.qname,
-                           'element': read.reference_name,
-                           'sequence': read.seq[0: clip + 1],
-                           'quality': read.qual[0: clip + 1]}
-                else:
-                    # not a soft clipped section or not  sufficient length
-                    pass
-            else:
-                # potential forward tip clip
-                tip = read.cigar[-1]
-                if tip[0] == 4 and tip[1] >= minimum_soft_clip_len:
-                    # tip is soft clipped and of sufficient length
-                    clip = tip[1]
-                    # return the clipped section as a read
-                    yield {'name': read.qname,
-                           'element': read.reference_name,
-                           'sequence': reverse_complement(read.seq[-clip:]),
-                           'quality': read.qual[-clip:][::-1]}
-                else:
-                    # not a soft clipped section or not  sufficient length
-                    pass
-
-
-def extract_informative_reads(bam,
-                              include_full_length_reads=True,
-                              include_soft_tails=True,
-                              minimum_soft_clip_len=38):
-    """
-    Extracts informative reads from a bam file of paired end reads aligned to
-    a library of transposons.
-
-    :param bam: path to a bam file of paired end reads aligned to a library
-        of transposons
-    :type bam: str
-    :param include_full_length_reads: whether or not to include full length
-        informative reads
-    :type include_full_length_reads: bool
-    :param include_soft_tails: whether or not to include soft clipped tails
-    :type include_soft_tails: bool
-    :param minimum_soft_clip_len: minimum length of tail soft clips to include
-    :type minimum_soft_clip_len: int
-
-    :return: parsed and filtered reads relating information about location
-        of transposon insertions
-    :rtype: generator[dict[str: str]]
-    """
-    alignment = pysam.AlignmentFile(bam, 'r')
-    for read in alignment:
-        if read.is_secondary or read.is_supplementary or read.mate_is_unmapped:
-            # read is bad
-            pass
-
-        elif include_full_length_reads and read.is_unmapped:
-            # read is a dangler
-
-            if read.is_reverse:
-                # read is a reverse dangler
-                yield {'name': read.qname,
-                       'element': read.next_reference_name,
-                       'sequence': reverse_complement(read.seq),
-                       'quality': read.qual[::-1]}
-
-            else:
-                # read is a forward dangler
-                yield {'name': read.qname,
-                       'element': read.next_reference_name,
-                       'sequence': read.seq,
-                       'quality': read.qual}
-
-        elif include_soft_tails and read.is_proper_pair:
-            # potential tail clip
-
-            if read.is_reverse:
-                # potential reverse tail clip
-                tail = read.cigar[-1]
-                if tail[0] == 4 and tail[1] >= minimum_soft_clip_len:
-                    # tail is soft clipped and of sufficient length
-                    clip = tail[1]
-                    # return the clipped section as a read
-                    yield {'name': read.qname,
-                           'element': read.reference_name,
-                           'sequence': reverse_complement(read.seq[-clip:]),
-                           'quality': read.qual[-clip:][::-1]}
-                else:
-                    # not a soft clipped section or not  sufficient length
-                    pass
-
-            else:
-                # potential forward tail clip
-                tail = read.cigar[0]
-                if tail[0] == 4 and tail[1] >= minimum_soft_clip_len:
-                    # tail is soft clipped and of sufficient length
-                    clip = tail[1]
-                    # return the clipped section as a read
-                    yield {'name': read.qname,
-                           'element': read.reference_name,
-                           'sequence': read.seq[0: clip + 1],
-                           'quality': read.qual[0: clip + 1]}
-                else:
-                    # not a soft clipped section or not  sufficient length
-                    pass
-
-
 def extract_informative_full_reads(bam):
+    """Extracts informative reads from a bam file of paired end reads
+    aligned to a library of transposons.
+
+    :param bam: path to a bam file of paired end reads aligned to a library
+        of transposons
+    :type bam: str
+
+    :return: parsed and filtered reads relating information about location
+        of transposon insertions
+    :rtype: generator[dict[str: str]]
+    """
     alignment = pysam.AlignmentFile(bam, 'r')
     for read in alignment:
         if read.is_secondary or read.is_supplementary or read.mate_is_unmapped:
@@ -432,10 +309,27 @@ def extract_informative_full_reads(bam):
                        'quality': read.qual}
 
 
-def extract_informative_tips(bam,
-                             include_soft_tips=True,
-                             include_soft_tails=True,
-                             minimum_soft_clip_len=38):
+def extract_informative_clips(bam,
+                              include_soft_tips=True,
+                              include_soft_tails=True,
+                              minimum_soft_clip_len=38):
+    """Extracts informative soft clipped ends of reads from a bam file
+    of paired end reads aligned to a library of transposons.
+
+    :param bam: path to a bam file of paired end reads aligned to a library
+        of transposons
+    :type bam: str
+    :param include_soft_tips: whether or not to include soft clipped tips
+    :type include_soft_tips: bool
+    :param include_soft_tails: whether or not to include soft clipped tails
+    :type include_soft_tails: bool
+    :param minimum_soft_clip_len: minimum length of tail soft clips to include
+    :type minimum_soft_clip_len: int
+
+    :return: parsed and filtered reads relating information about location
+        of transposon insertions
+    :rtype: generator[dict[str: str]]
+    """
     alignment = pysam.AlignmentFile(bam, 'r')
     for read in alignment:
 
