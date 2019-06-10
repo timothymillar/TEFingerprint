@@ -16,35 +16,35 @@ def test_reverse_complement(query, answer):
 
 FULL_LENGTH_READS = [
     {'element': 'MULE_1',
-     'name': 'read01_forward_dangler',
+     'name': 'read01_forward_dangler:R2',
      'quality': 'HHHHHGHHHHHHHHHHHHHFCHHHHGIEGGHHHHHHEHHHHHHHHHF@HEGGGGGFHHAEHHDFGHHHHHHHFHHHHHHE?D?GFHHEHHEEFFHGF;FE',
      'sequence': 'TCTGAGCTTAATATCGCCGGTCAACGGTCAAAATGGAGCTTTTTTCTTCATGCTGTTGGGGGGATTCACCCAACAAAAGATTTCCACTTCAGGCCCATTT'},
     {'element': 'Gypsy_2',
-     'name': 'read02_forward_dangler',
+     'name': 'read02_forward_dangler:R2',
      'quality': 'HHHHHHHHHHHHHHHHHHHHHHHHHHH?HHHHEFHGEGHGFGGFFHHHHHFHHHFGFHHHHHGEHHHFHGHHHFECFHFHHHHHH',
      'sequence': 'TATATAGCACGGATATATCGCCTGGTCAACGGTTGGTTAACACGGGCAATCAACAGTCAAAGCTCAAAATTGAGCCTTTTTTTTT'},
     {'element': 'MULE_3',
-     'name': 'read03_forward_dangler',
+     'name': 'read03_forward_dangler:R1',
      'quality': 'CBCFFFFFHHHHHJJJJJJJHIGGHIJJHIIJJGIJJIIIIJIJJJIIJJJJJJHHH==?CDF@BBCDACDDCCDCDDDCDEDDDDDDDCDB<ADDDDDD',
      'sequence': 'GAAATTAGGCGAAATATCGGTGTGTCAGTACCCACTGACACGACAAATAGCATGGATATATCGTGTGGTCAAAGCTTGATCAACATAGGTGGTCAACGGT'},
     {'element': 'Gypsy_1',
-     'name': 'read04_forward_dangler',
+     'name': 'read04_forward_dangler:R1',
      'quality': '@@@FFFDAHFFHH?FHFI=GHGGGI<FFGGGHEEE<FGE@<7;A5@FEFGBH:<ACECAC@CC>CCACCDDD:3>5@CCBBCDE34@B@CB<@B',
      'sequence': 'ATCGGTGTGTCGGTGGCTGTTATATAGCACGGATATATCGGTGGTCAACGCGGTCAAAGCTCAAAACTGAGCTATTTTTTGCTACTGTTGGGGG'},
     {'element': 'MULE_2',
-     'name': 'read05_reverse_dangler',
+     'name': 'read05_reverse_dangler:R1',
      'quality': 'HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHFHHHHHHHHGHHHHHHHHHFHEHHFHFFHHHHFEHEEHHHHHHBFHFHGHEHHHHFFGHHHE',
      'sequence': 'TTATATTGTGATATTTGATTATAATATATTTCGGTGGATATTTTGATACAAAATATCGGTAGACCTAAAATTGATCAAAACTTATAAAAATATAAAATAA'},
     {'element': 'Gypsy_3',
-     'name': 'read06_reverse_dangler',
+     'name': 'read06_reverse_dangler:R2',
      'quality': '@@@FFFFFDHHHHJJJIJIIIGEDHEHIGIIIIJIJIJIHHIJJFIHGFGGEHJIJJJJGJIIIIHIIJIIIJJHFGHAHFFFFFFFEEEDEEDDDDDEE',
      'sequence': 'TATTTGATTATAATATATTTCGGTGGATATTTTGATACAAAATATCGGTAGACCTAAAATTGATCAAAACTTATAAAAATATAAAATAAACTCTTATAAA'},
     {'element': 'MULE_1',
-     'name': 'read07_reverse_dangler',
+     'name': 'read07_reverse_dangler:R1',
      'quality': 'HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHGHGHHGHHGHHHHHHHHHHHHHFHHGHEHHHGHGHHHHHGHHGFFHHHHGG=',
      'sequence': 'CCTTTAATTTGTTATTATTTTTATAAAATTTGTCTCAAAATTTTATTAGGAGATAATAATTACTATAATCAACTGAAAATTGATTTATATAACAAAATTC'},
     {'element': 'Gypsy_2',
-     'name': 'read08_reverse_dangler',
+     'name': 'read08_reverse_dangler:R2',
      'quality': 'CCCFFFFFHHHHHJJJJJJJJJJJJJJJJJJIJJJJJHIGJJGJJJJJJJGIIJJJJJJJJJJJJJJJJJJJJJJJJJJJIJJIJJJJJJHHHHHHHHFF',
      'sequence': 'ACATAACTTATCATATTTGATAATAATATCCTATACGTCAATAAAAATATAAATTTTATAAATATATATTTATTATTAAGTTGCATTATATATTAATTTA'}
 ]
@@ -65,26 +65,26 @@ def test_extract_informative_full_reads():
 # tail clips of length >= 38 (default length)
 TAIL_CLIPS = [
     {'element': 'MULE_3',
-     'name': 'read09_forward_tail_F5',
+     'name': 'read09_forward_tail:R1:+5',
      'quality': 'CCCFFFFFHHHHHJJJJJJJJJJJJJJJJJJJJJIJJJJJJ',
      'sequence': 'TTATGATATATTTTTATTAATTGAAAATTTTTCATTCAATT'},
     {'element': 'Gypsy_3',
-     'name': 'read12_reverse_tail_R5',
+     'name': 'read12_reverse_tail:R2:-5',
      'quality': '@CCFFFDDHFFDFIHIJJ=FGIJIIIIJGIJIIIFGCHIJIJIJJ',
      'sequence': 'TCCACTGTTTGGGGATTCGAACCCCCAACAAAAGGTTCAACATAT'},
     {'element': 'Gypsy_3',
-     'name': 'read15_reverse_not_proper_tail_R5',  # included from v0.4
+     'name': 'read15_reverse_not_proper_tail:R2:-5',  # included from v0.4
      'quality': '@CCFFFDDHFFDFIHIJJ=FGIJIIIIJGIJIIIFGCHIJIJIJJ',
      'sequence': 'TCCACTGTTTGGGGATTCGAACCCCCAACAAAAGGTTCAACATAT'}
 ]
 
 # tip clips of length >= 38
 TIP_CLIPS = [
-    {'name': 'read17_mate_unmapped_F3',
+    {'name': 'read17_mate_unmapped:R1:+3',
      'element': 'MULE_2',
      'sequence': 'ATATAAATATAACAAAATATTTAAAGAATATTTTAATAAAC',
      'quality': 'DBBEFHDFHHFHIGG@IHF@IGHCFDGIHGDIGGHHGFBD@'},
-    {'name': 'read18_mate_unmapped_F3',
+    {'name': 'read18_mate_unmapped:R2:+3',
      'element': 'MULE_2',
      'sequence': 'ATATAAATATAACAAAATATTTAAAGAATATTTTAATAAAC',
      'quality': 'DBBEFHDFHHFHIGG@IHF@IGHCFDGIHGDIGGHHGFBD@'}
@@ -93,11 +93,11 @@ TIP_CLIPS = [
 # tail clips of length 38 > len >= 10
 SHORT_TAIL_CLIPS = [
     {'element': 'MULE_2',
-     'name': 'read11_forward_short_tail_F5',
+     'name': 'read11_forward_short_tail:R1:+5',
      'quality': 'HHHHHHHHHHH',
      'sequence': 'AATTAAATGAA'},
     {'element': 'MULE_2',
-     'name': 'read14_reverse_short_tail_R5',
+     'name': 'read14_reverse_short_tail:R2:-5',
      'quality': '@CCFFFDDHF',
      'sequence': 'TCCACTGTTT'}
 ]

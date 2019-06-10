@@ -73,14 +73,14 @@ class Program(object):
                             type=str,
                             nargs=1,
                             help="Name of output bam file.")
-        parser.set_defaults(include_tips=False)
-        parser.add_argument('--include-tips',
+        parser.set_defaults(include_tips=True)
+        parser.add_argument('--exclude-tips',
                             dest='include_tips',
-                            action='store_true',
-                            help="Include soft-clipped tips instead of "
-                                 "their associated full length mate read. "
-                                 "This may improve precision but can reduce "
-                                 "depth of informative clusters.")
+                            action='store_false',
+                            help="Exclude soft-clipped tips and instead "
+                                 "include their associated full length mate "
+                                 "read. This may reduce precision but can "
+                                 "increase depth of informative clusters.")
         parser.set_defaults(include_tails=True)
         parser.add_argument('--exclude-tails',
                             dest='include_tails',
@@ -92,7 +92,7 @@ class Program(object):
                             action='store_false',
                             help="Don't include full-length informative "
                                  "reads. With high quality data and "
-                                 "annotations the exclution of full-length "
+                                 "annotations the exclusion of full-length "
                                  "'hanging' informative reads can improve "
                                  "precision of insertion sites at the "
                                  "expense of much lower cluster depth.")
@@ -293,17 +293,18 @@ def extract_informative_full_reads(bam):
 
         elif read.is_unmapped:
             # read is informative
-
+            # ensure unique name
+            qname = read.qname + (':R2' if read.is_read2 else ':R1')
             if read.is_reverse:
                 # read is a reverse informative
-                yield {'name': read.qname,
+                yield {'name': qname,
                        'element': read.next_reference_name,
                        'sequence': reverse_complement(read.seq),
                        'quality': read.qual[::-1]}
 
             else:
                 # read is a forward informative
-                yield {'name': read.qname,
+                yield {'name': qname,
                        'element': read.next_reference_name,
                        'sequence': read.seq,
                        'quality': read.qual}
@@ -343,17 +344,19 @@ def extract_informative_clips(bam,
             if tip_lower[0] == 4 and tip_lower[1] >= minimum_soft_clip_len:
                 # soft clip at lower end of read
                 clip = tip_lower[1]
+                # ensure unique name
+                qname = read.qname + (':R2' if read.is_read2 else ':R1')
                 if read.is_reverse:
                     # reverse tip clip
                     if include_soft_tips:
-                        yield {'name': read.qname + '_R3',
+                        yield {'name': qname + ':-3',
                                'element': read.reference_name,
                                'sequence': read.seq[0: clip + 1],
                                'quality': read.qual[0: clip + 1]}
                 else:
                     # forward tail clip
                     if include_soft_tails:
-                        yield {'name': read.qname + '_F5',
+                        yield {'name': qname + ':+5',
                                'element': read.reference_name,
                                'sequence': read.seq[0: clip + 1],
                                'quality': read.qual[0: clip + 1]}
@@ -361,18 +364,20 @@ def extract_informative_clips(bam,
             tip_upper = read.cigar[-1]
             if tip_upper[0] == 4 and tip_upper[1] >= minimum_soft_clip_len:
                 # soft clip at upper end of read
+                # ensure unique name
+                qname = read.qname + (':R2' if read.is_read2 else ':R1')
                 clip = tip_upper[1]
                 if read.is_reverse:
                     # reverse tail clip
                     if include_soft_tails:
-                        yield {'name': read.qname + '_R5',
+                        yield {'name': qname + ':-5',
                                'element': read.reference_name,
                                'sequence': reverse_complement(read.seq[-clip:]),
                                'quality': read.qual[-clip:][::-1]}
                 else:
                     # forward tip clip
                     if include_soft_tips:
-                        yield {'name': read.qname + '_F3',
+                        yield {'name': qname + ':+3',
                                'element': read.reference_name,
                                'sequence': reverse_complement(read.seq[-clip:]),
                                'quality': read.qual[-clip:][::-1]}
