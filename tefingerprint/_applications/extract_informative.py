@@ -273,6 +273,32 @@ class Program(object):
         self._cleanup()
 
 
+def rename_read(read, tip=None):
+    """Update qname for seccond alignment.
+
+    Indicate whether read is R1, R2 or none-paired (R.).
+    If read is a clipped end indicate alignment of initial read to
+    reference element (+ or -) and which end was clipped
+    (3 or 5 AKA tip or tail).
+    """
+    assert tip in {None, 3, 5}
+    qname = read.qname
+    if read.is_read1:
+        qname += ':R1'
+    elif read.is_read2:
+        qname += ':R2'
+    else:
+        qname += ':R.'
+
+    if tip:
+        if read.is_reverse:
+            qname += ':-{0}'.format(tip)
+        else:
+            qname += ':+{0}'.format(tip)
+
+    return qname
+
+
 def extract_informative_full_reads(bam):
     """Extracts informative reads from a bam file of paired end reads
     aligned to a library of transposons.
@@ -293,18 +319,16 @@ def extract_informative_full_reads(bam):
 
         elif read.is_unmapped:
             # read is informative
-            # ensure unique name
-            qname = read.qname + (':R2' if read.is_read2 else ':R1')
             if read.is_reverse:
                 # read is a reverse informative
-                yield {'name': qname,
+                yield {'name': rename_read(read),
                        'element': read.next_reference_name,
                        'sequence': reverse_complement(read.seq),
                        'quality': read.qual[::-1]}
 
             else:
                 # read is a forward informative
-                yield {'name': qname,
+                yield {'name': rename_read(read),
                        'element': read.next_reference_name,
                        'sequence': read.seq,
                        'quality': read.qual}
@@ -344,19 +368,17 @@ def extract_informative_clips(bam,
             if tip_lower[0] == 4 and tip_lower[1] >= minimum_soft_clip_len:
                 # soft clip at lower end of read
                 clip = tip_lower[1]
-                # ensure unique name
-                qname = read.qname + (':R2' if read.is_read2 else ':R1')
                 if read.is_reverse:
                     # reverse tip clip
                     if include_soft_tips:
-                        yield {'name': qname + ':-3',
+                        yield {'name': rename_read(read, 3),
                                'element': read.reference_name,
                                'sequence': read.seq[0: clip + 1],
                                'quality': read.qual[0: clip + 1]}
                 else:
                     # forward tail clip
                     if include_soft_tails:
-                        yield {'name': qname + ':+5',
+                        yield {'name': rename_read(read, 5),
                                'element': read.reference_name,
                                'sequence': read.seq[0: clip + 1],
                                'quality': read.qual[0: clip + 1]}
@@ -364,20 +386,18 @@ def extract_informative_clips(bam,
             tip_upper = read.cigar[-1]
             if tip_upper[0] == 4 and tip_upper[1] >= minimum_soft_clip_len:
                 # soft clip at upper end of read
-                # ensure unique name
-                qname = read.qname + (':R2' if read.is_read2 else ':R1')
                 clip = tip_upper[1]
                 if read.is_reverse:
                     # reverse tail clip
                     if include_soft_tails:
-                        yield {'name': qname + ':-5',
+                        yield {'name': rename_read(read, 5),
                                'element': read.reference_name,
                                'sequence': reverse_complement(read.seq[-clip:]),
                                'quality': read.qual[-clip:][::-1]}
                 else:
                     # forward tip clip
                     if include_soft_tips:
-                        yield {'name': qname + ':+3',
+                        yield {'name': rename_read(read, 3),
                                'element': read.reference_name,
                                'sequence': reverse_complement(read.seq[-clip:]),
                                'quality': read.qual[-clip:][::-1]}
