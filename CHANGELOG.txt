@@ -1,6 +1,31 @@
 # TEFingerprint
 # A Python 3 library and command line tool for transposon fingerprinting
 
+v0.4.0
+- alpha
+- changes
+    - increase number of soft clipped ends that are used
+        - every soft clipped read end of a pair is used if it is of the specified minimum length
+        - tail clips no longer required to be part of a proper mapped pair
+        - tip clips no longer require mate read to be unmapped
+        - full length reads are still included only if no soft clips are used from that pair
+    - soft clipped tips are included by default instead of their full length counterpart
+        - replaced the '--include-tips' flag with '--exclude-tips' flag
+    - reads now have their pair number appended to qname for second alignment
+        - ':R1' if read 1
+        - ':R2' if read 2
+        - ':R.' if not read 1 or read 2 (i.e. single end mapping)
+    - read clips also have the strand and read end appended to qname for second alignment
+        - ':+3' if 3-prime (tip clip) of read mapped to forward strand
+        - ':+5' if 5-prime (tail clip) of read mapped to forward strand
+        - ':-3' if 3-prime (tip clip) of read mapped to reverse strand
+        - ':-5' if 5-prime (tail clip) of read mapped to reverse strand
+- bug fixes
+    - fixed biased behaviour where tail clips are preferred to tip clips
+    - check for indexed reference file at start of extract-informative #121
+    - use unique prefix for samtools sort in  extract-informative to avoid [samtools/523](https://github.com/samtools/samtools/issues/523)
+
+
 v0.3.2
 - alpha
 - changes
