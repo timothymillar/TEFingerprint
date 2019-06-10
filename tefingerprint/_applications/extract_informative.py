@@ -144,6 +144,11 @@ class Program(object):
 
     def _run_pipeline(self):
         """"""
+        # defaults if no soft clips used
+        clip_tags = dict()
+        skip_names = set()
+        fastq_mode = 'w'  # write new file
+
         if self.include_tips or self.include_tails:
             print('>>> Extracting soft clips from : {0}'.format(self.input_bam))
             informative_clips = extract_informative_clips(
@@ -156,15 +161,12 @@ class Program(object):
             # parameters for next segment
             clip_tags = capture_elements_and_write_fastq(informative_clips,
                                                          self.temp_fastq)
-            # get names of original reads to skip in danglers
-            # clip names have 3 characters appended so remove these
-            skip_names = {name[:-3] for name in clip_tags.keys()}
-            fastq_mode = 'a'  # append to file just written
-        else:
-            # defaults if no soft clips used
-            clip_tags = dict()
-            skip_names = set()
-            fastq_mode = 'w'  # write new file
+
+            if self.include_full_length_reads:
+                # overwrite defaults
+                # get names of original reads to skip in danglers
+                skip_names = {clip['name'] for clip in informative_clips}
+                fastq_mode = 'a'  # append to file just written
 
         if self.include_full_length_reads:
             print('>>> Extracting reads from : {0}'.format(self.input_bam))
@@ -178,7 +180,7 @@ class Program(object):
         else:
             element_tags = {}
 
-        # update tags, soft-clip tags overwrite regular read tags
+        # combine tags
         element_tags.update(clip_tags)
 
         print('>>> Mapping reads to {0} in {1}'.format(self.reference_fasta,
@@ -273,8 +275,8 @@ class Program(object):
         self._cleanup()
 
 
-def rename_read(read, tip=None):
-    """Update qname for seccond alignment.
+def read_suffix(read, tip=None):
+    """Build qname suffix for seccond alignment.
 
     Indicate whether read is R1, R2 or none-paired (R.).
     If read is a clipped end indicate alignment of initial read to
@@ -282,21 +284,20 @@ def rename_read(read, tip=None):
     (3 or 5 AKA tip or tail).
     """
     assert tip in {None, 3, 5}
-    qname = read.qname
     if read.is_read1:
-        qname += ':R1'
+        suffix = ':R1'
     elif read.is_read2:
-        qname += ':R2'
+        suffix = ':R2'
     else:
-        qname += ':R.'
+        suffix = ':R.'
 
     if tip:
         if read.is_reverse:
-            qname += ':-{0}'.format(tip)
+            suffix += ':-{0}'.format(tip)
         else:
-            qname += ':+{0}'.format(tip)
+            suffix += ':+{0}'.format(tip)
 
-    return qname
+    return suffix
 
 
 def extract_informative_full_reads(bam):
@@ -321,14 +322,16 @@ def extract_informative_full_reads(bam):
             # read is informative
             if read.is_reverse:
                 # read is a reverse informative
-                yield {'name': rename_read(read),
+                yield {'name': read.qname,
+                       'suffix': read_suffix(read),
                        'element': read.next_reference_name,
                        'sequence': reverse_complement(read.seq),
                        'quality': read.qual[::-1]}
 
             else:
                 # read is a forward informative
-                yield {'name': rename_read(read),
+                yield {'name': read.qname,
+                       'suffix': read_suffix(read),
                        'element': read.next_reference_name,
                        'sequence': read.seq,
                        'quality': read.qual}
@@ -371,14 +374,16 @@ def extract_informative_clips(bam,
                 if read.is_reverse:
                     # reverse tip clip
                     if include_soft_tips:
-                        yield {'name': rename_read(read, 3),
+                        yield {'name': read.qname,
+                               'suffix': read_suffix(read, 3),
                                'element': read.reference_name,
                                'sequence': read.seq[0: clip + 1],
                                'quality': read.qual[0: clip + 1]}
                 else:
                     # forward tail clip
                     if include_soft_tails:
-                        yield {'name': rename_read(read, 5),
+                        yield {'name': read.qname,
+                               'suffix': read_suffix(read, 5),
                                'element': read.reference_name,
                                'sequence': read.seq[0: clip + 1],
                                'quality': read.qual[0: clip + 1]}
@@ -390,14 +395,16 @@ def extract_informative_clips(bam,
                 if read.is_reverse:
                     # reverse tail clip
                     if include_soft_tails:
-                        yield {'name': rename_read(read, 5),
+                        yield {'name': read.qname,
+                               'suffix': read_suffix(read, 5),
                                'element': read.reference_name,
                                'sequence': reverse_complement(read.seq[-clip:]),
                                'quality': read.qual[-clip:][::-1]}
                 else:
                     # forward tip clip
                     if include_soft_tips:
-                        yield {'name': rename_read(read, 3),
+                        yield {'name': read.qname,
+                               'suffix': read_suffix(read, 3),
                                'element': read.reference_name,
                                'sequence': reverse_complement(read.seq[-clip:]),
                                'quality': read.qual[-clip:][::-1]}
@@ -426,16 +433,18 @@ def capture_elements_and_write_fastq(reads, fastq, skip=(), mode='w'):
 
     with gzip.open(fastq, mode) as fq:
         for read in reads:
-            # filter
+            # filter based on original read name
             if read['name'] in skip:
                 pass
             else:
+                # add suffix to original name to ensure unique name
+                name = read['name'] + read['suffix']
 
                 # add read name and element name to dict
-                element_tags[read['name']] = read['element']
+                element_tags[name] = read['element']
 
                 # write read to fastq
-                fq.write(template.format(read['name'],
+                fq.write(template.format(name,
                                          read['sequence'],
                                          read['quality']).encode('utf-8'))
     return element_tags

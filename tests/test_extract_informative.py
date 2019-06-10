@@ -16,35 +16,43 @@ def test_reverse_complement(query, answer):
 
 FULL_LENGTH_READS = [
     {'element': 'MULE_1',
-     'name': 'read01_forward_dangler:R2',
+     'name': 'read01_forward_dangler',
+     'suffix': ':R2',
      'quality': 'HHHHHGHHHHHHHHHHHHHFCHHHHGIEGGHHHHHHEHHHHHHHHHF@HEGGGGGFHHAEHHDFGHHHHHHHFHHHHHHE?D?GFHHEHHEEFFHGF;FE',
      'sequence': 'TCTGAGCTTAATATCGCCGGTCAACGGTCAAAATGGAGCTTTTTTCTTCATGCTGTTGGGGGGATTCACCCAACAAAAGATTTCCACTTCAGGCCCATTT'},
     {'element': 'Gypsy_2',
-     'name': 'read02_forward_dangler:R2',
+     'name': 'read02_forward_dangler',
+     'suffix': ':R2',
      'quality': 'HHHHHHHHHHHHHHHHHHHHHHHHHHH?HHHHEFHGEGHGFGGFFHHHHHFHHHFGFHHHHHGEHHHFHGHHHFECFHFHHHHHH',
      'sequence': 'TATATAGCACGGATATATCGCCTGGTCAACGGTTGGTTAACACGGGCAATCAACAGTCAAAGCTCAAAATTGAGCCTTTTTTTTT'},
     {'element': 'MULE_3',
-     'name': 'read03_forward_dangler:R1',
+     'name': 'read03_forward_dangler',
+     'suffix': ':R1',
      'quality': 'CBCFFFFFHHHHHJJJJJJJHIGGHIJJHIIJJGIJJIIIIJIJJJIIJJJJJJHHH==?CDF@BBCDACDDCCDCDDDCDEDDDDDDDCDB<ADDDDDD',
      'sequence': 'GAAATTAGGCGAAATATCGGTGTGTCAGTACCCACTGACACGACAAATAGCATGGATATATCGTGTGGTCAAAGCTTGATCAACATAGGTGGTCAACGGT'},
     {'element': 'Gypsy_1',
-     'name': 'read04_forward_dangler:R1',
+     'name': 'read04_forward_dangler',
+     'suffix': ':R1',
      'quality': '@@@FFFDAHFFHH?FHFI=GHGGGI<FFGGGHEEE<FGE@<7;A5@FEFGBH:<ACECAC@CC>CCACCDDD:3>5@CCBBCDE34@B@CB<@B',
      'sequence': 'ATCGGTGTGTCGGTGGCTGTTATATAGCACGGATATATCGGTGGTCAACGCGGTCAAAGCTCAAAACTGAGCTATTTTTTGCTACTGTTGGGGG'},
     {'element': 'MULE_2',
-     'name': 'read05_reverse_dangler:R1',
+     'name': 'read05_reverse_dangler',
+     'suffix': ':R1',
      'quality': 'HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHFHHHHHHHHGHHHHHHHHHFHEHHFHFFHHHHFEHEEHHHHHHBFHFHGHEHHHHFFGHHHE',
      'sequence': 'TTATATTGTGATATTTGATTATAATATATTTCGGTGGATATTTTGATACAAAATATCGGTAGACCTAAAATTGATCAAAACTTATAAAAATATAAAATAA'},
     {'element': 'Gypsy_3',
-     'name': 'read06_reverse_dangler:R2',
+     'name': 'read06_reverse_dangler',
+     'suffix': ':R2',
      'quality': '@@@FFFFFDHHHHJJJIJIIIGEDHEHIGIIIIJIJIJIHHIJJFIHGFGGEHJIJJJJGJIIIIHIIJIIIJJHFGHAHFFFFFFFEEEDEEDDDDDEE',
      'sequence': 'TATTTGATTATAATATATTTCGGTGGATATTTTGATACAAAATATCGGTAGACCTAAAATTGATCAAAACTTATAAAAATATAAAATAAACTCTTATAAA'},
     {'element': 'MULE_1',
-     'name': 'read07_reverse_dangler:R1',
+     'name': 'read07_reverse_dangler',
+     'suffix': ':R1',
      'quality': 'HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHGHGHHGHHGHHHHHHHHHHHHHFHHGHEHHHGHGHHHHHGHHGFFHHHHGG=',
      'sequence': 'CCTTTAATTTGTTATTATTTTTATAAAATTTGTCTCAAAATTTTATTAGGAGATAATAATTACTATAATCAACTGAAAATTGATTTATATAACAAAATTC'},
     {'element': 'Gypsy_2',
-     'name': 'read08_reverse_dangler:R2',
+     'name': 'read08_reverse_dangler',
+     'suffix': ':R2',
      'quality': 'CCCFFFFFHHHHHJJJJJJJJJJJJJJJJJJIJJJJJHIGJJGJJJJJJJGIIJJJJJJJJJJJJJJJJJJJJJJJJJJJIJJIJJJJJJHHHHHHHHFF',
      'sequence': 'ACATAACTTATCATATTTGATAATAATATCCTATACGTCAATAAAAATATAAATTTTATAAATATATATTTATTATTAAGTTGCATTATATATTAATTTA'}
 ]
@@ -65,26 +73,31 @@ def test_extract_informative_full_reads():
 # tail clips of length >= 38 (default length)
 TAIL_CLIPS = [
     {'element': 'MULE_3',
-     'name': 'read09_forward_tail:R1:+5',
+     'name': 'read09_forward_tail',
+     'suffix': ':R1:+5',
      'quality': 'CCCFFFFFHHHHHJJJJJJJJJJJJJJJJJJJJJIJJJJJJ',
      'sequence': 'TTATGATATATTTTTATTAATTGAAAATTTTTCATTCAATT'},
     {'element': 'Gypsy_3',
-     'name': 'read12_reverse_tail:R2:-5',
+     'name': 'read12_reverse_tail',
+     'suffix': ':R2:-5',
      'quality': '@CCFFFDDHFFDFIHIJJ=FGIJIIIIJGIJIIIFGCHIJIJIJJ',
      'sequence': 'TCCACTGTTTGGGGATTCGAACCCCCAACAAAAGGTTCAACATAT'},
     {'element': 'Gypsy_3',
-     'name': 'read15_reverse_not_proper_tail:R2:-5',  # included from v0.4
+     'name': 'read15_reverse_not_proper_tail',
+     'suffix': ':R2:-5',  # included from v0.4
      'quality': '@CCFFFDDHFFDFIHIJJ=FGIJIIIIJGIJIIIFGCHIJIJIJJ',
      'sequence': 'TCCACTGTTTGGGGATTCGAACCCCCAACAAAAGGTTCAACATAT'}
 ]
 
 # tip clips of length >= 38
 TIP_CLIPS = [
-    {'name': 'read17_mate_unmapped:R1:+3',
+    {'name': 'read17_mate_unmapped',
+     'suffix': ':R1:+3',
      'element': 'MULE_2',
      'sequence': 'ATATAAATATAACAAAATATTTAAAGAATATTTTAATAAAC',
      'quality': 'DBBEFHDFHHFHIGG@IHF@IGHCFDGIHGDIGGHHGFBD@'},
-    {'name': 'read18_mate_unmapped:R2:+3',
+    {'name': 'read18_mate_unmapped',
+     'suffix': ':R2:+3',
      'element': 'MULE_2',
      'sequence': 'ATATAAATATAACAAAATATTTAAAGAATATTTTAATAAAC',
      'quality': 'DBBEFHDFHHFHIGG@IHF@IGHCFDGIHGDIGGHHGFBD@'}
@@ -93,11 +106,13 @@ TIP_CLIPS = [
 # tail clips of length 38 > len >= 10
 SHORT_TAIL_CLIPS = [
     {'element': 'MULE_2',
-     'name': 'read11_forward_short_tail:R1:+5',
+     'name': 'read11_forward_short_tail',
+     'suffix': ':R1:+5',
      'quality': 'HHHHHHHHHHH',
      'sequence': 'AATTAAATGAA'},
     {'element': 'MULE_2',
-     'name': 'read14_reverse_short_tail:R2:-5',
+     'name': 'read14_reverse_short_tail',
+     'suffix': ':R2:-5',
      'quality': '@CCFFFDDHF',
      'sequence': 'TCCACTGTTT'}
 ]
@@ -143,94 +158,104 @@ def test_extract_informative_clips(include_tails,
 
 def test_capture_elements_and_write_fastq():
     query = [{'element': 'MULE_1',
+              'suffix': ':R.',
               'name': 'read01_forward_dangler',
               'quality': 'HHHHHGHHHHHHHHHHHHHFCHHHHGIEGGHHHHHHEHHHHHHHHHF@HEGGGGGFHHAEHHDFGHHHHHHHFHHHHHHE?D?GFHHEHHEEFFHGF;FE',
               'sequence': 'TCTGAGCTTAATATCGCCGGTCAACGGTCAAAATGGAGCTTTTTTCTTCATGCTGTTGGGGGGATTCACCCAACAAAAGATTTCCACTTCAGGCCCATTT'},
              {'element': 'Gypsy_2',
+              'suffix': ':R.',
               'name': 'read02_forward_dangler',
               'quality': 'HHHHHHHHHHHHHHHHHHHHHHHHHHH?HHHHEFHGEGHGFGGFFHHHHHFHHHFGFHHHHHGEHHHFHGHHHFECFHFHHHHHH',
               'sequence': 'TATATAGCACGGATATATCGCCTGGTCAACGGTTGGTTAACACGGGCAATCAACAGTCAAAGCTCAAAATTGAGCCTTTTTTTTT'},
              {'element': 'MULE_3',
               'name': 'read03_forward_dangler',
+              'suffix': ':R.',
               'quality': 'CBCFFFFFHHHHHJJJJJJJHIGGHIJJHIIJJGIJJIIIIJIJJJIIJJJJJJHHH==?CDF@BBCDACDDCCDCDDDCDEDDDDDDDCDB<ADDDDDD',
               'sequence': 'GAAATTAGGCGAAATATCGGTGTGTCAGTACCCACTGACACGACAAATAGCATGGATATATCGTGTGGTCAAAGCTTGATCAACATAGGTGGTCAACGGT'},
              {'element': 'Gypsy_1',
               'name': 'read04_forward_dangler',
+              'suffix': ':R.',
               'quality': '@@@FFFDAHFFHH?FHFI=GHGGGI<FFGGGHEEE<FGE@<7;A5@FEFGBH:<ACECAC@CC>CCACCDDD:3>5@CCBBCDE34@B@CB<@B',
               'sequence': 'ATCGGTGTGTCGGTGGCTGTTATATAGCACGGATATATCGGTGGTCAACGCGGTCAAAGCTCAAAACTGAGCTATTTTTTGCTACTGTTGGGGG'},
              {'element': 'MULE_2',
               'name': 'read05_reverse_dangler',
+              'suffix': ':R.',
               'quality': 'HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHFHHHHHHHHGHHHHHHHHHFHEHHFHFFHHHHFEHEEHHHHHHBFHFHGHEHHHHFFGHHHE',
               'sequence': 'TTATATTGTGATATTTGATTATAATATATTTCGGTGGATATTTTGATACAAAATATCGGTAGACCTAAAATTGATCAAAACTTATAAAAATATAAAATAA'},
              {'element': 'Gypsy_3',
               'name': 'read06_reverse_dangler',
+              'suffix': ':R.',
               'quality': '@@@FFFFFDHHHHJJJIJIIIGEDHEHIGIIIIJIJIJIHHIJJFIHGFGGEHJIJJJJGJIIIIHIIJIIIJJHFGHAHFFFFFFFEEEDEEDDDDDEE',
               'sequence': 'TATTTGATTATAATATATTTCGGTGGATATTTTGATACAAAATATCGGTAGACCTAAAATTGATCAAAACTTATAAAAATATAAAATAAACTCTTATAAA'},
              {'element': 'MULE_1',
               'name': 'read07_reverse_dangler',
+              'suffix': ':R.',
               'quality': 'HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHGHGHHGHHGHHHHHHHHHHHHHFHHGHEHHHGHGHHHHHGHHGFFHHHHGG=',
               'sequence': 'CCTTTAATTTGTTATTATTTTTATAAAATTTGTCTCAAAATTTTATTAGGAGATAATAATTACTATAATCAACTGAAAATTGATTTATATAACAAAATTC'},
              {'element': 'Gypsy_2',
               'name': 'read08_reverse_dangler',
+              'suffix': ':R.',
               'quality': 'CCCFFFFFHHHHHJJJJJJJJJJJJJJJJJJIJJJJJHIGJJGJJJJJJJGIIJJJJJJJJJJJJJJJJJJJJJJJJJJJIJJIJJJJJJHHHHHHHHFF',
               'sequence': 'ACATAACTTATCATATTTGATAATAATATCCTATACGTCAATAAAAATATAAATTTTATAAATATATATTTATTATTAAGTTGCATTATATATTAATTTA'},
              {'element': 'MULE_3',
               'name': 'read09_forward_tail',
+              'suffix': ':R.:+5',
               'quality': 'CCCFFFFFHHHHHJJJJJJJJJJJJJJJJJJJJJIJJJJJJ',
               'sequence': 'TTATGATATATTTTTATTAATTGAAAATTTTTCATTCAATT'},
              {'element': 'Gypsy_3',
               'name': 'read12_reverse_tail',
+              'suffix': ':R.:-5',
               'quality': '@CCFFFDDHFFDFIHIJJ=FGIJIIIIJGIJIIIFGCHIJIJIJJ',
               'sequence': 'TCCACTGTTTGGGGATTCGAACCCCCAACAAAAGGTTCAACATAT'}]
 
-    answer_elements = {'read01_forward_dangler': 'MULE_1',
-                       'read02_forward_dangler': 'Gypsy_2',
-                       'read03_forward_dangler': 'MULE_3',
-                       'read04_forward_dangler': 'Gypsy_1',
-                       'read05_reverse_dangler': 'MULE_2',
-                       'read06_reverse_dangler': 'Gypsy_3',
-                       'read07_reverse_dangler': 'MULE_1',
-                       'read08_reverse_dangler': 'Gypsy_2',
-                       'read09_forward_tail': 'MULE_3',
-                       'read12_reverse_tail': 'Gypsy_3'}
+    answer_elements = {'read01_forward_dangler:R.': 'MULE_1',
+                       'read02_forward_dangler:R.': 'Gypsy_2',
+                       'read03_forward_dangler:R.': 'MULE_3',
+                       'read04_forward_dangler:R.': 'Gypsy_1',
+                       'read05_reverse_dangler:R.': 'MULE_2',
+                       'read06_reverse_dangler:R.': 'Gypsy_3',
+                       'read07_reverse_dangler:R.': 'MULE_1',
+                       'read08_reverse_dangler:R.': 'Gypsy_2',
+                       'read09_forward_tail:R.:+5': 'MULE_3',
+                       'read12_reverse_tail:R.:-5': 'Gypsy_3'}
 
-    answer_fastq = """@read01_forward_dangler
+    answer_fastq = """@read01_forward_dangler:R.
 TCTGAGCTTAATATCGCCGGTCAACGGTCAAAATGGAGCTTTTTTCTTCATGCTGTTGGGGGGATTCACCCAACAAAAGATTTCCACTTCAGGCCCATTT
 +
 HHHHHGHHHHHHHHHHHHHFCHHHHGIEGGHHHHHHEHHHHHHHHHF@HEGGGGGFHHAEHHDFGHHHHHHHFHHHHHHE?D?GFHHEHHEEFFHGF;FE
-@read02_forward_dangler
+@read02_forward_dangler:R.
 TATATAGCACGGATATATCGCCTGGTCAACGGTTGGTTAACACGGGCAATCAACAGTCAAAGCTCAAAATTGAGCCTTTTTTTTT
 +
 HHHHHHHHHHHHHHHHHHHHHHHHHHH?HHHHEFHGEGHGFGGFFHHHHHFHHHFGFHHHHHGEHHHFHGHHHFECFHFHHHHHH
-@read03_forward_dangler
+@read03_forward_dangler:R.
 GAAATTAGGCGAAATATCGGTGTGTCAGTACCCACTGACACGACAAATAGCATGGATATATCGTGTGGTCAAAGCTTGATCAACATAGGTGGTCAACGGT
 +
 CBCFFFFFHHHHHJJJJJJJHIGGHIJJHIIJJGIJJIIIIJIJJJIIJJJJJJHHH==?CDF@BBCDACDDCCDCDDDCDEDDDDDDDCDB<ADDDDDD
-@read04_forward_dangler
+@read04_forward_dangler:R.
 ATCGGTGTGTCGGTGGCTGTTATATAGCACGGATATATCGGTGGTCAACGCGGTCAAAGCTCAAAACTGAGCTATTTTTTGCTACTGTTGGGGG
 +
 @@@FFFDAHFFHH?FHFI=GHGGGI<FFGGGHEEE<FGE@<7;A5@FEFGBH:<ACECAC@CC>CCACCDDD:3>5@CCBBCDE34@B@CB<@B
-@read05_reverse_dangler
+@read05_reverse_dangler:R.
 TTATATTGTGATATTTGATTATAATATATTTCGGTGGATATTTTGATACAAAATATCGGTAGACCTAAAATTGATCAAAACTTATAAAAATATAAAATAA
 +
 HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHFHHHHHHHHGHHHHHHHHHFHEHHFHFFHHHHFEHEEHHHHHHBFHFHGHEHHHHFFGHHHE
-@read06_reverse_dangler
+@read06_reverse_dangler:R.
 TATTTGATTATAATATATTTCGGTGGATATTTTGATACAAAATATCGGTAGACCTAAAATTGATCAAAACTTATAAAAATATAAAATAAACTCTTATAAA
 +
 @@@FFFFFDHHHHJJJIJIIIGEDHEHIGIIIIJIJIJIHHIJJFIHGFGGEHJIJJJJGJIIIIHIIJIIIJJHFGHAHFFFFFFFEEEDEEDDDDDEE
-@read07_reverse_dangler
+@read07_reverse_dangler:R.
 CCTTTAATTTGTTATTATTTTTATAAAATTTGTCTCAAAATTTTATTAGGAGATAATAATTACTATAATCAACTGAAAATTGATTTATATAACAAAATTC
 +
 HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHGHGHHGHHGHHHHHHHHHHHHHFHHGHEHHHGHGHHHHHGHHGFFHHHHGG=
-@read08_reverse_dangler
+@read08_reverse_dangler:R.
 ACATAACTTATCATATTTGATAATAATATCCTATACGTCAATAAAAATATAAATTTTATAAATATATATTTATTATTAAGTTGCATTATATATTAATTTA
 +
 CCCFFFFFHHHHHJJJJJJJJJJJJJJJJJJIJJJJJHIGJJGJJJJJJJGIIJJJJJJJJJJJJJJJJJJJJJJJJJJJIJJIJJJJJJHHHHHHHHFF
-@read09_forward_tail
+@read09_forward_tail:R.:+5
 TTATGATATATTTTTATTAATTGAAAATTTTTCATTCAATT
 +
 CCCFFFFFHHHHHJJJJJJJJJJJJJJJJJJJJJIJJJJJJ
-@read12_reverse_tail
+@read12_reverse_tail:R.:-5
 TCCACTGTTTGGGGATTCGAACCCCCAACAAAAGGTTCAACATAT
 +
 @CCFFFDDHFFDFIHIJJ=FGIJIIIIJGIJIIIFGCHIJIJIJJ
