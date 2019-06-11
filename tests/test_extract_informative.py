@@ -219,6 +219,8 @@ def test_capture_elements_and_write_fastq():
                        'read09_forward_tail:R.:+5': 'MULE_3',
                        'read12_reverse_tail:R.:-5': 'Gypsy_3'}
 
+    answer_qnames = {read['name'] for read in query}
+
     answer_fastq = """@read01_forward_dangler:R.
 TCTGAGCTTAATATCGCCGGTCAACGGTCAAAATGGAGCTTTTTTCTTCATGCTGTTGGGGGGATTCACCCAACAAAAGATTTCCACTTCAGGCCCATTT
 +
@@ -262,7 +264,11 @@ TCCACTGTTTGGGGATTCGAACCCCCAACAAAAGGTTCAACATAT
 """
     tempdir = tempfile.mkdtemp()
     fastq = tempdir + '/temp.fastq.gz'
-    elements = extract_informative.capture_elements_and_write_fastq(query, fastq)
+    elements, qnames = extract_informative.capture_elements_and_write_fastq(
+        query,
+        fastq,
+        record_initial_qname=True
+    )
     assert elements == answer_elements
 
     with gzip.open(fastq, 'r') as handle:

@@ -147,40 +147,52 @@ class Program(object):
         # defaults if no soft clips used
         clip_tags = dict()
         skip_names = set()
-        fastq_mode = 'w'  # write new file
 
+        # defaults if no full length reads used
+        element_tags = dict()
+
+        # extract clipped reads
         if self.include_tips or self.include_tails:
-            print('>>> Extracting soft clips from : {0}'.format(self.input_bam))
+            print('>>> Extracting soft clips from : {}'.format(self.input_bam))
+
             informative_clips = extract_informative_clips(
                 self.input_bam,
                 include_soft_tips=self.include_tips,
                 include_soft_tails=self.include_tails,
-                minimum_soft_clip_len=self.soft_clip_minimum_length)
+                minimum_soft_clip_len=self.soft_clip_minimum_length,
+            )
 
             print('>>> Writing soft clips to : {0}'.format(self.temp_fastq))
-            # parameters for next segment
-            clip_tags = capture_elements_and_write_fastq(informative_clips,
-                                                         self.temp_fastq)
 
-            if self.include_full_length_reads:
-                # overwrite defaults
-                # get names of original reads to skip in danglers
-                skip_names = {clip['name'] for clip in informative_clips}
-                fastq_mode = 'a'  # append to file just written
+            # only record these if they are needed to skip full lengths
+            record_initial_qname = self.include_full_length_reads
 
+            clip_tags, skip_names = capture_elements_and_write_fastq(
+                informative_clips,
+                self.temp_fastq,
+                record_initial_qname=record_initial_qname
+            )
+
+        # extract full length reads
         if self.include_full_length_reads:
             print('>>> Extracting reads from : {0}'.format(self.input_bam))
             informative_reads = extract_informative_full_reads(self.input_bam)
 
-            print('>>> Writing reads to : {0}'.format(self.temp_fastq))
-            element_tags = capture_elements_and_write_fastq(informative_reads,
-                                                            self.temp_fastq,
-                                                            skip=skip_names,
-                                                            mode=fastq_mode)
-        else:
-            element_tags = {}
+            # determine whether to append or write new file
+            if self.include_tips or self.include_tails:
+                write_mode = 'a'
+            else:
+                write_mode = 'w'
 
-        # combine tags
+            print('>>> Writing reads to : {0}'.format(self.temp_fastq))
+            element_tags, _ = capture_elements_and_write_fastq(
+                informative_reads,
+                self.temp_fastq,
+                skip=skip_names,
+                mode=write_mode
+            )
+
+        # combine tags into single dict
         element_tags.update(clip_tags)
 
         print('>>> Mapping reads to {0} in {1}'.format(self.reference_fasta,
@@ -410,10 +422,18 @@ def extract_informative_clips(bam,
                                'quality': read.qual[-clip:][::-1]}
 
 
-def capture_elements_and_write_fastq(reads, fastq, skip=(), mode='w'):
+def capture_elements_and_write_fastq(reads,
+                                     fastq,
+                                     skip=(),
+                                     mode='w',
+                                     record_initial_qname=False):
     """
     Captures writes parsed reads to a fastq file and returns a dictionary of
     read-element pairs.
+
+    A second set is returned with the initial qnames (not including a suffix)
+    This is done to avoid using a full length 'dangler' read when soft clips
+    from its mate have already been included.
 
     :param reads: sequence of dictionaries of reads with fields 'name',
         'element', sequence' and 'quality'
@@ -424,11 +444,16 @@ def capture_elements_and_write_fastq(reads, fastq, skip=(), mode='w'):
     :type skip: set(str)
     :param mode: mode for opening fastq file 'w' or 'a'
     :type mode: str
+    :param record_initial_qname: option to recorde the unmodified qname in
+        a set
+    :type record_initial_qname: bool
 
     :return: dictionary of read-element pairs
-    :rtype: dict[str, str]
+    :rtype: tuple[dict[str, str], set[str]]
     """
-    element_tags = {}
+
+    element_tags = dict()
+    initial_qnames = set()
     template = "@{0}\n{1}\n+\n{2}\n"
 
     with gzip.open(fastq, mode) as fq:
@@ -437,6 +462,10 @@ def capture_elements_and_write_fastq(reads, fastq, skip=(), mode='w'):
             if read['name'] in skip:
                 pass
             else:
+                # record the initial qname
+                if record_initial_qname:
+                    initial_qnames.add(read['name'])
+
                 # add suffix to original name to ensure unique name
                 name = read['name'] + read['suffix']
 
@@ -447,7 +476,7 @@ def capture_elements_and_write_fastq(reads, fastq, skip=(), mode='w'):
                 fq.write(template.format(name,
                                          read['sequence'],
                                          read['quality']).encode('utf-8'))
-    return element_tags
+    return element_tags, initial_qnames
 
 
 def reverse_complement(sequence):
