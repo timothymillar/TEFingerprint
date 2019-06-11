@@ -120,18 +120,25 @@ Arguments:
 
 Additional arguments:
 
--  ``--exclude-tails`` by default the soft-clipped tails of pairs
-   properly mapping to a single repeat element are included as an
-   additional source of information. This option will exclude
-   soft-clipped tails from the resulting bam file.
--  ``--include-tips`` This option will use the soft-clipped tip of
-   a read mapped to a transposon instead of the associated unmapped read
-   if the soft-clipped read is of the required length.
+-  ``--exclude-tails`` This option will exclude the soft-clipped tails of
+   reads mapped to transposons. This option may increase the number of
+   full length reads used in the analysis which are only included if no
+   soft-clips are used from their mate read.
+-  ``--exclude-tips`` This option will exclude the soft-clipped tips of
+   reads mapped to transposons. This option may increase the number of
+   full length reads used in the analysis which are only included if no
+   soft-clips are used from their mate read.
 -  ``--soft-clip-minimum-length`` the minimum length allowed for soft-clipped
    tips or tails to be included (defaults to ``38``).
+   Exclusion of a soft-clip may result in the inclusion of a (less precise)
+   full-length informative read.
+   A smaller length limit may increase the precision of results at the
+   expense of accuracy and a larger value may improve accuracy at the loss of
+   some precision and signal depth.
+   See the method documentation for further details.
 -  ``--exclude-full-length-reads`` exclude full-length informative reads.
    This option can improve cluster precision by only using soft-clipped
-   tips (if included) and tails. However this will result in much lower
+   tips and tails. However this will result in much lower
    cluster depth and should only be used with high read depths and high
    quality reference transposon sequences.
 -  ``--mate-element-tag`` by default, the sam-tag used to store repeat
@@ -146,8 +153,21 @@ Additional arguments:
    This flag will ignore the --keep-temp-files flag.
 
 The output file ``informative.bam`` contains informative reads mapped to the
-reference genome. Each of these reads is tagged with the repeat element that
-their pair was mapped to.
+reference genome.
+These reads use the same name as they had in the original fastq file with an
+additional suffix indicating their alignment when mappiing to the
+reference set of transposons.
+The suffix begins with ``:R1`` or ``:R2`` indicating which read of the pair it
+is.
+Reads that originate from soft-clips have a further suffix indicating their
+alignment orientation against a transposon ('+' or '-') and the end of the
+read which they originate from ('3' or '5' prime ends).
+For example a read originating from a soft-clip might have a name with the
+suffix ``:R1:+3``.
+Full length informative reads did not align to any of the transposons
+(their mate did) and therefore don't include the second part of the suffix.
+Each of these reads is also tagged with the repeat element that
+their pair was mapped to using the 'ME' tag in the bam file.
 
 Fingerprinting one or more samples
 ----------------------------------

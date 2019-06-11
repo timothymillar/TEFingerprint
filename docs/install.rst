@@ -74,17 +74,17 @@ Manual Installation
 GitHub Installation
 -------------------
 
-Installing a specific version e.g. 0.3.2
+Installing a specific version e.g. 0.4.0
 
 ::
 
-    pip install git://github.com/PlantandFoodResearch/TEFingerprint.git@v0.3.2
+    pip install git://github.com/PlantandFoodResearch/TEFingerprint.git@v0.4.0
 
 If using two factor authentication with ssh
 
 ::
 
-    pip install git+ssh://git@github.com/PlantandFoodResearch/TEFingerprint.git@v0.3.2
+    pip install git+ssh://git@github.com/PlantandFoodResearch/TEFingerprint.git@v0.4.0
 
 Testing
 -------

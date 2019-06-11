@@ -35,64 +35,77 @@ repeat element sequences.
 Any pairs in which neither read is mapped are considered uninformative and
 ignored.
 
-Full-length Informative Reads
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Pairs in which one read has mapped to a transposon and the other is unmapped
-are identified and the unmapped read is labeled as an informative read.
-Assuming that our library of known transposon sequences is
-largely complete, these informative reads are likely to contain
-non-transposon-genomic DNA.
-
-When these full-length informative reads are mapped to a reference genome
-These reads will tend to map in stranded clusters at either end of a location
-at which a transposon is present in the sample.
-The exact distance between a full-length informative read and it's associated
-insertion site will vary based on the insertion size of the original read
-pairs.
-
-Soft Clipped Informative Tails
+Soft Clipped Informative Reads
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Read pairs in which both reads have
-mapped to a transposon sequence can be used as an additional source of
-information if one read has a significant soft-clipped region at its
-5-prime end (tail). In these cases, the soft-clipped section can be
-extracted and included as (short) informative read.
+In reads which partially map to a transposon sequence with a non-mapping
+soft-clipped end, the soft-clipped region can be hard-clipped and used as an
+informative read.
 
-Assuming that the reference transposon is accurate,
-soft-clipped tips will theoretically provide greater precision than most
-full-length informative reads because the soft-clipped region should be
-immediately adjacent to the transposon insertion.
-However, the short soft-clipped regions may align poorly.
+Assuming that the reference transposon sequence is accurate, the unmapped
+soft-clipped end of the read is likely to originate from a non-transposon
+sequence in the sampled organisms genome.
+The clipped region can be mapped back to a reference genome where it should
+align to a non-transposon region that flanks a transposon insertion within
+the sampled organisms genome.
 
-In TEFingerprint soft-clipped tips that are included by default if
+Downstream processes in TEFingerprint assume that the 3-prime ends of
+informative reads are closest to the transposon insertion site.
+This is true for soft-clips originating from the 5-prime end of a read
+(tail-clips).
+However, soft-clips originating from the 3-prime end of a read (tip-clips)
+have their 3-prime end further away from the transposon sequence.
+For this reason, soft-clips from the 3-prime end (tip clips) are reversed
+(before re-alignment) to ensure that they 'point' in the correct direction.
+
+In TEFingerprint soft-clipped tips are included by default if
 they are :math:`\geq 38` bases in length.
 options are available to change the required length or to
 excluded soft-clipped tips entirely.
 
+High quality informative soft-clips can indicate the precise
+location of a transposon insertion when aligned back to a reference genome
+because they are assumed to map immediately adjacent to the transposon
+sequence (flanking region).
+However, a combination of short soft-clipped regions and/or inaccurately
+defined transposon ends within the reference set of transposons may result
+in poor alignments to the reference genome and inaccurate results.
+This can be mitigated by increasing the minimum soft-clip length requirement,
+improving the reference set of transposons and/or using more full-length
+informative reads.
 
-Soft Clipped Informative Tips
+Full-length Informative Reads
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-If a read with an unmapped mate is partially mapped to transposon by it's
-outer 5-prime end (tail) the soft-clipped  3-prime end (tip) may be used as an
-informative read.
-However the unmapped mate will be classified as a full-length informative
-read.
+Full-length informative reads are reads which did not map to a reference
+transposon but their mate read did.
+We assume that the non-mapping informative read comes from a non-transposon
+region of the sampled organisms genome which is near an insertion site of the
+transposon that its mate read mapped to.
+The distance between the mapped informative read and the transposon insertion
+is unknown but bounded by the insert size of the paired reads.
 
-Inclusion of both the soft-clipped tip and the full-length read may
-bias the final results as these reads are non-independent and will provide
-twice the weight to a single insertion site.
-Depending on the accuracy of the reference transposon, the soft-clipped tip
-may contain some repetitive sequence resulting in a poor alignment to the
-reference genome.
+An issue with full-length informative reads is that they may duplicate the
+signal that comes from a soft-clipped end of the mate read that did map to
+a reference transposon.
+To mitigate this TEFingerprint will only extract a full-length informative
+read if no soft-clips were used from the mate read.
+A flow on affect of this is that increasing the minimum required length of
+a soft-clip will not only reduce the number of informative
+soft-clips used, it may also increase the number of informative full-length
+reads that are used.
 
-Because of these concerns, soft-clipped tips are not used in TEFingerprint by
-default.
-Aan optional flag is available to include soft-clipped tips
-instead of their full-length mate if the soft-clipped region is over a
-specified length.
+Full-length informative reads provide a more robust signal than soft-clips
+because there is a longer sequence to map to the reference genome and they
+are less likely to be affected by inaccuracies in the reference set of
+transposons.
+Full-length informative reads are however less precise and, in regions of
+dense transposon insertions, the distance between insertion may be shorter
+than full-length reads meaning that soft-clipped read ends are the only source
+of information about insertions within that region.
+Hence the length required for the inclusion of soft-clips also determines
+the inclusion of many full-length reads and is a trade of
+between accuracy and precision.
 
 Fingerprinting
 --------------

@@ -101,7 +101,17 @@ class Program(object):
                             type=int,
                             default=[38],
                             help="Minimum required length for inclusion of "
-                                 "soft-clipped tips and tails.")
+                                 "soft-clipped tips and tails. "
+                                 "Exclusion of a soft-clip may result in the "
+                                 "inclusion of a (less precise) "
+                                 "full-length informative read. "
+                                 "A smaller length limit may increase the "
+                                 "precision of results at the  expense of "
+                                 "accuracy and a larger value may improve "
+                                 "accuracy at the loss of some precision and "
+                                 "signal depth. "
+                                 "See the method documentation for "
+                                 "further details.")
         parser.add_argument('--mate-element-tag',
                             type=str,
                             nargs=1,
