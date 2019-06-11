@@ -21,7 +21,6 @@ v0.4.0
         - ':-3' if 3-prime (tip clip) of read mapped to reverse strand
         - ':-5' if 5-prime (tail clip) of read mapped to reverse strand
 - bug fixes
-    - fixed biased behaviour where tail clips are preferred to tip clips
     - check for indexed reference file at start of extract-informative #121
     - use unique prefix for samtools sort in  extract-informative to avoid [samtools/523](https://github.com/samtools/samtools/issues/523)
 
